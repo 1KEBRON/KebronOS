@@ -25,7 +25,7 @@ type SeedItem = {
 
 const SEED_KEY = "kebron:seed";
 const DEFAULTS_KEY = "kebron:defaults";
-const DEFAULTS_VERSION = "3";
+const DEFAULTS_VERSION = "4";
 
 /** Stock ryOS sample files, removed once so the desktop only shows this site's content. */
 const STOCK_PATHS = [
