@@ -1,0 +1,486 @@
+import { memo, useCallback, useState } from "react";
+import {
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSeparator,
+  MenubarCheckboxItem,
+} from "@/components/ui/menubar";
+import { type ChatRoom } from "@/types/chat";
+import { useAudioSettingsStoreShallow } from "@/stores/useAudioSettingsStore";
+import { SYNTH_PRESETS } from "@/hooks/chatSynthPresets";
+import { getPrivateRoomDisplayName } from "@/utils/chat";
+import { LoginDialog } from "@/components/dialogs/LoginDialog";
+import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
+import { ShortcutHint } from "@/components/shared/menubar/ShortcutHint";
+import { MENUBAR_SEPARATOR_CLASS } from "@/components/shared/menubar/menubarStyles";
+import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
+import { useTranslation } from "react-i18next";
+import { requestSetChatSpeechEnabled } from "@/utils/chatSpeechAuth";
+import { TelegramLinkDialog } from "@/components/dialogs/TelegramLinkDialog";
+import {
+  useNotificationPermission,
+  isNotificationApiAvailable,
+} from "@/utils/browserNotifications";
+import type {
+  TelegramLinkCreateResponse,
+  TelegramHeartbeatSettings,
+  TelegramLinkSession,
+  TelegramLinkedAccount,
+  TelegramLinkStatusResponse,
+} from "@/api/telegram";
+
+interface ChatsMenuBarProps {
+  onClose: () => void;
+  onShowHelp: () => void;
+  onShowAbout: () => void;
+  onClearChats: () => void;
+  onSaveTranscript: () => void;
+  onSetUsername: () => void;
+  onToggleSidebar: () => void;
+  isSidebarVisible: boolean;
+  onAddRoom: () => void;
+  rooms: ChatRoom[];
+  currentRoom: ChatRoom | null;
+  onRoomSelect: (room: ChatRoom | null) => void;
+  onIncreaseFontSize: () => void;
+  onDecreaseFontSize: () => void;
+  onResetFontSize: () => void;
+  username?: string | null;
+  isAuthenticated?: boolean;
+  onLogin?: () => void;
+  onVerifyToken: () => void;
+  isVerifyDialogOpen: boolean;
+  setVerifyDialogOpen: (open: boolean) => void;
+  verifyPasswordInput: string;
+  setVerifyPasswordInput: (input: string) => void;
+  verifyUsernameInput: string;
+  setVerifyUsernameInput: (input: string) => void;
+  isVerifyingToken: boolean;
+  verifyError: string | null;
+  handleVerifyTokenSubmit: (
+    input: string,
+    isPassword: boolean
+  ) => Promise<void>;
+  onLogout?: () => Promise<void>;
+  telegramLinkedAccount: TelegramLinkedAccount | null;
+  telegramLinkSession: TelegramLinkSession | null;
+  isTelegramStatusLoading: boolean;
+  isCreatingTelegramLink: boolean;
+  isDisconnectingTelegramLink: boolean;
+  telegramHeartbeatSettings: TelegramHeartbeatSettings;
+  isSavingTelegramHeartbeatSettings: boolean;
+  onRefreshTelegramLinkStatus: () => Promise<TelegramLinkStatusResponse | null>;
+  onCreateTelegramLink: () => Promise<TelegramLinkCreateResponse | null>;
+  onOpenTelegramLink: () => void;
+  onCopyTelegramCode: () => void;
+  onDisconnectTelegramLink: () => void;
+  onSaveTelegramHeartbeatInstructions: (instructions: string) => Promise<boolean>;
+}
+
+export const ChatsMenuBar = memo(function ChatsMenuBar({
+  onClose,
+  onShowHelp,
+  onShowAbout,
+  onClearChats,
+  onSaveTranscript,
+  onSetUsername,
+  onToggleSidebar,
+  isSidebarVisible,
+  onAddRoom,
+  rooms,
+  currentRoom,
+  onRoomSelect,
+  onIncreaseFontSize,
+  onDecreaseFontSize,
+  onResetFontSize,
+  username,
+  isAuthenticated,
+  onLogin,
+  onVerifyToken,
+  isVerifyDialogOpen,
+  setVerifyDialogOpen,
+  verifyPasswordInput,
+  setVerifyPasswordInput,
+  verifyUsernameInput,
+  setVerifyUsernameInput,
+  isVerifyingToken,
+  verifyError,
+  handleVerifyTokenSubmit,
+  onLogout,
+  telegramLinkedAccount,
+  telegramLinkSession,
+  isTelegramStatusLoading,
+  isCreatingTelegramLink,
+  isDisconnectingTelegramLink,
+  telegramHeartbeatSettings,
+  isSavingTelegramHeartbeatSettings,
+  onRefreshTelegramLinkStatus,
+  onCreateTelegramLink,
+  onOpenTelegramLink,
+  onCopyTelegramCode,
+  onDisconnectTelegramLink,
+  onSaveTelegramHeartbeatInstructions,
+}: ChatsMenuBarProps) {
+  const { t } = useTranslation();
+  const [isTelegramDialogOpen, setIsTelegramDialogOpen] = useState(false);
+  const {
+    isShareDialogOpen,
+    setIsShareDialogOpen,
+    isWindowsTheme,
+    isMacOSTheme,
+    appId,
+    appName,
+  } = useAppMenuBarChrome("chats");
+
+  const handleVerifyDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setVerifyDialogOpen(open);
+    },
+    [setVerifyDialogOpen]
+  );
+
+  const handleLoginSubmit = useCallback(async () => {
+    await handleVerifyTokenSubmit(verifyPasswordInput, true);
+  }, [handleVerifyTokenSubmit, verifyPasswordInput]);
+
+  const handleSignUpSubmit = useCallback(async () => {
+    setVerifyDialogOpen(false);
+    onSetUsername();
+  }, [onSetUsername, setVerifyDialogOpen]);
+
+  const handleCloseTelegramDialog = useCallback(() => {
+    setIsTelegramDialogOpen(false);
+  }, []);
+
+  const { permission: notificationPermission, requestPermission: requestNotificationPermission } =
+    useNotificationPermission();
+
+  const openTelegramDialog = async () => {
+    const status = await onRefreshTelegramLinkStatus();
+
+    if (!status?.account && !status?.pendingLink && !telegramLinkSession) {
+      const createdLink = await onCreateTelegramLink();
+      if (!createdLink) {
+        return;
+      }
+    }
+
+    setIsTelegramDialogOpen(true);
+  };
+
+  const {
+    speechEnabled,
+    setSpeechEnabled,
+    typingSynthEnabled,
+    setTypingSynthEnabled,
+    synthPreset,
+    setSynthPreset,
+    keepTalkingEnabled,
+    setKeepTalkingEnabled,
+  } = useAudioSettingsStoreShallow((s) => ({
+    speechEnabled: s.speechEnabled,
+    setSpeechEnabled: s.setSpeechEnabled,
+    typingSynthEnabled: s.typingSynthEnabled,
+    setTypingSynthEnabled: s.setTypingSynthEnabled,
+    synthPreset: s.synthPreset,
+    setSynthPreset: s.setSynthPreset,
+    keepTalkingEnabled: s.keepTalkingEnabled,
+    setKeepTalkingEnabled: s.setKeepTalkingEnabled,
+  }));
+
+  return (
+    <>
+      <AppMenuBarShell
+        isWindowsTheme={isWindowsTheme}
+        isMacOSTheme={isMacOSTheme}
+        appId={appId}
+        appName={appName}
+        isShareDialogOpen={isShareDialogOpen}
+        setIsShareDialogOpen={setIsShareDialogOpen}
+        helpItemLabel={t("apps.chats.menu.chatsHelp")}
+        aboutItemLabel={t("apps.chats.menu.aboutChats")}
+        onShowHelp={onShowHelp}
+        onShowAbout={onShowAbout}
+      >
+        {/* File Menu */}
+        <MenubarMenu>
+          <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+            {t("common.menu.file")}
+          </MenubarTrigger>
+          <MenubarContent align="start" sideOffset={1} className="px-0">
+            <MenubarItem
+              onClick={onSaveTranscript}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.saveTranscript")}
+              <ShortcutHint id="save" />
+            </MenubarItem>
+            <MenubarItem
+              onClick={onClearChats}
+              disabled={currentRoom !== null}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.clearChat")}
+            </MenubarItem>
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+
+            {/* Account Section */}
+            {username && isAuthenticated ? (
+              <>
+                <MenubarItem
+                  onSelect={openTelegramDialog}
+                  className="text-md h-6 px-3"
+                >
+                  {t("apps.chats.menu.linkToTelegram")}
+                </MenubarItem>
+                <MenubarItem
+                  onClick={() => onLogout?.()}
+                  className="text-md h-6 px-3"
+                >
+                  {t("apps.chats.menu.logOut")}
+                </MenubarItem>
+              </>
+            ) : (
+              // When not logged in: Show Create Account and Login
+              <>
+                <MenubarItem
+                  onClick={onSetUsername}
+                  className="text-md h-6 px-3"
+                >
+                  {t("apps.chats.menu.createAccount")}
+                </MenubarItem>
+                <MenubarItem
+                  onClick={onVerifyToken}
+                  className="text-md h-6 px-3"
+                >
+                  {t("apps.chats.menu.login")}
+                </MenubarItem>
+              </>
+            )}
+
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            <MenubarItem
+              onClick={onClose}
+              className="text-md h-6 px-3"
+            >
+              {t("common.menu.close")}
+              <ShortcutHint id="close" />
+            </MenubarItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        {/* Chats Menu */}
+        <MenubarMenu>
+          <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+            {t("apps.chats.menu.chats")}
+          </MenubarTrigger>
+          <MenubarContent
+            align="start"
+            sideOffset={1}
+            className="px-0 max-h-[300px] overflow-y-auto"
+          >
+            {/* New Chat - available to all users */}
+            <MenubarItem
+              onClick={onAddRoom}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.newChat")}
+            </MenubarItem>
+
+            {/* Show separator between menu actions and chat list */}
+            {rooms.length > 0 && (
+              <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            )}
+
+            {/* Ryo Chat Option */}
+            <MenubarCheckboxItem
+              checked={currentRoom === null}
+              onCheckedChange={(checked) => {
+                if (checked) onRoomSelect(null);
+              }}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.status.ryo")}
+            </MenubarCheckboxItem>
+
+            {/* Chat List */}
+            {Array.isArray(rooms) &&
+              (() => {
+                // Sort rooms: private rooms first, then public rooms
+                const privateRooms = rooms.filter(
+                  (room) => room.type === "private"
+                );
+                const publicRooms = rooms.filter(
+                  (room) => room.type !== "private"
+                );
+                const sortedRooms = [...privateRooms, ...publicRooms];
+
+                return sortedRooms.map((room) => (
+                  <MenubarCheckboxItem
+                    key={room.id}
+                    checked={currentRoom?.id === room.id}
+                    onCheckedChange={(checked) => {
+                      if (checked) onRoomSelect(room);
+                    }}
+                    className="text-md h-6 px-3"
+                  >
+                    {room.type === "private"
+                      ? getPrivateRoomDisplayName(room, username ?? null)
+                      : `#${room.name}`}
+                  </MenubarCheckboxItem>
+                ));
+              })()}
+          </MenubarContent>
+        </MenubarMenu>
+
+        {/* Sounds Menu */}
+        <MenubarMenu>
+          <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+            {t("apps.chats.menu.sound")}
+          </MenubarTrigger>
+          <MenubarContent align="start" sideOffset={1} className="px-0">
+            {Object.entries(SYNTH_PRESETS).map(([key, preset]) => (
+              <MenubarCheckboxItem
+                key={key}
+                checked={synthPreset === key}
+                onCheckedChange={(checked) => {
+                  if (checked) setSynthPreset(key);
+                }}
+                className="text-md h-6 px-3"
+              >
+                {preset.name}
+              </MenubarCheckboxItem>
+            ))}
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            <MenubarCheckboxItem
+              checked={Boolean(speechEnabled && isAuthenticated)}
+              onCheckedChange={(checked) =>
+                requestSetChatSpeechEnabled({
+                  enabled: checked,
+                  isAuthenticated: Boolean(isAuthenticated),
+                  promptLogin: onLogin ?? onSetUsername,
+                  setSpeechEnabled,
+                })
+              }
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.chatSpeech")}
+            </MenubarCheckboxItem>
+            <MenubarCheckboxItem
+              checked={typingSynthEnabled}
+              onCheckedChange={(checked) => setTypingSynthEnabled(checked)}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.typingSynth")}
+            </MenubarCheckboxItem>
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            <MenubarCheckboxItem
+              checked={keepTalkingEnabled}
+              onCheckedChange={(checked) => setKeepTalkingEnabled(checked)}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.keepTalking")}
+            </MenubarCheckboxItem>
+          </MenubarContent>
+        </MenubarMenu>
+
+        {/* Settings Menu */}
+        <MenubarMenu>
+          <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+            {t("common.menu.settings")}
+          </MenubarTrigger>
+          <MenubarContent align="start" sideOffset={1} className="px-0">
+            {/* Font Size Controls */}
+            <MenubarItem
+              onClick={onIncreaseFontSize}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.increaseFontSize")}
+            </MenubarItem>
+            <MenubarItem
+              onClick={onDecreaseFontSize}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.decreaseFontSize")}
+            </MenubarItem>
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            <MenubarItem
+              onClick={onResetFontSize}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.resetFontSize")}
+            </MenubarItem>
+            <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            {/* Sidebar Toggle */}
+            <MenubarCheckboxItem
+              checked={isSidebarVisible}
+              onCheckedChange={(checked) => {
+                if (checked !== isSidebarVisible) onToggleSidebar();
+              }}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.chats.menu.showRooms")}
+            </MenubarCheckboxItem>
+            {isNotificationApiAvailable() && (
+              <>
+                <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+                <MenubarCheckboxItem
+                  checked={notificationPermission === "granted"}
+                  disabled={notificationPermission === "denied"}
+                  onCheckedChange={(checked) => {
+                    if (checked && notificationPermission === "default") {
+                      void requestNotificationPermission();
+                    }
+                  }}
+                  className="text-md h-6 px-3"
+                >
+                  {t("apps.chats.menu.systemNotifications")}
+                </MenubarCheckboxItem>
+              </>
+            )}
+          </MenubarContent>
+        </MenubarMenu>
+      </AppMenuBarShell>
+
+      {/* Log In / Sign Up Dialog */}
+      <LoginDialog
+        isOpen={isVerifyDialogOpen}
+        onOpenChange={handleVerifyDialogOpenChange}
+        /* Login props */
+        usernameInput={verifyUsernameInput}
+        onUsernameInputChange={setVerifyUsernameInput}
+        passwordInput={verifyPasswordInput}
+        onPasswordInputChange={setVerifyPasswordInput}
+        onLoginSubmit={handleLoginSubmit}
+        isLoginLoading={isVerifyingToken}
+        loginError={verifyError}
+        /* Sign Up props */
+        newUsername={verifyUsernameInput}
+        onNewUsernameChange={setVerifyUsernameInput}
+        newPassword={verifyPasswordInput}
+        onNewPasswordChange={setVerifyPasswordInput}
+        onSignUpSubmit={handleSignUpSubmit}
+        isSignUpLoading={false}
+        signUpError={null}
+      />
+      <TelegramLinkDialog
+        isOpen={isTelegramDialogOpen}
+        onClose={handleCloseTelegramDialog}
+        linkedAccount={telegramLinkedAccount}
+        linkSession={telegramLinkSession}
+        isStatusLoading={isTelegramStatusLoading}
+        isCreatingLink={isCreatingTelegramLink}
+        isDisconnectingLink={isDisconnectingTelegramLink}
+        heartbeatSettings={telegramHeartbeatSettings}
+        isSavingHeartbeatSettings={isSavingTelegramHeartbeatSettings}
+        onCreateLink={onCreateTelegramLink}
+        onOpenTelegramLink={onOpenTelegramLink}
+        onCopyTelegramCode={onCopyTelegramCode}
+        onDisconnectTelegramLink={onDisconnectTelegramLink}
+        onSaveHeartbeatInstructions={onSaveTelegramHeartbeatInstructions}
+      />
+    </>
+  );
+});

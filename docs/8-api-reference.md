@@ -1,0 +1,231 @@
+# API Reference
+
+ryOS backend APIs use Node-style route handlers in `api/`, served by the standalone Bun API server.
+
+Most actively refactored JSON routes use the shared `apiHandler` utility (`api/_utils/api-handler.ts`) for CORS, method checks, auth resolution, and consistent error handling. Some specialized routes (for example multipart upload handlers) still use explicit/manual handling.
+
+## API Request Flow
+
+```mermaid
+graph LR
+    Client[Client App] --> Auth{Auth Check}
+    Auth -->|Valid| Router[API Router]
+    Auth -->|Invalid| Error[401 Error]
+    Router --> API[Node.js Runtime]
+    API --> Services[External Services]
+    Services --> AI[AI Providers]
+    Services --> DB[(Redis/KV)]
+    Services --> Media[Media APIs]
+    API --> Response[JSON Response]
+    Response --> Client
+```
+
+## Endpoint Documentation
+
+| Endpoint Group | Description |
+|----------------|-------------|
+| [Chat API](/docs/chat-api) | Main AI chat with streaming and tool calling |
+| [Song API](/docs/song-api) | Music library CRUD, lyrics, furigana, translations |
+| [Media API](/docs/media-api) | Text-to-speech, transcription, YouTube search |
+| [Auth API](/docs/auth-api) | User registration, login, token management |
+| [Rooms API](/docs/rooms-api) | Chat room creation and management |
+| [Messages API](/docs/messages-api) | Send and retrieve chat messages |
+| [Presence API](/docs/presence-api) | Presence tracking, user search, AI replies |
+| [AI Generation APIs](/docs/ai-generation-apis) | Applet generation, IE time-travel, parse-title |
+| [Utility APIs](/docs/utility-apis) | Link preview, iframe check, share applet, stocks, sync, admin |
+| [KOReader Sync API](/docs/kosync-api) | KOReader-compatible progress sync bridged to Books |
+| [Books OPDS Catalog](/docs/opds-api) | Password-authenticated EPUB catalog and downloads |
+| [API Design Guide](/docs/api-design-guide) | Patterns and conventions for API development |
+
+## Cross-Cutting Handler Pattern
+
+- **`apiHandler`**: shared wrapper for CORS preflight, origin checks, method allowlists, optional JSON parsing, unified logger wiring, and default JSON error handling.
+- **`request-auth`**: shared auth resolver for token endpoints, expecting:
+  - `Authorization: Bearer {token}`
+  - `X-Username: {username}`
+- **Partial auth headers** return `400`.
+- **Invalid token/username pairs** return `401`.
+- **Optional-auth endpoints** can be anonymous while still validating provided auth headers.
+
+## Infrastructure Adapters
+
+- **Redis** (`api/_utils/redis.ts`): Centralized Redis client factory supporting Upstash REST (`REDIS_KV_REST_API_URL`) and standard Redis (`REDIS_URL`) backends with a unified API.
+- **Storage** (`api/_utils/storage.ts`): Switchable object storage adapter for Sync v2 blobs and media assets.
+
+## Quick Reference
+
+### AI Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/chat` | Main AI chat with tool calling |
+| `/api/ai/conversations/:channel` | Synced Chat and Assistant history |
+| `/api/ai/conversations/:channel/reset` | Clear synced history and process memories |
+| `/api/ai/attachments/:id` | Private synced chat images |
+| `/api/applet-ai` | Applet text + image generation |
+| `/api/stuff/remove-background` | Stuff cover background removal (transparent PNG) |
+| `/api/ie-generate` | Time-travel page generation |
+| `/api/parse-title` | Music metadata extraction |
+| `/api/ai/extract-memories` | Daily-note and long-term memory extraction |
+| `/api/ai/process-daily-notes` | Background daily-note processing |
+| `/api/ai/cursor-run-status` | Cursor Cloud agent run polling |
+| `/api/ai/cursor-run-followup` | Follow-up prompt for an existing Cursor run |
+
+### Media Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/songs/` | Song library CRUD |
+| `/api/songs/[id]` | Individual song operations |
+| `/api/speech` | Text-to-speech |
+| `/api/speech/permits` | Mint a Ryo-chat speech permit |
+| `/api/audio-transcribe` | Speech-to-text |
+| `/api/youtube-search` | YouTube music search |
+| `/api/apple-music-artwork` | Apple Music artwork proxy |
+
+### Communication Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/rooms` | Room list + create |
+| `/api/rooms/[id]` | Room detail + delete |
+| `/api/rooms/[id]/join` | Join a room |
+| `/api/rooms/[id]/leave` | Leave a room |
+| `/api/rooms/[id]/users` | Get active users in room |
+| `/api/rooms/[id]/messages` | List/send messages |
+| `/api/rooms/[id]/messages/[msgId]` | Delete message (admin) |
+| `/api/messages/bulk` | Bulk message fetch |
+| `/api/presence/switch` | Presence switching |
+| `/api/presence/heartbeat` | Global online presence heartbeat |
+| `/api/rooms/[id]/typing` | Broadcast typing indicator |
+| `/api/users` | User search |
+| `/api/ai/ryo-reply` | AI reply in rooms |
+| `/api/listen/sessions` | List/create listen-together sessions |
+| `/api/listen/sessions/[id]` | Get session state |
+| `/api/listen/sessions/[id]/join` | Join listen session |
+| `/api/listen/sessions/[id]/leave` | Leave listen session |
+| `/api/listen/sessions/[id]/sync` | Sync playback state (DJ only) |
+| `/api/listen/sessions/[id]/assign-dj` | Assign the session DJ |
+| `/api/listen/sessions/[id]/transfer-host` | Transfer session host |
+| `/api/listen/sessions/[id]/remote-command` | Submit remote playback command |
+| `/api/listen/sessions/[id]/reaction` | Send emoji reaction |
+| `/api/irc/servers` | List/create IRC server configs |
+| `/api/irc/servers/[id]` | DELETE — remove IRC server config (admin only) |
+| `/api/irc/servers/[id]/channels` | Browse IRC channels |
+| `/api/pusher/auth` | Authorize private/presence Pusher channels |
+| `/api/realtime/ticket` | Mint local WebSocket realtime tickets |
+| `/api/telegram/link/create` | Create Telegram account link |
+| `/api/telegram/link/status` | Check Telegram link status |
+| `/api/telegram/link/disconnect` | Disconnect Telegram account |
+
+### Utility Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/link-preview` | URL metadata extraction |
+| `/api/iframe-check` | Embeddability checking |
+| `/api/share-applet` | Applet sharing |
+| `/api/stocks` | Real-time stock quotes |
+| `/api/currency-rate` | Currency conversion rates |
+| `/api/mapkit-token` | MapKit JS token |
+| `/api/geo` | Approximate city for the request IP (Maps first-open camera) |
+| `/api/youbike/stations` | Taiwan YouBike 2.0 station overlay (cached official open data) |
+| `/api/youbike/route` | On-road YouBike bike-leg geometry (cached public OSRM bike profile) |
+| `/api/musickit-token` | MusicKit JS token |
+| `/api/tv/create-channel` | AI-assisted TV channel creation |
+| `/api/opds` | HTTP Basic-authenticated Books acquisition feed |
+| `/api/opds/books/:bookId.epub` | Authenticated EPUB acquisition |
+| `/api/sync/auto-sync-preference` | Read/update the cross-device Auto Sync toggle |
+| `/api/sync/v2/ops` | Apply batched journal ops |
+| `/api/sync/v2/changes` | Read journal ops after a cursor |
+| `/api/sync/v2/snapshot` | Read full key-value sync snapshot |
+| `/api/sync/v2/blobs` | Prepare/dedupe content-addressed blob uploads |
+| `/api/sync/v2/blob-upload` | Issue and consume authenticated blob proxy uploads |
+| `/api/cron/sync-maintenance` | Garbage-collect unreferenced sync blobs and heal user records |
+| `/api/analytics/events` | Record lightweight client analytics events |
+| `/api/admin` | Admin operations |
+| `/api/airdrop/heartbeat` | AirDrop presence heartbeat |
+| `/api/airdrop/discover` | Discover nearby AirDrop users |
+| `/api/airdrop/send` | Send file via AirDrop |
+| `/api/airdrop/respond` | Accept/decline AirDrop transfer |
+
+### Endpoint Categories Overview
+
+```mermaid
+graph TD
+    API["/api/*"]
+    API --> AI[AI Services]
+    API --> Media[Media Services]
+    API --> Comm[Communication]
+    API --> Util[Utilities]
+    
+    AI --> chat["/chat"]
+    AI --> applet["/applet-ai"]
+    AI --> ie["/ie-generate"]
+    AI --> parse["/parse-title"]
+    
+    Media --> song["/song/*"]
+    Media --> speech["/speech"]
+    Media --> transcribe["/audio-transcribe"]
+    Media --> yt["/youtube-search"]
+    
+    Comm --> rooms["/rooms"]
+    Comm --> messages["/messages/bulk"]
+    Comm --> presence["/presence/switch"]
+    Comm --> users["/users"]
+    Comm --> ryo["/ai/ryo-reply"]
+    Comm --> listen["/listen/sessions"]
+    Comm --> telegram["/telegram/link"]
+    
+    Util --> preview["/link-preview"]
+    Util --> iframe["/iframe-check"]
+    Util --> share["/share-applet"]
+    Util --> stocks["/stocks"]
+    Util --> sync["/sync/v2/* + backup"]
+    Util --> admin["/admin"]
+```
+
+## Authentication
+
+Browser sessions use an httpOnly `ryos_auth` cookie set by `register`, `login`, `token/verify`, `token/refresh`, and `session`. Programmatic clients may still use Bearer + `X-Username` headers:
+
+```
+Authorization: Bearer {token}
+X-Username: {username}
+```
+
+Token-based sessions use a 1-year TTL, refreshed on each validated request. Auth-required endpoints use the shared `request-auth` validation boundary for consistent `400/401` semantics.
+
+## Standalone Bun Server Routes
+
+When running via `scripts/api-standalone-server.ts`:
+
+| Route | Purpose |
+|-------|---------|
+| `GET /health` | Process health + route count |
+| `GET /api/health` | API health |
+| `GET /app-config.js` | Client runtime config bootstrap (`window.__RYOS_RUNTIME_CONFIG__`) |
+| WebSocket `REALTIME_WS_PATH` | Local realtime (ticket from `/api/realtime/ticket`) |
+
+## Environment Variables
+
+| Variable | Endpoints / purpose |
+|----------|---------------------|
+| `REDIS_KV_REST_API_URL` / `REDIS_KV_REST_API_TOKEN` | Core (Upstash REST) |
+| `REDIS_URL` | Core (standard Redis); required for multi-instance local realtime |
+| `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` | Pusher realtime + `/api/pusher/auth` |
+| `REALTIME_PROVIDER`, `REALTIME_WS_PATH` | `local` → `/api/realtime/ticket` + WebSocket |
+| `MAPKIT_*` | `/api/mapkit-token`, Maps AI tools |
+| `MUSICKIT_*` (or `MAPKIT_*` fallback) | `/api/musickit-token` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME` | `/api/webhooks/telegram`, `/api/telegram/link/*` |
+| `CRON_SECRET` | `/api/cron/sync-maintenance`, `/api/cron/telegram-heartbeat` |
+| `CURSOR_API_KEY` | `/api/ai/cursor-run-followup`, admin Cursor actions |
+| `TRUSTED_PROXY_COUNT`, `AUTH_COOKIE_SECURE` | Standalone reverse-proxy hardening (see [Self-hosting](/docs/self-hosting-vps)) |
+
+## AI Providers
+
+| Provider | Models |
+|----------|--------|
+| OpenAI | gpt-6 (gpt-6-astra), gpt-5.5, tts-1, whisper-1 |
+| Anthropic | sonnet-4.6 |
+| Google | gemini-3-flash, gemini-3-flash-preview, gemini-3.1-pro-preview, gemini-3.1-flash-image-preview |

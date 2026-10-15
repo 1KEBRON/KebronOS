@@ -1,0 +1,316 @@
+import React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+
+interface InputDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (value: string) => void;
+  title: string;
+  description: string;
+  value: string;
+  onChange: (value: string) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
+  // Additional actions support
+  additionalActions?: Array<{
+    label: string;
+    onClick: () => void;
+    variant?: "retro" | "destructive";
+    position?: "left" | "right";
+  }>;
+  submitLabel?: string;
+  showCancel?: boolean;
+  // Optional select rendered below the input (e.g. save-location picker)
+  selectLabel?: string;
+  selectOptions?: Array<{ label: string; value: string }>;
+  selectValue?: string;
+  onSelectChange?: (value: string) => void;
+}
+
+export function InputDialog({
+  isOpen,
+  onOpenChange,
+  onSubmit,
+  title,
+  description,
+  value,
+  onChange,
+  isLoading = false,
+  errorMessage = null,
+  additionalActions = [],
+  submitLabel,
+  showCancel = true,
+  selectLabel,
+  selectOptions,
+  selectValue,
+  onSelectChange,
+}: InputDialogProps) {
+  const { t } = useTranslation();
+  const {
+    isWindowsTheme,
+    isMacOSTheme: isMacTheme,
+  } = useThemeFlags();
+  const defaultSubmitLabel = submitLabel || t("common.dialog.save");
+  const actionGroups = additionalActions.reduce<
+    { left: typeof additionalActions; right: typeof additionalActions }
+  >(
+    (acc, action) => {
+      if (action.position === "left") {
+        acc.left.push(action);
+      } else {
+        acc.right.push(action);
+      }
+      return acc;
+    },
+    { left: [], right: [] }
+  );
+
+  const handleSubmit = () => {
+    if (!isLoading) {
+      onSubmit(value);
+    }
+  };
+
+  const dialogContent = (
+    <div className={isWindowsTheme ? "p-2 px-4" : "p-4 px-6"}>
+      <p
+        className={cn(
+          "text-neutral-500 mb-2",
+          isWindowsTheme
+            ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+            : "font-geneva-12 text-[12px]"
+        )}
+        style={{
+          fontFamily: isWindowsTheme
+            ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+            : undefined,
+          fontSize: isWindowsTheme ? "11px" : undefined,
+        }}
+        id="dialog-description"
+      >
+        {description}
+      </p>
+      <Input
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter" && !isLoading) {
+            handleSubmit();
+          }
+        }}
+        className={cn(
+          "shadow-none",
+          isWindowsTheme
+            ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+            : "font-geneva-12 text-[12px]"
+        )}
+        style={{
+          fontFamily: isWindowsTheme
+            ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+            : undefined,
+          fontSize: isWindowsTheme ? "11px" : undefined,
+        }}
+        disabled={isLoading}
+      />
+      {selectOptions && onSelectChange && (
+        <div className="mt-2 flex items-center gap-2">
+          {selectLabel && (
+            <span
+              className={cn(
+                "text-neutral-500 shrink-0",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {selectLabel}
+            </span>
+          )}
+          <Select
+            value={selectValue}
+            onValueChange={onSelectChange}
+            disabled={isLoading}
+          >
+            <SelectTrigger
+              className={cn(
+                "flex-1 min-w-0",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px] h-7"
+                  : "font-geneva-12 text-[12px] h-7"
+              )}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {selectOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {errorMessage && (
+        <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+      )}
+      <DialogFooter className="mt-4 gap-1.5 sm:justify-between">
+        <div className="flex gap-1.5 w-full sm:w-auto">
+          {actionGroups.left.map((action) => (
+              <Button
+                key={`left-${action.label}-${action.variant || "retro"}`}
+                variant={action.variant || "retro"}
+                onClick={action.onClick}
+                disabled={isLoading}
+                className={cn(
+                  "w-full sm:w-auto h-7",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : "font-geneva-12 text-[12px]"
+                )}
+                style={{
+                  fontFamily: isWindowsTheme
+                    ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                    : undefined,
+                  fontSize: isWindowsTheme ? "11px" : undefined,
+                }}
+              >
+                {action.label}
+              </Button>
+            ))}
+        </div>
+        <div className="flex flex-col-reverse gap-2 w-full sm:w-auto sm:flex-row">
+          {actionGroups.right.map((action) => (
+              <Button
+                key={`right-${action.label}-${action.variant || "retro"}`}
+                variant={action.variant || "retro"}
+                onClick={action.onClick}
+                disabled={isLoading}
+                className={cn(
+                  "w-full sm:w-auto h-7",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : "font-geneva-12 text-[12px]"
+                )}
+                style={{
+                  fontFamily: isWindowsTheme
+                    ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                    : undefined,
+                  fontSize: isWindowsTheme ? "11px" : undefined,
+                }}
+              >
+                {action.label}
+              </Button>
+            ))}
+          {showCancel && (
+            <Button
+              variant={isMacTheme ? "secondary" : "retro"}
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+              className={cn(
+                "w-full sm:w-auto",
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("common.dialog.cancel")}
+            </Button>
+          )}
+          <Button
+            variant={isMacTheme ? "default" : "retro"}
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className={cn(
+              "w-full sm:w-auto",
+              !isMacTheme && "h-7",
+              isWindowsTheme
+                ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                : "font-geneva-12 text-[12px]"
+            )}
+            style={{
+              fontFamily: isWindowsTheme
+                ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                : undefined,
+              fontSize: isWindowsTheme ? "11px" : undefined,
+            }}
+          >
+            {isLoading ? t("common.dialog.adding") : defaultSubmitLabel}
+          </Button>
+        </div>
+      </DialogFooter>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn("max-w-[500px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">{title}</DialogTitle>
+            <DialogDescription className="sr-only">{description}</DialogDescription>
+            <DialogHeader>{title}</DialogHeader>
+            <div className="window-body">{dialogContent}</div>
+          </>
+        ) : isMacTheme ? (
+          <>
+            <DialogTitle className="sr-only">{title}</DialogTitle>
+            <DialogDescription className="sr-only">{description}</DialogDescription>
+            <DialogHeader>{title}</DialogHeader>
+            {dialogContent}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {title}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {description}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogContent}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

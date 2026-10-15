@@ -1,0 +1,10 @@
+// kebronze.com: the static build (dist/) served as Cloudflare Workers static assets.
+// Deploy: npx vite build && npx wrangler deploy
+{
+  "name": "kebronos",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

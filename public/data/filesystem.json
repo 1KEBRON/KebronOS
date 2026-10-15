@@ -1,0 +1,372 @@
+{
+  "directories": [
+    {
+      "path": "/",
+      "name": "/",
+      "isDirectory": true,
+      "type": "directory",
+      "status": "active"
+    },
+    {
+      "path": "/Applications",
+      "name": "Applications",
+      "isDirectory": true,
+      "type": "directory-virtual",
+      "icon": "/icons/default/applications.png",
+      "status": "active"
+    },
+    {
+      "path": "/Documents",
+      "name": "Documents",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/documents.png",
+      "status": "active"
+    },
+    {
+      "path": "/Downloads",
+      "name": "Downloads",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/downloads.png",
+      "status": "active"
+    },
+    {
+      "path": "/Images",
+      "name": "Images",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/images.png",
+      "status": "active"
+    },
+    {
+      "path": "/Books",
+      "name": "Books",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/books-folder.png",
+      "status": "active"
+    },
+    {
+      "path": "/Music",
+      "name": "Music",
+      "isDirectory": true,
+      "type": "directory-virtual",
+      "icon": "/icons/default/sounds.png",
+      "status": "active"
+    },
+    {
+      "path": "/Videos",
+      "name": "Videos",
+      "isDirectory": true,
+      "type": "directory-virtual",
+      "icon": "/icons/default/movies.png",
+      "status": "active"
+    },
+    {
+      "path": "/Sites",
+      "name": "Sites",
+      "isDirectory": true,
+      "type": "directory-virtual",
+      "icon": "/icons/default/sites.png",
+      "status": "active"
+    },
+    {
+      "path": "/Applets",
+      "name": "Applets",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/applets.png",
+      "status": "active"
+    },
+    {
+      "path": "/Trash",
+      "name": "Trash",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/trash-empty.png",
+      "status": "active"
+    },
+    {
+      "path": "/Desktop",
+      "name": "Desktop",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/desktop.png",
+      "status": "active"
+    },
+    {
+      "path": "/Documents/Projects",
+      "name": "Projects",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/folder-work.png",
+      "status": "active"
+    },
+    {
+      "path": "/Documents/North Star",
+      "name": "North Star",
+      "isDirectory": true,
+      "type": "directory",
+      "icon": "/icons/default/folder-northstar.png",
+      "status": "active"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Documents/README.md",
+      "name": "README.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/readme.png",
+      "status": "active",
+      "content": "Hi, I'm Kebron Solomon Zerie.\n\n## Some things about me\n\n- I build a software product that I always wished existed, now finally using coding agents.\n- Watching an idea take physical or digital form is the most addictive thing I know.\n- Working on [SporaQuest](/Documents/Projects/SporaQuest.md) and [Delalos](/Documents/Projects/Delalos.md). Next: Fyllos and FjordFI.\n\n## Some things I believe\n\n- Anything works to the degree it is aligned with reality.\n  - That which always works is the truth. Everything else is a substitute.\n- The greatest mistake is believing your own or others' beliefs.\n  - The culture you're marinated in shapes your perception, and your perception shapes \"your\" decisions.\n- Life is a playground to discover the truth of things.\n- Mastery is freedom. Competition is feeling good about a fluke in an endless battlefield.\n- It comes down to your intrinsic desires, not what society says you should want.\n- A perfect offer speaks for itself. It requires no convincing.\n- Honesty, clarity and simplicity work. Trying to get clever is how you sabotage yourself.\n- The best technology disappears. You don't think about the cup when you get a coffee.\n- Your days are numbered. Death couldn't care less about your 80th birthday.\n\n## Work together\n\nHave something you want to build? [Book a 15-minute call](https://cal.com/kebron-solomon-zerie-ntjb0r/15min) or email [contact@kebron.org](mailto:contact@kebron.org).\n\n---\n\n*The sea is live. Drag it to look around and scroll to rise. ⤢ in the menu bar hides the desktop; ≋ turns on the sound of the water.*\n"
+    },
+    {
+      "path": "/Desktop/README.md",
+      "name": "README.md",
+      "isDirectory": false,
+      "type": "alias",
+      "icon": "/icons/default/readme.png",
+      "aliasTarget": "/Documents/README.md",
+      "aliasType": "file",
+      "status": "active"
+    },
+    {
+      "path": "/Desktop/Projects",
+      "name": "Projects",
+      "isDirectory": false,
+      "type": "alias",
+      "icon": "/icons/default/folder-work.png",
+      "aliasTarget": "/Documents/Projects",
+      "aliasType": "file",
+      "status": "active"
+    },
+    {
+      "path": "/Desktop/North Star",
+      "name": "North Star",
+      "isDirectory": false,
+      "type": "alias",
+      "icon": "/icons/default/folder-northstar.png",
+      "aliasTarget": "/Documents/North Star",
+      "aliasType": "file",
+      "status": "active"
+    },
+    {
+      "path": "/Documents/Projects/Delalos.md",
+      "name": "Delalos.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "**Discover homes, cars, and services in Eritrea before you arrive.**\n\n*In development · [delalos.com](https://delalos.com)*\n\n## Why\n\nI wanted an easier way to find homes to rent, cars, and useful services in Eritrea. Availability is difficult to discover before you arrive, especially for people in the diaspora.\n\n## Vision\n\nA localized marketplace where people can discover homes, cars, and services, communicate across English, Tigrinya, and Amharic, and arrange what they need directly.\n\n## Success looks like\n\nSomeone can find relevant housing, transport, or service options and connect directly before reaching Eritrea.\n"
+    },
+    {
+      "path": "/Documents/Projects/SporaQuest.md",
+      "name": "SporaQuest.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "**Portable portfolios for hair professionals.**\n\n*In development · [sporaquest.com](https://sporaquest.com)*\n\n## Why\n\nWhile living near Stavanger, I struggled to find hair professionals whose work showed experience with hair like mine. Reviews, websites, and Instagram portfolios did not make that clear.\n\n## Vision\n\nMake it much easier to find nearby hair professionals whose portfolios show work with hair like yours, compare your options, and decide who to book or contact.\n\n## Success looks like\n\nSomeone can find nearby hair professionals whose portfolios show work with hair like theirs, compare real options, and choose who to book or contact.\n"
+    },
+    {
+      "path": "/Documents/North Star/What does success look like in design and technology?.md",
+      "name": "What does success look like in design and technology?.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file.png",
+      "status": "active",
+      "content": "---\nkind: question\nhue: \"#0a84ff\"\nlinks:\n  - The best technology disappears\n  - A perfect offer speaks for itself\n  - Honesty, clarity and simplicity work\n  - The pretty and the beautiful\n  - Make Something Wonderful\n  - Designed by Apple – Intention (2013)\n  - iMac G3 vs PC Simplicity (1998)\n  - On Focus\n  - A Conversation with Jony Ive\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/How do you find the truth?.md",
+      "name": "How do you find the truth?.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file.png",
+      "status": "active",
+      "content": "---\nkind: question\nhue: \"#ff9f0a\"\nlinks:\n  - Anything works to the degree it is aligned with reality\n  - The greatest mistake is believing your own or others' beliefs\n  - Life is a playground to discover the truth of things\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/How do you master something?.md",
+      "name": "How do you master something?.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file.png",
+      "status": "active",
+      "content": "---\nkind: question\nhue: \"#30d158\"\nlinks:\n  - Mastery is freedom\n  - Understanding yourself is the greatest treasure\n  - It comes down to your intrinsic desires\n  - Your days are numbered\n  - On Focus\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/The best technology disappears.md",
+      "name": "The best technology disappears.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nlinks:\n  - iPhone Introduction (2007)\n  - Macintosh Introduction (1984)\n  - Honesty, clarity and simplicity work\n  - Designed by Apple – Intention (2013)\n---\n\nThe ultimate product doesn't feel like a gadget. It feels like writing on a magic sheet of glass: the vision of the Mac, and now the iPad. You don't think about the cup when you get a coffee, or the chair when you sit down, unless something is wrong with it. That is technology at its highest level: it supports life and stays out of the way. It complements; it doesn't interfere.\n"
+    },
+    {
+      "path": "/Documents/North Star/Make Something Wonderful.md",
+      "name": "Make Something Wonderful.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Steve Jobs\nurl: https://youtu.be/0pP3ZjMDzF4\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/Designed by Apple – Intention (2013).md",
+      "name": "Designed by Apple – Intention (2013).md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Apple\nurl: https://www.youtube.com/watch?v=1YmO7p0aK0g\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/Macintosh Introduction (1984).md",
+      "name": "Macintosh Introduction (1984).md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Steve Jobs\nurl: https://youtu.be/2B-XwPjn9YY\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/iMac G3 vs PC Simplicity (1998).md",
+      "name": "iMac G3 vs PC Simplicity (1998).md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Apple\nurl: https://youtu.be/VFP-VZtgb0s\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/iPhone Introduction (2007).md",
+      "name": "iPhone Introduction (2007).md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Steve Jobs\nurl: https://youtu.be/VQKMoT-6XSg\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/On Focus.md",
+      "name": "On Focus.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Jony Ive\nurl: https://youtu.be/EKBVLzOZyLw\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/A Conversation with Jony Ive.md",
+      "name": "A Conversation with Jony Ive.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: video\nby: Jony Ive\nurl: https://youtu.be/wLb9g_8r-mE\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/Kon-Tiki (2012).md",
+      "name": "Kon-Tiki (2012).md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/videos.png",
+      "status": "active",
+      "content": "---\nkind: source\ntype: film\nby: Joachim Rønning & Espen Sandberg\n---\n"
+    },
+    {
+      "path": "/Documents/North Star/Anything works to the degree it is aligned with reality.md",
+      "name": "Anything works to the degree it is aligned with reality.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2026-03-09, 2025-03-15, 2025-03-22, 2023-10-13\"\nlinks:\n  - The greatest mistake is believing your own or others' beliefs\n  - Life is a playground to discover the truth of things\n---\n\nThat which always works is the truth. Everything else is a substitute.\n\nIn every pursuit, moment and situation there is a truth. It doesn't need a belief system, and it doesn't need support. You can ignore it, like it or love it; it is what it is.\n"
+    },
+    {
+      "path": "/Documents/North Star/The greatest mistake is believing your own or others' beliefs.md",
+      "name": "The greatest mistake is believing your own or others' beliefs.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2024-11-25, 2026-04-07\"\n---\n\nThe society and subculture you're most marinated in shapes your perception, which in turn shapes \"your\" decisions and behaviour. Every pursuit gets hijacked by the established way of doing things, which is mostly assumption.\n"
+    },
+    {
+      "path": "/Documents/North Star/Life is a playground to discover the truth of things.md",
+      "name": "Life is a playground to discover the truth of things.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2025-09-26\"\nlinks:\n  - Kon-Tiki (2012)\n---\n\nI can't imagine life to be anything other than a playground to discover the truth of things: the way things really are, outside the contamination of common and traditional perceptions.\n"
+    },
+    {
+      "path": "/Documents/North Star/Mastery is freedom.md",
+      "name": "Mastery is freedom.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2025-06-21, 2025-04-24\"\nlinks:\n  - On Focus\n---\n\nMastery is about freedom, from having discovered the necessary insights. Competition is about feeling good for a mere fluke in an endless battlefield.\n\nCompeting as a side effect of an obsession with realising a potential is not in the same zip code as competing to be \"competitive\".\n"
+    },
+    {
+      "path": "/Documents/North Star/Understanding yourself is the greatest treasure.md",
+      "name": "Understanding yourself is the greatest treasure.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2025-08-28, 2024-02-12\"\nlinks:\n  - Kon-Tiki (2012)\n---\n\nThere is no greater treasure than understanding yourself and what you're effortlessly capable of, beyond a theoretical sense of \"potential\". The most interesting technology is the mind; if you don't master it, you become its slave.\n\nWithout a mountain to climb, everything becomes a waiting hall.\n"
+    },
+    {
+      "path": "/Documents/North Star/It comes down to your intrinsic desires.md",
+      "name": "It comes down to your intrinsic desires.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2025-04-02, 2024-02-06\"\n---\n\nAt the end of the day, it comes down to your intrinsic desires, not what society says you should want. You don't get to consciously choose what you get obsessed with.\n"
+    },
+    {
+      "path": "/Documents/North Star/Your days are numbered.md",
+      "name": "Your days are numbered.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2023-10-14\"\n---\n\nDeath couldn't care less about waiting for your 80th birthday. If you want to get serious, get serious.\n"
+    },
+    {
+      "path": "/Documents/North Star/A perfect offer speaks for itself.md",
+      "name": "A perfect offer speaks for itself.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2025-04-14, 2024-06-13\"\nlinks:\n  - Make Something Wonderful\n  - iMac G3 vs PC Simplicity (1998)\n---\n\nIt needs no hope or belief. It isn't inflated by manufactured anticipation of future gains. It requires no convincing. It resonates deeply.\n\nThe more mediocre the product, the more smoke is needed to sell it.\n"
+    },
+    {
+      "path": "/Documents/North Star/Honesty, clarity and simplicity work.md",
+      "name": "Honesty, clarity and simplicity work.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2024-08-03\"\nlinks:\n  - iMac G3 vs PC Simplicity (1998)\n---\n\nTrying to get clever is how you sabotage yourself in a web of unnecessary complexity.\n"
+    },
+    {
+      "path": "/Documents/North Star/The pretty and the beautiful.md",
+      "name": "The pretty and the beautiful.md",
+      "isDirectory": false,
+      "type": "markdown",
+      "icon": "/icons/default/file-text.png",
+      "status": "active",
+      "content": "---\nkind: thought\nsaid: \"on X, 2023-12-18\"\nlinks:\n  - Designed by Apple – Intention (2013)\n  - A Conversation with Jony Ive\n---\n\nThe more obsessed I get with product development, the more I appreciate the reserved distinction between the pretty and the beautiful.\n"
+    }
+  ]
+}

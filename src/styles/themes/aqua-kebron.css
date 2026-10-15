@@ -1,0 +1,1053 @@
+/* ============================================================================
+ * Volos — Kebron OS's own Aqua ("Aqua Volos", Aqua Glass 2.0)
+ *
+ * Aqua material id `kebron` (the default). The spiritual successor of Aqua:
+ * modern macOS proportions with tactile neo-skeuomorphic depth — refined gel
+ * buttons, deep inset tracks, brushed-metal knobs with brass rims, recessed
+ * wells, glossy jewel traffic lights — and frosted glass on title bars,
+ * sidebars, the menu bar, dock, menus and sheets. Light Finder-blue accent
+ * (never cyan); brass and walnut only as fine accents.
+ * Spec: KEBRON-OS-SPEC.md §3–4b. Reference: neo-skeuo-concepts/04-controls.png.
+ *
+ * Plumbing: `useThemeStore` puts `data-os-aqua-material="glass"` AND
+ * `data-os-kebron` on <html>, so every Aqua Glass structural rule (transparent
+ * titlebars, inset menu rows, ...) still applies, and this file repaints it.
+ *
+ * Specificity (mirrors aqua-glass.css): token blocks use `:root` + theme +
+ * glass + kebron (4), dark adds the color-scheme attribute (5), and this file
+ * loads after aqua-glass.css. Component rules prefix the same 4 selectors onto
+ * the class, beating glass / dark-aqua rules of the same shape; `!important`
+ * is used where the base layers already use it or set values inline.
+ * Accent tokens are not `!important`, so an accent picked in System
+ * Preferences (written inline on <html>) wins, and every rule below reads
+ * `--os-accent-color`.
+ *
+ * Frame cost: real blur on windows only on wide screens; phones (≤640px) and
+ * `prefers-reduced-transparency` fall back to solid surfaces, keeping the
+ * ocean smooth. The menu bar, dock and transient popovers keep a light blur.
+ * ============================================================================ */
+
+/* --- Tokens: light --------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] {
+  /* Palette (spec §3) */
+  --kebron-accent: #4a9cf5;
+  --kebron-brass: #b8925a;
+  --kebron-brass-hi: #dcc08e;
+  --kebron-walnut: #8a5a36;
+  --kebron-walnut-deep: #5b3b25;
+  --kebron-surface: #ecebe8;
+  --kebron-surface-raised: #f8f7f4;
+  --kebron-surface-sunken: #dcdad5;
+  --kebron-well: #fbfaf8;
+  --kebron-ink: #1f1e1c;
+  --kebron-ink-2: #6a6761;
+  --kebron-hairline: rgba(40, 32, 20, 0.14);
+  --kebron-hairline-strong: rgba(40, 32, 20, 0.3);
+  --kebron-edge-hi: rgba(255, 255, 255, 0.95);
+
+  /* Gel faces: a refined Aqua gel — body gradient + top gloss layer. */
+  --kebron-gloss: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.55) 42%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 51%
+  );
+  --kebron-face: linear-gradient(to bottom, #f6f5f2 0%, #e9e7e3 55%, #dddbd6 100%);
+  --kebron-face-pressed: linear-gradient(to bottom, #cfccc6 0%, #dad8d3 60%, #e2e0dc 100%);
+  --kebron-gel: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--os-accent-color) 72%, #0b2a55) 0%,
+    var(--os-accent-color) 48%,
+    color-mix(in srgb, var(--os-accent-color) 62%, white) 100%
+  );
+  --kebron-gel-pressed: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--os-accent-color) 55%, #0b2a55) 0%,
+    color-mix(in srgb, var(--os-accent-color) 85%, black) 55%,
+    color-mix(in srgb, var(--os-accent-color) 90%, white) 100%
+  );
+  --kebron-gel-edge: color-mix(in srgb, var(--os-accent-color) 45%, #0b2a55);
+  /* Gloss over blue gel stays bright in both schemes (it is lit glass). */
+  --kebron-gel-gloss: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.75) 0%,
+    rgba(255, 255, 255, 0.3) 45%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 51%
+  );
+  /* Menu highlights carry text, so their gel is calmer. */
+  --kebron-gloss-soft: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 51%
+  );
+  --kebron-gel-flat: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--os-accent-color) 88%, white),
+    color-mix(in srgb, var(--os-accent-color) 92%, black)
+  );
+
+  /* Depth recipes */
+  --kebron-raise: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(40, 32, 20, 0.1), 0 0 0 0.5px rgba(40, 32, 20, 0.38),
+    0 1px 1px rgba(40, 32, 20, 0.2), 0 3px 6px rgba(40, 32, 20, 0.16),
+    0 6px 14px rgba(40, 32, 20, 0.08);
+  --kebron-press: inset 0 2px 4px rgba(40, 32, 20, 0.34),
+    inset 0 1px 1px rgba(40, 32, 20, 0.2), 0 0 0 0.5px rgba(40, 32, 20, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.85);
+  --kebron-gel-raise: inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.35), 0 0 0 0.5px var(--kebron-gel-edge),
+    0 1px 1px rgba(10, 35, 70, 0.3), 0 3px 7px rgba(10, 35, 70, 0.22),
+    0 6px 14px color-mix(in srgb, var(--os-accent-color) 22%, transparent);
+  --kebron-gel-press: inset 0 2px 5px rgba(5, 20, 45, 0.5),
+    0 0 0 0.5px var(--kebron-gel-edge), 0 1px 0 rgba(255, 255, 255, 0.8);
+  --kebron-well-shadow: inset 0 2px 3px rgba(40, 32, 20, 0.22),
+    inset 0 0 0 1px rgba(40, 32, 20, 0.16), 0 1px 0 rgba(255, 255, 255, 0.9);
+  --kebron-groove: inset 0 2px 4px rgba(40, 32, 20, 0.38),
+    inset 0 0 0 1px rgba(40, 32, 20, 0.2), 0 1px 0 rgba(255, 255, 255, 0.95);
+  --kebron-knob: radial-gradient(
+      circle at 50% 30%,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0) 55%
+    ),
+    conic-gradient(
+      from 20deg,
+      #c9c9c5,
+      #fbfbfa 10%,
+      #b9b9b4 24%,
+      #efefec 37%,
+      #c2c2bd 50%,
+      #fbfbfa 61%,
+      #b5b5b0 75%,
+      #ececea 88%,
+      #c9c9c5
+    );
+  --kebron-knob-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 0 1px color-mix(in srgb, var(--kebron-brass) 70%, transparent),
+    0 0 0 1.5px rgba(70, 55, 35, 0.25), 0 2px 3px rgba(30, 24, 15, 0.35),
+    0 4px 9px rgba(30, 24, 15, 0.22);
+
+  /* Glass */
+  --kebron-glass: rgba(244, 243, 240, 0.6);
+  --kebron-glass-strong: rgba(246, 245, 242, 0.8);
+  --kebron-glass-window: rgba(236, 235, 232, 0.5);
+  --kebron-glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 0 0 0.5px rgba(40, 32, 20, 0.2);
+  --kebron-glass-blur: blur(30px) saturate(180%);
+  --kebron-window-blur: blur(24px) saturate(160%);
+  --kebron-menubar-text: #1f1e1c;
+  --kebron-shadow-window: 0 0 0 0.5px rgba(40, 32, 20, 0.3),
+    0 30px 60px rgba(8, 18, 32, 0.34), 0 10px 22px rgba(8, 18, 32, 0.18),
+    0 2px 4px rgba(8, 18, 32, 0.12);
+  --kebron-shadow-window-inactive: 0 0 0 0.5px rgba(40, 32, 20, 0.22),
+    0 16px 36px rgba(8, 18, 32, 0.2), 0 2px 4px rgba(8, 18, 32, 0.08);
+  --kebron-titlebar: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(250, 249, 246, 0.3) 55%,
+    rgba(236, 235, 232, 0.18) 100%
+  );
+  --kebron-body: color-mix(in srgb, var(--kebron-surface) 88%, transparent);
+  --kebron-pane: rgba(255, 255, 255, 0.5);
+
+  /* Traffic lights (TrafficLightButton reads these) */
+  --kebron-light-rim: rgba(0, 0, 0, 0.32);
+  --kebron-light-close: #e9473e;
+  --kebron-light-close-hi: #ff9a8e;
+  --kebron-light-close-lo: #a8231c;
+  --kebron-light-close-glyph: rgba(100, 10, 6, 0.9);
+  --kebron-light-minimize: #f2ad22;
+  --kebron-light-minimize-hi: #ffe08a;
+  --kebron-light-minimize-lo: #b77808;
+  --kebron-light-minimize-glyph: rgba(110, 60, 0, 0.9);
+  --kebron-light-zoom: #37b744;
+  --kebron-light-zoom-hi: #96ec8e;
+  --kebron-light-zoom-lo: #1d7f2a;
+  --kebron-light-zoom-glyph: rgba(8, 70, 16, 0.9);
+  --kebron-light-idle: #c6c4bf;
+  --kebron-light-idle-hi: #e6e4e0;
+
+  /* Accent defaults ("System" accent). Not !important — a picked accent wins. */
+  --os-accent-color: var(--kebron-accent);
+  --os-color-selection-bg: color-mix(in srgb, var(--kebron-accent) 92%, transparent);
+  --os-color-selection-text: #ffffff;
+  --os-color-selection-text-shadow: none;
+  --os-color-selection-glow: rgba(74, 156, 245, 0.45);
+  --os-color-input-focus-border: rgba(74, 156, 245, 0.75);
+  --os-color-input-focus-ring: rgba(74, 156, 245, 0.3);
+  --os-color-switch-track-checked: var(--kebron-accent);
+  --os-color-link: #2a78d6;
+  --os-accent-list-gradient: linear-gradient(180deg, #74b4fa 0%, #4a9cf5 55%, #3a8ce6 100%);
+  --os-accent-tab-bar-line: linear-gradient(to bottom, #74b4fa, #4a9cf5);
+  --os-accent-tab-bar-line-horizontal: linear-gradient(to right, #74b4fa, #4a9cf5);
+
+  /* Surfaces + chrome */
+  --os-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    "Inter", "Segoe UI", system-ui, "Hiragino Sans", sans-serif;
+  --font-geneva-12: var(--os-font-ui);
+  --os-color-window-bg: var(--kebron-surface);
+  --os-color-panel-bg: var(--kebron-surface);
+  --os-pinstripe-window: linear-gradient(var(--kebron-surface), var(--kebron-surface));
+  --os-pinstripe-titlebar: none;
+  --os-pinstripe-menubar: none;
+  --os-color-menubar-bg: var(--kebron-glass);
+  --os-color-menubar-surface: var(--kebron-glass);
+  --os-color-menubar-border: rgba(40, 32, 20, 0.14);
+  --os-color-titlebar-active-bg: var(--kebron-titlebar);
+  --os-color-titlebar-inactive-bg: var(--kebron-surface);
+  --os-color-titlebar-text: #34322e;
+  --os-color-titlebar-text-inactive: #a19d96;
+  --os-color-titlebar-border: rgba(40, 32, 20, 0.2);
+  --os-color-titlebar-border-inactive: rgba(40, 32, 20, 0.1);
+  --os-color-window-border: rgba(40, 32, 20, 0.3);
+  --os-color-window-border-inactive: rgba(40, 32, 20, 0.2);
+  --os-window-shadow: var(--kebron-shadow-window);
+  --os-color-text-primary: var(--kebron-ink);
+  --os-color-text-secondary: var(--kebron-ink-2);
+  --os-color-separator: var(--kebron-hairline);
+  --os-color-input-bg: var(--kebron-well);
+  --os-color-input-border: var(--kebron-hairline-strong);
+  --os-color-dock-surface: rgba(240, 239, 236, 0.42);
+  --os-color-dock-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.5), 0 0 0 0.5px rgba(40, 32, 20, 0.28),
+    0 3px 0 -0.5px var(--kebron-walnut), 0 4px 0 -0.5px var(--kebron-walnut-deep),
+    0 14px 34px rgba(8, 18, 32, 0.3);
+
+  /* Modern proportions */
+  --os-glass-r-lg: 12px;
+  --os-glass-r-md: 11px;
+  --os-glass-r-dialog: 12px;
+  --os-glass-r-sm: 8px;
+  --os-glass-r-xs: 6px;
+  --os-glass-r-select: 8px;
+  --os-glass-r-select-gloss: 7px;
+  --os-glass-r-select-group: 8px;
+  --os-glass-r-inset: 9px;
+  --os-glass-r-dock: 20px;
+  --os-glass-r-metal: 12px;
+}
+
+/* --- Tokens: dark ---------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] {
+  --kebron-accent: #5aa7ff;
+  --kebron-brass: #c6a26b;
+  --kebron-surface: #2a2b2e;
+  --kebron-surface-raised: #36373b;
+  --kebron-surface-sunken: #1c1d20;
+  --kebron-well: #1d1e21;
+  --kebron-ink: #eeede9;
+  --kebron-ink-2: #a6a49f;
+  --kebron-hairline: rgba(255, 255, 255, 0.09);
+  --kebron-hairline-strong: rgba(0, 0, 0, 0.6);
+  --kebron-edge-hi: rgba(255, 255, 255, 0.12);
+
+  --kebron-gloss: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.12) 42%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(255, 255, 255, 0) 51%
+  );
+  --kebron-face: linear-gradient(to bottom, #4a4b50 0%, #3a3b3f 55%, #303135 100%);
+  --kebron-face-pressed: linear-gradient(to bottom, #1d1e21 0%, #26272a 60%, #2c2d30 100%);
+  --kebron-gel-edge: color-mix(in srgb, var(--os-accent-color) 35%, #020a18);
+
+  --kebron-raise: inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.85),
+    0 1px 1px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.4),
+    0 6px 14px rgba(0, 0, 0, 0.25);
+  --kebron-press: inset 0 2px 5px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.85),
+    0 1px 0 rgba(255, 255, 255, 0.07);
+  --kebron-gel-raise: inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.2), 0 0 0 0.5px var(--kebron-gel-edge),
+    0 1px 1px rgba(0, 0, 0, 0.5), 0 3px 7px rgba(0, 0, 0, 0.45),
+    0 6px 16px color-mix(in srgb, var(--os-accent-color) 25%, transparent);
+  --kebron-gel-press: inset 0 2px 5px rgba(0, 5, 15, 0.7),
+    0 0 0 0.5px var(--kebron-gel-edge), 0 1px 0 rgba(255, 255, 255, 0.07);
+  --kebron-well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.07);
+  --kebron-groove: inset 0 2px 5px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+  --kebron-knob: radial-gradient(
+      circle at 50% 30%,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0) 55%
+    ),
+    conic-gradient(
+      from 20deg,
+      #a4a4a0,
+      #e6e6e3 10%,
+      #8e8e8a 24%,
+      #d6d6d2 37%,
+      #999995 50%,
+      #e6e6e3 61%,
+      #8a8a86 75%,
+      #d2d2ce 88%,
+      #a4a4a0
+    );
+  --kebron-knob-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 0 0 1px color-mix(in srgb, var(--kebron-brass) 75%, transparent),
+    0 0 0 1.5px rgba(0, 0, 0, 0.6), 0 2px 3px rgba(0, 0, 0, 0.6),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+
+  --kebron-glass: rgba(30, 31, 34, 0.58);
+  --kebron-glass-strong: rgba(36, 37, 41, 0.82);
+  --kebron-glass-window: rgba(38, 39, 43, 0.55);
+  --kebron-glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 0.5px rgba(0, 0, 0, 0.75);
+  --kebron-menubar-text: #f3f2ef;
+  --kebron-shadow-window: 0 0 0 0.5px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 30px 64px rgba(0, 0, 0, 0.6),
+    0 10px 24px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --kebron-shadow-window-inactive: 0 0 0 0.5px rgba(0, 0, 0, 0.7),
+    0 16px 36px rgba(0, 0, 0, 0.45);
+  --kebron-titlebar: linear-gradient(
+    to bottom,
+    rgba(82, 83, 88, 0.55) 0%,
+    rgba(56, 57, 61, 0.3) 55%,
+    rgba(44, 45, 49, 0.2) 100%
+  );
+  --kebron-pane: rgba(16, 17, 19, 0.45);
+
+  --kebron-light-rim: rgba(0, 0, 0, 0.55);
+  --kebron-light-idle: #45464a;
+  --kebron-light-idle-hi: #5c5d62;
+
+  --os-color-selection-bg: color-mix(in srgb, var(--kebron-accent) 85%, transparent);
+  --os-color-selection-glow: rgba(90, 167, 255, 0.5);
+  --os-color-input-focus-border: rgba(90, 167, 255, 0.8);
+  --os-color-input-focus-ring: rgba(90, 167, 255, 0.32);
+  --os-color-link: #7ab8ff;
+  --os-accent-list-gradient: linear-gradient(180deg, #6db1ff 0%, #4d98ec 55%, #3a84d8 100%);
+  --os-accent-tab-bar-line: linear-gradient(to bottom, #82bdff, #5aa7ff);
+  --os-accent-tab-bar-line-horizontal: linear-gradient(to right, #82bdff, #5aa7ff);
+
+  --os-color-titlebar-text: #e6e4e0;
+  --os-color-titlebar-text-inactive: #7b7975;
+  --os-color-titlebar-border: rgba(0, 0, 0, 0.6);
+  --os-color-titlebar-border-inactive: rgba(0, 0, 0, 0.4);
+  --os-color-window-border: rgba(0, 0, 0, 0.8);
+  --os-color-window-border-inactive: rgba(0, 0, 0, 0.65);
+  --os-color-menubar-border: rgba(255, 255, 255, 0.08);
+  --os-color-dock-surface: rgba(28, 29, 32, 0.5);
+  --os-color-dock-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.7),
+    0 3px 0 -0.5px var(--kebron-walnut-deep), 0 4px 0 -0.5px #2f1e13,
+    0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* --- Windows: frosted chrome over a calm body --------------------------------- */
+/* The window pane is glass (blurred ocean behind the title bar, toolbar edges
+   and sidebars); the body lays a mostly opaque surface over it so text stays
+   calm. Title bar: vertical gradient + top highlight + hairline. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass:not(.is-foreground) {
+  background-color: var(--kebron-glass-window);
+  background-image: none;
+  -webkit-backdrop-filter: var(--kebron-window-blur);
+  backdrop-filter: var(--kebron-window-blur);
+  box-shadow: var(--kebron-shadow-window),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: var(--kebron-ink);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window.window-material-glass,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window.window-material-glass:not(.is-foreground) {
+  box-shadow: var(--kebron-shadow-window), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass:not(.is-foreground) {
+  box-shadow: var(--kebron-shadow-window-inactive);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass .title-bar:not(.absolute) {
+  background: var(--kebron-titlebar) !important;
+  border-bottom: 0.5px solid var(--os-color-titlebar-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window.window-material-glass .title-bar:not(.absolute) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass:not(.is-foreground) .title-bar:not(.absolute) {
+  background: transparent !important;
+  border-bottom-color: var(--os-color-titlebar-border-inactive) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass .window-body {
+  background-color: var(--kebron-body);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window .title-bar .title-bar-text,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window .title-bar [class*="text-os-titlebar"] {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  font-weight: 600;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window .title-bar .title-bar-text,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window .title-bar [class*="text-os-titlebar"] {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Brushed-metal windows (iPod/Finder-style) become the same frosted pane. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window-material-brushedmetal {
+  -webkit-backdrop-filter: var(--kebron-window-blur);
+  backdrop-filter: var(--kebron-window-blur);
+  background-color: var(--kebron-glass-window) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window-material-brushedmetal::before {
+  background: transparent !important;
+}
+
+/* --- Sidebars / list panes: frosted panes over the glass window --------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window-body :is(.os-sidebar.bg-white\/90, .os-inset-pane.bg-white) {
+  background-color: var(--kebron-pane) !important;
+  border-color: var(--kebron-hairline-strong) !important;
+  box-shadow: inset 0 1px 2px rgba(40, 32, 20, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .window-body :is(
+    .os-sidebar.bg-white\/90,
+    .os-inset-pane.bg-white
+  ):not(.ipod-force-font *):not(.karaoke-force-font *):not(.tv-cc-force-font *):not(.os-native-chrome-skip *):not(.synth-force-font *):not(.dashboard-overlay *) {
+  background-color: var(--kebron-pane) !important;
+  border-color: rgba(0, 0, 0, 0.65) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-app-sidebar:not(.os-app-sidebar--overlay):not(.os-app-sidebar--stacked) {
+  background: color-mix(in srgb, var(--kebron-surface-raised) 45%, transparent) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-sidebar > .text-\[11px\].text-center,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-sidebar :is(.text-\[11px\].text-center.font-regular, .relative.text-\[11px\].text-center) {
+  background: var(--kebron-titlebar) !important;
+  text-shadow: none !important;
+  color: var(--kebron-ink-2) !important;
+  border-top-color: transparent !important;
+  border-bottom-color: var(--kebron-hairline) !important;
+}
+
+/* --- Menu bar -------------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .mac-top-menubar {
+  background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.35),
+      rgba(255, 255, 255, 0.05)
+    ),
+    var(--kebron-glass) !important;
+  -webkit-backdrop-filter: var(--kebron-glass-blur) !important;
+  backdrop-filter: var(--kebron-glass-blur) !important;
+  border-bottom: 0.5px solid var(--os-color-menubar-border) !important;
+  box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.3),
+    0 1px 6px rgba(8, 18, 32, 0.1) !important;
+  color: var(--kebron-menubar-text) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .mac-top-menubar {
+  background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0)
+    ),
+    var(--kebron-glass) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .mac-top-menubar[data-menubar-text-tone] :is([role="menubar"] [role="menuitem"], .menubar-status-controls, .menubar-status-controls *) {
+  text-shadow: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .mac-top-menubar[data-menubar-text-tone] .menubar-status-controls svg {
+  filter: none;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .mac-top-menubar[data-menubar-text-tone] img[alt="Apple Menu"] {
+  filter: var(--os-accent-apple-filter, none)
+    drop-shadow(0 0.5px 0.5px rgba(0, 0, 0, 0.25));
+}
+
+/* Open menu title: a small gel capsule. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [role="menubar"] [role="menuitem"][data-state="open"] {
+  border-radius: 6px !important;
+  background: var(--kebron-gloss-soft), var(--kebron-gel-flat) !important;
+  box-shadow: inset 0 0 0 0.5px var(--kebron-gel-edge) !important;
+  color: #fff !important;
+}
+
+/* --- Dock: glass shelf with a reflection band, on a walnut lip ----------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .mac-dock-surface {
+  -webkit-backdrop-filter: var(--kebron-glass-blur);
+  backdrop-filter: var(--kebron-glass-blur);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.24) 46%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.02) 78%,
+    rgba(255, 255, 255, 0.16) 100%
+  ) !important;
+  border: none !important;
+  box-shadow: var(--os-color-dock-shadow) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .mac-dock-surface {
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.07) 46%,
+    rgba(255, 255, 255, 0.01) 50%,
+    rgba(255, 255, 255, 0) 78%,
+    rgba(255, 255, 255, 0.06) 100%
+  ) !important;
+}
+
+/* --- Popovers: menus, dropdowns, selects, Spotlight --------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-radix-popper-content-wrapper] :where([role="menu"], [role="listbox"], [data-radix-menu-content], [data-radix-popover-content], [data-radix-select-content]),
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .spotlight-panel {
+  background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.35),
+      rgba(255, 255, 255, 0) 40px
+    ),
+    var(--kebron-glass-strong) !important;
+  -webkit-backdrop-filter: var(--kebron-glass-blur) !important;
+  backdrop-filter: var(--kebron-glass-blur) !important;
+  border: none !important;
+  box-shadow: var(--kebron-glass-edge), 0 18px 40px rgba(8, 18, 32, 0.3),
+    0 3px 10px rgba(8, 18, 32, 0.14) !important;
+  color: var(--kebron-ink);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] [data-radix-popper-content-wrapper] :where([role="menu"], [role="listbox"], [data-radix-menu-content], [data-radix-popover-content], [data-radix-select-content]),
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .spotlight-panel {
+  background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0) 40px
+    ),
+    var(--kebron-glass-strong) !important;
+  box-shadow: var(--kebron-glass-edge), 0 18px 40px rgba(0, 0, 0, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Menu rows: rounded gel highlight inset from the panel edge. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-radix-popper-content-wrapper] :where([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]) {
+  border-radius: 6px !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-radix-popper-content-wrapper] :where([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]):where([data-highlighted], [data-state="open"]) {
+  background: var(--kebron-gloss-soft), var(--kebron-gel-flat) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 0.5px var(--kebron-gel-edge),
+    0 1px 2px rgba(10, 35, 70, 0.2) !important;
+  text-shadow: 0 -0.5px 0 rgba(10, 35, 70, 0.35);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-radix-popper-content-wrapper] :where([role="separator"]) {
+  background: var(--kebron-hairline-strong) !important;
+  height: 0.5px !important;
+  margin-inline: 6px !important;
+  opacity: 0.6;
+}
+
+/* --- Buttons: refined Aqua gel ------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button {
+  border-radius: 9px !important;
+  height: 28px;
+  padding: 0 15px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  overflow: hidden;
+  animation: none !important;
+  transition: box-shadow 110ms ease, background 110ms ease, filter 110ms ease;
+}
+
+/* Gloss: the top half catches the light (a refined version of Aqua's bead). */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  left: 2px !important;
+  right: 2px !important;
+  top: 1px !important;
+  width: auto !important;
+  height: 48% !important;
+  max-height: none !important;
+  transform: none !important;
+  border-radius: 8px 8px 4px 4px !important;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.92),
+    rgba(255, 255, 255, 0.22)
+  ) !important;
+  filter: none !important;
+  opacity: 1 !important;
+  pointer-events: none;
+  z-index: 0 !important;
+}
+
+/* Soft refracted glow along the bottom of the gel. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  left: 15% !important;
+  right: 15% !important;
+  bottom: 1px !important;
+  width: auto !important;
+  height: 40% !important;
+  transform: none !important;
+  border-radius: 9999px !important;
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0) 70%
+  ) !important;
+  filter: blur(1px) !important;
+  opacity: 0.7 !important;
+  pointer-events: none;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button > * {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.secondary,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.secondary:focus {
+  background: var(--kebron-face) !important;
+  box-shadow: var(--kebron-raise) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.aqua-button.secondary, .aqua-button.secondary span) {
+  color: var(--kebron-ink) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] :is(.aqua-button.secondary, .aqua-button.secondary span) {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .aqua-button.secondary::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.03)
+  ) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .aqua-button.secondary::after {
+  opacity: 0.15 !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.secondary:active {
+  background: var(--kebron-face-pressed) !important;
+  box-shadow: var(--kebron-press) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button:active::before {
+  opacity: 0.45 !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.primary {
+  background: var(--kebron-gel) !important;
+  box-shadow: var(--kebron-gel-raise) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.aqua-button.primary, .aqua-button.primary span) {
+  color: #fff !important;
+  text-shadow: 0 -1px 0 rgba(5, 25, 55, 0.45) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.primary:active {
+  background: var(--kebron-gel-pressed) !important;
+  box-shadow: var(--kebron-gel-press) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.destructive {
+  background: linear-gradient(to bottom, #b8261f 0%, #e2453c 48%, #f58a82 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 0 0.5px #7d1712,
+    0 1px 1px rgba(70, 10, 5, 0.3), 0 3px 7px rgba(70, 10, 5, 0.22) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button.destructive:active {
+  background: linear-gradient(to bottom, #8f1b15, #c2342c 55%, #e06a62) !important;
+  box-shadow: inset 0 2px 5px rgba(50, 5, 2, 0.5), 0 0 0 0.5px #7d1712 !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button:focus-visible {
+  outline: 3px solid var(--os-color-input-focus-ring) !important;
+  outline-offset: 1px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-button:disabled {
+  background: var(--kebron-face) !important;
+  box-shadow: inset 0 0 0 0.5px var(--kebron-hairline-strong) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.aqua-button:disabled, .aqua-button:disabled span) {
+  color: color-mix(in srgb, var(--kebron-ink) 40%, transparent) !important;
+  text-shadow: none !important;
+}
+
+/* --- Pop-up buttons / selects -------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.macos-select-trigger, .os-select-trigger-macos, .os-btn-aqua-select, .aqua-select-btn),
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] select:where(:not(.dashboard-overlay *):not(.ipod-force-font *):not(.karaoke-force-font *):not(.tv-cc-force-font *):not(.os-native-chrome-skip *)) {
+  background-color: transparent !important;
+  background-image: var(--kebron-gloss), var(--kebron-face) !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  box-shadow: var(--kebron-raise) !important;
+  color: var(--kebron-ink) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  border: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] :is(.macos-select-trigger, .os-select-trigger-macos, .os-btn-aqua-select, .aqua-select-btn),
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] select:where(:not(.dashboard-overlay *):not(.ipod-force-font *):not(.karaoke-force-font *):not(.tv-cc-force-font *):not(.os-native-chrome-skip *)) {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] select:where(:not(.dashboard-overlay *):not(.ipod-force-font *):not(.karaoke-force-font *):not(.tv-cc-force-font *):not(.os-native-chrome-skip *)) {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 2L6 7L11 2' stroke='%236a6761' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    var(--kebron-gloss), var(--kebron-face) !important;
+  background-position: right 7px center, 0 0, 0 0 !important;
+  background-size: auto, 100% 100%, 100% 100% !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.macos-select-trigger, .os-select-trigger-macos, .aqua-select-btn, .os-btn-aqua-select)::before {
+  background: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.macos-select-trigger, .os-select-trigger-macos, .os-btn-aqua-select, .aqua-select-btn):active,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.aqua-select-btn.aqua-selected, .os-btn-aqua-select.aqua-selected),
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.macos-select-trigger, .os-select-trigger-macos)[data-state="open"] {
+  background-image: var(--kebron-face-pressed) !important;
+  box-shadow: var(--kebron-press) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.macos-select-trigger, .os-select-trigger-macos):focus-visible {
+  box-shadow: var(--kebron-raise), 0 0 0 3px var(--os-color-input-focus-ring) !important;
+}
+
+/* --- Segmented controls + tabs: raised bar, chosen segment pressed in ----------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .metal-inset-btn-group {
+  background: var(--kebron-gloss), var(--kebron-face) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: var(--kebron-raise) !important;
+  border: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .metal-inset-btn {
+  background: transparent !important;
+  color: var(--kebron-ink) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  box-shadow: none !important;
+  border-right: 0.5px solid var(--kebron-hairline-strong) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .metal-inset-btn {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .metal-inset-btn:last-child {
+  border-right: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.metal-inset-btn:active, .metal-inset-btn[data-state="on"]) {
+  background: var(--kebron-face-pressed) !important;
+  box-shadow: var(--kebron-press) !important;
+  color: var(--kebron-ink) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab {
+  background: var(--kebron-gloss), var(--kebron-face) !important;
+  border: none !important;
+  box-shadow: var(--kebron-raise) !important;
+  color: var(--kebron-ink) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .aqua-tab {
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab::before,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab::after {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab[data-state="active"] {
+  border-bottom: none !important;
+  background: var(--kebron-face-pressed) !important;
+  box-shadow: var(--kebron-press) !important;
+  color: var(--kebron-ink) !important;
+  font-weight: 600;
+}
+
+/* The seam under the tab strip: a fine brass hairline. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab-bar::after,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-tab-bar::before {
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--kebron-brass) 80%, transparent) 12%,
+    color-mix(in srgb, var(--kebron-brass) 80%, transparent) 88%,
+    transparent
+  ) !important;
+  height: 1px !important;
+  box-shadow: none !important;
+}
+
+/* --- Text fields + search: recessed wells ---------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-themed-input, input[data-os-search-input="true"], textarea[data-os-field-input="true"]) {
+  background-color: var(--kebron-well) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: none !important;
+  box-shadow: var(--kebron-well-shadow) !important;
+  color: var(--kebron-ink);
+  font-family: var(--os-font-ui);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-themed-input, textarea[data-os-field-input="true"]) {
+  border-radius: 8px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-themed-input, input[data-os-search-input="true"], textarea[data-os-field-input="true"]):focus {
+  box-shadow: var(--kebron-well-shadow), 0 0 0 3px var(--os-color-input-focus-ring),
+    0 0 0 1px var(--os-color-input-focus-border) !important;
+  outline: none;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-themed-input:hover:not(:focus) {
+  background-color: var(--kebron-well) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-search-icon, .os-search-clear) {
+  color: var(--kebron-ink-2) !important;
+}
+
+/* --- Switch: deep inset track, glossy gel when on, big brushed-metal knob ------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch {
+  width: 42px !important;
+  height: 24px !important;
+  padding: 0 2px !important;
+  border: none !important;
+  background: linear-gradient(to bottom, var(--kebron-surface-sunken), var(--kebron-surface)) !important;
+  box-shadow: var(--kebron-groove) !important;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch[data-state="checked"] {
+  background: var(--kebron-gel-gloss), var(--kebron-gel) !important;
+  box-shadow: inset 0 2px 4px rgba(5, 20, 45, 0.45),
+    inset 0 0 0 1px var(--kebron-gel-edge), 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] .os-switch[data-state="checked"] {
+  box-shadow: inset 0 2px 4px rgba(0, 5, 15, 0.7),
+    inset 0 0 0 1px var(--kebron-gel-edge), 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch:focus-visible {
+  outline: 3px solid var(--os-color-input-focus-ring);
+  outline-offset: 1px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch .os-switch-thumb,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch:not([data-state="checked"]) .os-switch-thumb,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch[data-state="checked"] .os-switch-thumb {
+  width: 20px !important;
+  height: 20px !important;
+  background: var(--kebron-knob) !important;
+  box-shadow: var(--kebron-knob-shadow) !important;
+  translate: 0 0 !important;
+  overflow: visible !important;
+  transition: translate 200ms cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-switch[data-state="checked"] .os-switch-thumb {
+  translate: 18px 0 !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-switch-thumb, .os-slider-thumb)::before {
+  content: "" !important;
+  position: absolute;
+  inset: 32% !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  border-radius: 9999px !important;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 70%) !important;
+  box-shadow: inset 0 0 0 0.5px rgba(80, 70, 55, 0.18);
+  filter: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.os-switch-thumb, .os-slider-thumb)::after {
+  content: none !important;
+}
+
+/* --- Slider: inset groove, glossy fill, metal knob --------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-track {
+  background: linear-gradient(to bottom, var(--kebron-surface-sunken), var(--kebron-surface)) !important;
+  border: none !important;
+  box-shadow: var(--kebron-groove) !important;
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-track:not([data-orientation="vertical"]) {
+  height: 7px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-track[data-orientation="vertical"] {
+  width: 7px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-range {
+  background: var(--kebron-gel-gloss), var(--kebron-gel) !important;
+  box-shadow: inset 0 1px 1px rgba(5, 20, 45, 0.35) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-range[data-orientation="vertical"] {
+  background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.6),
+      rgba(255, 255, 255, 0) 50%
+    ),
+    var(--os-accent-color) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-thumb {
+  width: 22px !important;
+  height: 22px !important;
+  border: none !important;
+  background: var(--kebron-knob) !important;
+  box-shadow: var(--kebron-knob-shadow) !important;
+  overflow: visible !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .os-slider-thumb:focus-visible {
+  box-shadow: var(--kebron-knob-shadow), 0 0 0 4px var(--os-color-input-focus-ring) !important;
+}
+
+/* --- Checkbox -------------------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-slot="checkbox"] {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: none !important;
+  background: var(--kebron-gloss), var(--kebron-face) !important;
+  box-shadow: var(--kebron-raise) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] [data-slot="checkbox"][data-state="checked"] {
+  background: var(--kebron-gel-gloss), var(--kebron-gel) !important;
+  color: #fff !important;
+  box-shadow: var(--kebron-gel-raise) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] input[type="checkbox"]:where(:not(.os-native-chrome-skip *)) {
+  accent-color: var(--os-accent-color);
+}
+
+/* --- Progress -------------------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-progress:not(.ipod-modern-screen *) {
+  background: linear-gradient(to bottom, var(--kebron-surface-sunken), var(--kebron-surface)) !important;
+  border: none !important;
+  box-shadow: var(--kebron-groove) !important;
+  border-radius: 9999px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .aqua-progress-fill:not(.ipod-modern-screen *) {
+  background: var(--kebron-gel-gloss), var(--kebron-gel) !important;
+  box-shadow: inset 0 0 0 0.5px var(--kebron-gel-edge) !important;
+  animation: none !important;
+  border-radius: inherit;
+}
+
+/* --- Dialogs + sheets ------------------------------------------------------------- */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .macosx-dialog {
+  background-color: var(--kebron-glass-strong) !important;
+  -webkit-backdrop-filter: var(--kebron-window-blur);
+  backdrop-filter: var(--kebron-window-blur);
+  border-color: var(--os-color-window-border) !important;
+  box-shadow: var(--kebron-shadow-window), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: var(--kebron-ink);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .macosx-dialog-header {
+  background: var(--kebron-titlebar) !important;
+  border-bottom: 0.5px solid var(--os-color-titlebar-border) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .macosx-sheet-body.macosx-dialog {
+  background-color: var(--kebron-glass-strong) !important;
+  -webkit-backdrop-filter: var(--kebron-glass-blur);
+  backdrop-filter: var(--kebron-glass-blur);
+  box-shadow: var(--kebron-glass-edge), 0 18px 40px rgba(8, 18, 32, 0.32) !important;
+}
+
+/* --- Motion ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] :is(.aqua-button, .os-switch, .os-switch-thumb, .os-slider-thumb, .aqua-progress-fill) {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* --- GPU safeguard: where live blur over the WebGL ocean is not worth it ---------- */
+/* Each frosted window re-blurs the animated ocean every frame. On a desktop with a
+   fine pointer that is fine; on phones, tablets and other touch-first devices
+   (narrow or coarse pointer without hover) windows and dialogs go solid and the
+   remaining glass (menu bar, dock, menus, sheets) keeps a smaller blur. */
+@media (max-width: 640px), (pointer: coarse) and (hover: none) {
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] {
+    --kebron-glass-blur: blur(16px) saturate(160%);
+    --kebron-window-blur: none;
+  }
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass,
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass:not(.is-foreground),
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window-material-brushedmetal,
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .macosx-dialog {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--kebron-surface) !important;
+  }
+}
+
+/* Reduce transparency (system setting): no live blur anywhere. Windows and dialogs
+   are solid surfaces; the menu bar, dock, menus and sheets become near-opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] {
+    --kebron-glass-blur: none;
+    --kebron-window-blur: none;
+    --kebron-glass: rgba(244, 243, 240, 0.97);
+    --kebron-glass-strong: rgba(246, 245, 242, 0.98);
+    --kebron-glass-window: var(--kebron-surface);
+  }
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron][data-os-color-scheme="dark"] {
+    --kebron-glass: rgba(30, 31, 34, 0.97);
+    --kebron-glass-strong: rgba(36, 37, 41, 0.98);
+    --kebron-glass-window: var(--kebron-surface);
+  }
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass,
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window.window-material-glass:not(.is-foreground),
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .window-material-brushedmetal,
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-kebron] .macosx-dialog {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--kebron-surface) !important;
+  }
+}

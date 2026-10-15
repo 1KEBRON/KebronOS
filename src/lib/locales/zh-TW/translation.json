@@ -1,0 +1,5475 @@
+{
+  "apps": {
+    "admin": {
+      "accessDenied": {
+        "description": "此應用程式僅限管理員使用。",
+        "loginPrompt": "請使用管理員帳號登入。",
+        "title": "拒絕取用"
+      },
+      "auditLog": {
+        "action": "操作",
+        "details": "詳細資訊",
+        "empty": "尚未記錄任何管理員操作",
+        "loadFailed": "無法載入稽核記錄",
+        "loading": "正在載入稽核記錄⋯",
+        "refresh": "重新整理",
+        "retry": "再試一次",
+        "target": "目標",
+        "time": "時間",
+        "title": "稽核記錄"
+      },
+      "cursorAgents": {
+        "colLink": "連結",
+        "colModel": "模型",
+        "colRun": "執行 / Agent",
+        "colStatus": "狀態",
+        "colTask": "作業",
+        "colUpdated": "已更新",
+        "emptyHint": "當儲存庫 Agent 工具啟動 Cursor Cloud 工作（搭配 Redis 的非同步模式）時，執行記錄會顯示在此處。金鑰將在大約 24 小時後過期。",
+        "emptyTitle": "沒有 Cursor 智能體",
+        "followupFrom": "來自 {{id}} 的後續",
+        "loadFailed": "無法載入執行記錄",
+        "loading": "正在載入 Cursor Agent 執行記錄⋯",
+        "newAgentAria": "新的 Cursor Agent 提示詞",
+        "newAgentPlaceholder": "傳送至 Cursor",
+        "openAgent": "Agent",
+        "openPr": "PR",
+        "refresh": "重新整理",
+        "retry": "再試一次",
+        "scanIncompleteHint": "Redis 金鑰掃描提前停止；請重試，若問題持續請聯絡維運人員。",
+        "startAgent": "執行",
+        "startFailed": "無法啟動 Agent",
+        "startedLine": "已於 {{time}} 開始",
+        "truncatedHint": "列表可能已被截斷（行數限制或掃描上限）。"
+      },
+      "dashboard": {
+        "charts": {
+          "aiRequests": "AI 請求",
+          "apiCalls": "API 呼叫",
+          "avgResponseTime": "平均回應時間 (ms)",
+          "errors": "錯誤",
+          "uniqueVisitors": "不重複訪客"
+        },
+        "empty": {
+          "noAiUsage": "尚無 AI 使用紀錄",
+          "noCountries": "尚無國家資料",
+          "noData": "尚無資料",
+          "noSites": "尚無造訪網站記錄",
+          "noSongs": "尚無歌曲播放記錄"
+        },
+        "failedToLoad": "載入失敗",
+        "kpi": {
+          "aiRequests": "AI 請求",
+          "apiCalls": "API 呼叫",
+          "appEvents": "應用程式事件",
+          "errorRate": "錯誤率",
+          "pageViews": "頁面瀏覽量",
+          "productEvents": "產品事件",
+          "sessions": "區段",
+          "visitors": "訪客"
+        },
+        "loading": "正在載入分析數據⋯",
+        "range": {
+          "today": "今天"
+        },
+        "retry": "再試一次",
+        "sections": {
+          "aiUsageByUser": "使用者 AI 使用量",
+          "eventCategories": "事件類別",
+          "productAnalytics": "產品分析",
+          "statusCodes": "狀態碼",
+          "topApps": "熱門應用程式",
+          "topCountries": "熱門國家/地區",
+          "topEndpoints": "熱門端點",
+          "topPages": "熱門頁面",
+          "topProductEvents": "熱門產品事件",
+          "topSites": "熱門造訪網站",
+          "topSongs": "熱門歌曲"
+        },
+        "title": "儀表板",
+        "totals": {
+          "ai": "AI",
+          "calls": "呼叫",
+          "msAvg": "平均 ms",
+          "totals": "總計",
+          "visitors": "訪客"
+        },
+        "trend": {
+          "vsPrevDay": "較前一日"
+        }
+      },
+      "description": "系統管理面板",
+      "dialogs": {
+        "banDescription": "您確定要封鎖 {{username}} 嗎？他們將會登出且無法存取服務。",
+        "banTitle": "封鎖使用者？",
+        "clearMemoriesDescription": "這將永久刪除 {{username}} 的所有 {{count}} 條長期記憶。每日筆記將會保留。此動作無法復原。",
+        "clearMemoriesTitle": "清除所有記憶",
+        "deleteDescription": "您確定要刪除{{type}}「{{name}}」嗎？此動作無法復原。",
+        "deleteTitle": "刪除{{type}}？",
+        "editSong": "編輯 {{field}}",
+        "editSongDescription": "輸入新值",
+        "reprocessDailyNotesDescription": "這將重設 {{username}} 的所有每日筆記，並從中重新提取長期記憶。現有記憶將會更新/合併。只會處理過去的日期（不包括今天）。",
+        "reprocessDailyNotesTitle": "重新處理每日筆記",
+        "unshareDescription": "這會從 {{user}} 的共享歌曲中移除「{{name}}」。歌曲會保留在資料庫中，但不會與任何使用者關聯。",
+        "unshareTitle": "停止共享歌曲"
+      },
+      "errors": {
+        "cannotForceRefresh": "無法強制重新整理 - 沒有歌詞來源或未經認證",
+        "deleteAllFailed": "刪除歌曲失敗",
+        "exportFailed": "匯出失敗",
+        "failedToAddToLibrary": "加入資料庫失敗",
+        "failedToBanUser": "無法封鎖使用者",
+        "failedToClearMemories": "清除記憶失敗",
+        "failedToDeleteMessage": "無法刪除訊息",
+        "failedToDeleteRoom": "無法刪除聊天室",
+        "failedToDeleteSong": "刪除歌曲失敗",
+        "failedToDeleteUser": "無法刪除使用者",
+        "failedToFetchMessages": "無法擷取訊息",
+        "failedToFetchProfile": "無法取得使用者個人檔案",
+        "failedToFetchRooms": "無法擷取聊天室",
+        "failedToFetchSong": "無法取得歌曲",
+        "failedToFetchSongs": "擷取歌曲失敗",
+        "failedToFetchUsers": "無法擷取使用者",
+        "failedToProcessDailyNotes": "處理每日筆記失敗",
+        "failedToRefreshLyrics": "重新整理歌詞失敗",
+        "failedToResetLyrics": "重設歌詞失敗",
+        "failedToUnbanUser": "無法解除封鎖使用者",
+        "failedToUnshareSong": "停止共享歌曲失敗",
+        "failedToUpdateLyrics": "更新歌詞失敗",
+        "failedToUpdateMetadata": "更新中繼資料失敗",
+        "failedToUpdateSong": "更新歌曲失敗",
+        "importFailed": "匯入失敗",
+        "invalidImportFormat": "無效的檔案格式",
+        "notAuthenticated": "未認證",
+        "songNotInLibrary": "歌曲不在資料庫中"
+      },
+      "help": {
+        "adminAccess": {
+          "description": "僅限管理員 (ryo) 使用 — 每項操作皆需經過身份驗證",
+          "title": "僅限管理員"
+        },
+        "roomManagement": {
+          "description": "透過 IRC 中繼資料檢查聊天室；快速刪除不當內容",
+          "title": "聊天室管理"
+        },
+        "searchFilter": {
+          "description": "在分頁網格中快速按名稱搜尋使用者或歌曲",
+          "title": "搜尋與篩選"
+        },
+        "songLibrary": {
+          "description": "批次匯入、匯出及清理快取的 YouTube + 歌詞歌曲庫",
+          "title": "歌曲庫"
+        },
+        "statistics": {
+          "description": "即時使用指標，包含 Cursor 智能體執行遙測卡片",
+          "title": "系統統計"
+        },
+        "userManagement": {
+          "description": "瀏覽已註冊使用者、查看個人資料，以及撤銷或重新命名帳號",
+          "title": "使用者管理"
+        }
+      },
+      "languages": {
+        "en": "英文",
+        "ja": "日文",
+        "ko": "韓文",
+        "zh-CN": "簡體中文",
+        "zh-TW": "繁體中文"
+      },
+      "loadMore": "載入更多（剩餘 {{remaining}} 個）",
+      "menu": {
+        "aboutAdmin": "關於管理員",
+        "adminHelp": "管理員輔助說明",
+        "refreshData": "重新整理資料",
+        "showSidebar": "顯示側邊欄"
+      },
+      "messages": {
+        "addingToLibrary": "正在加入資料庫⋯",
+        "dataRefreshed": "資料已重新整理",
+        "deleteAllSuccess": "已刪除 {{total}} 首歌曲中的 {{success}} 首",
+        "exportSuccess": "已匯出 {{count}} 首歌曲",
+        "importSuccess": "新增 {{imported}} 首，更新 {{updated}} 首 (共 {{total}} 首)",
+        "lyricsAndMetadataUpdated": "歌詞與中繼資料已更新",
+        "lyricsRefreshed": "歌詞已從來源重新整理",
+        "lyricsReset": "歌詞已重設",
+        "lyricsUpdated": "歌詞已更新",
+        "messageDeleted": "訊息已刪除",
+        "noSongsToDelete": "沒有歌曲可刪除",
+        "playingInIpod": "正在 iPod 中播放",
+        "playingInKaraoke": "正在卡拉 OK 中播放",
+        "roomDeleted": "聊天室已刪除",
+        "songDeleted": "歌曲已刪除",
+        "songUnshared": "歌曲已取消分享",
+        "songUpdated": "歌曲已更新",
+        "userBanned": "使用者 {{username}} 已封鎖",
+        "userDeleted": "使用者 {{username}} 已刪除",
+        "userUnbanned": "使用者 {{username}} 已解除封鎖"
+      },
+      "name": "管理者",
+      "offline": {
+        "description": "管理員需要網際網路連線才能管理資料。",
+        "title": "離線"
+      },
+      "profile": {
+        "actions": "動作",
+        "activeRooms": "聊天室活躍中",
+        "back": "返回",
+        "ban": "封鎖使用者",
+        "banDetails": "封鎖詳細資訊",
+        "banReasonPlaceholder": "封鎖原因 (選填)",
+        "banned": "已封鎖",
+        "bannedOn": "封鎖於",
+        "clearAll": "全部清除",
+        "clearing": "正在清除⋯",
+        "confirmBan": "封鎖",
+        "dailyNotes": "每日筆記",
+        "dailyNotesProcessed": "每日筆記已處理",
+        "delete": "刪除使用者",
+        "entries": "條",
+        "heartbeatSent": "已發送",
+        "heartbeatSkipped": "已跳過",
+        "heartbeats": "心跳記錄",
+        "lastActive": "上次活躍",
+        "loading": "載入個人檔案中⋯",
+        "longTermMemories": "長期記憶",
+        "memories": "回憶",
+        "memoriesCleared": "記憶已清除",
+        "memoryKey": "鍵",
+        "memorySummary": "摘要",
+        "messages": "訊息",
+        "noMemories": "未儲存任何回憶",
+        "noMessages": "找不到訊息",
+        "noReason": "未提供原因",
+        "notFound": "找不到使用者",
+        "pending": "待處理",
+        "pendingTooltip": "尚未處理成長期記憶",
+        "processed": "已處理",
+        "processedTooltip": "已處理成長期記憶",
+        "processing": "處理中⋯",
+        "reason": "原因",
+        "recentMessages": "最新訊息",
+        "reprocess": "重新處理",
+        "room": "聊天室",
+        "rooms": "聊天室",
+        "today": "今天",
+        "unban": "解除使用者封鎖"
+      },
+      "redis": {
+        "backup": "備份",
+        "breadcrumbs": "鍵路徑",
+        "delete": "刪除 Redis 鍵",
+        "deleteDescription": "確定要刪除 Redis 鍵「{{key}}」嗎？此操作無法復原。",
+        "deleteTitle": "確定要刪除 Redis 鍵嗎？",
+        "detail": "鍵詳細資訊",
+        "errors": {
+          "backup": "備份 Redis 鍵失敗",
+          "delete": "刪除 Redis 鍵失敗",
+          "loadKey": "載入 Redis 鍵失敗",
+          "loadKeys": "載入 Redis 鍵失敗"
+        },
+        "key": "鍵",
+        "keyUnavailable": "Redis 鍵不可用",
+        "keys": "鍵",
+        "length": "長度",
+        "loadMore": "載入更多",
+        "loading": "載入中⋯",
+        "messages": {
+          "alreadyDeleted": "Redis 鍵已不存在",
+          "backupReady": "已備份 {{count}} 個 Redis 鍵",
+          "backupTruncated": "備份已達鍵數量限制；請縮小模式範圍以進行完整匯出",
+          "deleted": "Redis 鍵已刪除"
+        },
+        "noKeys": "沒有符合此模式的 Redis 鍵",
+        "patternPlaceholder": "Redis 模式，例如 chat:*",
+        "previewTruncated": "預覽已截斷；請使用「備份」查看完整值。",
+        "refresh": "重新整理 Redis 鍵值",
+        "root": "根",
+        "scan": "掃描",
+        "selectKey": "選擇一個 Redis 鍵以查看其值",
+        "ttl": "TTL",
+        "type": "類型"
+      },
+      "room": {
+        "messagesCount": "{{count}} 則訊息",
+        "noMessages": "沒有訊息"
+      },
+      "search": {
+        "noResults": "找不到使用者",
+        "placeholder": "搜尋使用者⋯",
+        "songsPlaceholder": "搜尋歌曲⋯"
+      },
+      "server": {
+        "buildInfo": "建置",
+        "commit": "提交",
+        "configured": "已設定",
+        "deployment": {
+          "coolify": "Coolify",
+          "dev": "開發"
+        },
+        "deploymentLabel": "部署",
+        "loading": "正在載入伺服器資訊⋯",
+        "notConfigured": "未設定",
+        "ok": "確定",
+        "provider": {
+          "local": "本地",
+          "pusher": "Pusher"
+        },
+        "realtime": "即時 / WebSocket",
+        "redis": "Redis",
+        "services": "服務",
+        "title": "伺服器",
+        "unhealthy": "不健康",
+        "version": "版本",
+        "websocket": "WebSocket (Pusher)"
+      },
+      "sidebar": {
+        "auditLog": "稽核記錄",
+        "cursorAgents": "Cursor 智能體",
+        "dashboard": "儀表板",
+        "messagesCount": "{{count}} 則訊息",
+        "online": "線上",
+        "private": "私人",
+        "redis": "Redis",
+        "rooms": "聊天室",
+        "server": "伺服器",
+        "songs": "歌曲",
+        "users": "使用者"
+      },
+      "song": {
+        "album": "專輯",
+        "appleMusicId": "Apple Music ID",
+        "createdAt": "製作日期",
+        "delete": "刪除歌曲",
+        "forceRefresh": "強制重新整理",
+        "forceRefreshTooltip": "從酷狗重新擷取歌詞並清除快取註解。",
+        "furigana": "振假名",
+        "info": "資訊",
+        "lines": "行",
+        "lyricsContent": "歌詞內容",
+        "lyricsOffset": "歌詞偏移",
+        "lyricsSource": "歌詞",
+        "metadata": "後設資料",
+        "notAvailable": "未提供",
+        "notFound": "找不到歌曲",
+        "notGenerated": "未產生",
+        "openInAppleMusic": "在 Apple Music 中開啟",
+        "playInIpod": "在 iPod 中播放",
+        "playInKaraoke": "在卡拉 OK 中播放",
+        "searchLyrics": "搜尋歌詞",
+        "soramimi": "空耳",
+        "source": "來源",
+        "translations": "翻譯",
+        "unknownArtist": "未知的藝人",
+        "unshare": "取消分享",
+        "updatedAt": "已更新",
+        "withWordTiming": "附帶逐字時間",
+        "youtubeId": "YouTube ID"
+      },
+      "songs": {
+        "allSongs": "所有歌曲",
+        "deleteAll": "刪除所有歌曲",
+        "export": "匯出資料庫",
+        "filterByRyo": "篩選：ryo 建立的歌曲",
+        "import": "匯入",
+        "importStatus": {
+          "completed": "匯入完成：{{imported}} 個新增，{{updated}} 個已更新",
+          "failed": "匯入失敗：{{error}}",
+          "fileFallback": "檔案",
+          "messages": {
+            "completed": "匯入完成：{{imported}} 個新增，{{updated}} 個已更新",
+            "failed": "匯入失敗",
+            "parsingFile": "正在解析檔案",
+            "preparingSongs": "正在準備匯入歌曲",
+            "progressUpdated": "匯入進度已更新",
+            "rateLimitedRetry": "{{count}} 秒後重試",
+            "readingFile": "正在讀取檔案",
+            "refreshingSongList": "正在重新整理歌曲列表",
+            "splittingBatch": "正在分割批次以符合上傳限制",
+            "uploadedRefreshing": "匯入項目已上傳，正在重新整理資料庫",
+            "uploadingSongs": "正在上傳歌曲",
+            "validatingFile": "正在驗證檔案格式"
+          },
+          "parsing": "正在解析匯入檔案⋯",
+          "preparing": "正在準備歌曲 {{processed}}/{{total}}",
+          "rateLimited": "已達頻率限制。{{message}}",
+          "rateLimitedFallback": "稍後將重試⋯",
+          "reading": "正在讀取 {{fileName}}⋯",
+          "refreshing": "匯入項目已上傳。正在重新整理資料庫⋯",
+          "uploading": "正在上傳歌曲 {{processed}}/{{total}}",
+          "validating": "正在驗證匯入資料⋯"
+        },
+        "importingLibrary": "正在匯入資料庫⋯",
+        "importingProgress": "正在匯入 {{processed}}/{{total}}",
+        "noSongs": "快取中沒有歌曲",
+        "noSongsMatchFilter": "沒有歌曲符合目前的篩選條件",
+        "noSongsToExport": "沒有歌曲可供匯出"
+      },
+      "statusBar": {
+        "auditLogCount_one": "{{count}} 筆項目",
+        "auditLogCount_other": "{{count}} 筆項目",
+        "cursorAgentsCount": "{{count}} 個 Cursor 智能體",
+        "cursorAgentsCount_plural": "{{count}} 個 Cursor 智能體",
+        "loggedInAs": "已登入為 {{username}}",
+        "messagesCount": "{{count}} 則訊息",
+        "messagesCount_plural": "{{count}} 則訊息",
+        "redis": "Redis 瀏覽器",
+        "redisKeysCount_one": "{{count}} 個鍵",
+        "redisKeysCount_other": "{{count}} 個鍵",
+        "roomsCount": "{{count}} 個房間",
+        "roomsCount_plural": "{{count}} 個房間",
+        "songsCount": "{{count}} 首歌曲",
+        "usersCount": "{{count}} 個使用者",
+        "usersCount_plural": "{{count}} 個使用者"
+      },
+      "tableHeaders": {
+        "added": "已加入",
+        "addedBy": "由",
+        "artist": "藝人",
+        "lastActive": "上次活動",
+        "message": "訊息",
+        "role": "角色",
+        "status": "狀態",
+        "time": "時間",
+        "title": "歌名",
+        "user": "使用者",
+        "username": "使用者名稱"
+      },
+      "time": {
+        "daysAgo": "{{count}}天",
+        "hoursAgo": "{{count}}小時",
+        "minutesAgo": "{{count}}分鐘",
+        "now": "現在"
+      },
+      "title": "管理者",
+      "user": {
+        "active": "活躍",
+        "admin": "管理者",
+        "banned": "已封鎖",
+        "user": "使用者"
+      }
+    },
+    "applet-viewer": {
+      "description": "檢視和執行小程式",
+      "dialogs": {
+        "addedToFeatured": "已加入精選",
+        "allAppletsUpToDate": "所有小程式皆為最新版本",
+        "appletAlreadyShared": "小程式已分享",
+        "appletDeleted": "小程式已刪除",
+        "appletExported": "小程式已匯出！",
+        "appletExportedDescription": "{{fileName}}.app 已成功匯出。",
+        "appletImported": "小程式已匯入！",
+        "appletImportedDescription": "{{fileName}} 已儲存至 /Applets{{iconText}}",
+        "appletImportedIconSuffix": " 帶有 {{icon}} 圖示",
+        "appletNotFound": "找不到小程式",
+        "appletNotFoundDescription": "該分享的小程式可能已被刪除或連結無效。",
+        "appletSaved": "小程式已儲存",
+        "appletSavedDescription": "已儲存至 /Applets/{{fileName}}",
+        "appletShared": "小程式已分享！",
+        "appletStore": "小程式商店",
+        "appletUpdateAvailable": "小程式有可用的更新",
+        "appletUpdateAvailableDescription": "{{appletName}} 有可用的更新。",
+        "appletUpdated": "小程式已更新",
+        "appletUpdatedShare": "小程式已更新！",
+        "appletsUpdated": "已更新 {{count}} 個小程式",
+        "areYouSureDeleteApplet": "您確定要刪除此小程式嗎？",
+        "couldNotCompressAppletFile": "無法壓縮小程式檔案。",
+        "couldNotImportFile": "無法匯入檔案。",
+        "exportFailed": "匯出失敗",
+        "failedToDeleteApplet": "無法刪除小程式",
+        "failedToFetchSharedApplet": "無法擷取共享小程式",
+        "failedToLoadSharedApplet": "無法載入共享小程式",
+        "failedToSaveApplet": "無法儲存小程式",
+        "failedToShareApplet": "無法分享小程式",
+        "failedToUpdateApplet": "無法更新小程式",
+        "failedToUpdateApplets": "無法更新小程式",
+        "failedToUpdateFeaturedStatus": "無法更新精選狀態",
+        "importFailed": "匯入失敗",
+        "loading": "載入中⋯",
+        "loginRequired": "需要登入",
+        "mustBeLoggedInToShare": "您必須登入才能分享小程式。",
+        "newAppletUpdates": "{{count}} 個新的小程式更新",
+        "newAppletUpdatesPlural": "{{count}} 個新的小程式更新",
+        "noAppletToShare": "沒有可供分享的小程式",
+        "noAppletsAvailable": "目前沒有小程式可用。",
+        "noAppletsFound": "找不到符合「{{query}}」的小程式。",
+        "pleaseCheckConnection": "請檢查您的連線並再試一次。",
+        "pleaseOpenAppletFirst": "請先開啟一個 Applet。",
+        "pleaseTryAgainLater": "請稍後再試。",
+        "removedFromFeatured": "已從精選中移除",
+        "shareLinkGeneratedSuccessfully": "分享連結已成功產生。",
+        "shareLinkUpdatedSuccessfully": "分享連結已成功更新。",
+        "sharedApplet": "已分享的 Applet",
+        "sharedAppletLoaded": "已分享的 Applet 已載入",
+        "showingExistingShareLink": "正在顯示現有的分享連結。",
+        "untitled": "未命名",
+        "untitledApplet": "未命名的 Applet",
+        "updatingApplet": "正在更新 Applet⋯",
+        "updatingAppletSingle": "正在更新 1 個 Applet⋯",
+        "updatingApplets": "正在更新 {{count}} 個 Applet⋯",
+        "updatingAppletsPlural": "正在更新 {{count}} 個小程式⋯"
+      },
+      "help": {
+        "appletStore": {
+          "description": "開啟「商店」分頁以探索社群開發的應用程式，並可一鍵安裝",
+          "title": "瀏覽商店"
+        },
+        "createWithRyosChat": {
+          "description": "在「聊天」中要求 Ryo 建立自訂 Applet — 立即獲得可運行的 HTML 應用程式",
+          "title": "透過聊天建立"
+        },
+        "keepUpdated": {
+          "description": "「商店 ▸ 檢查更新」會取得已安裝 applet 的最新版本",
+          "title": "自動檢查更新"
+        },
+        "openFromFinder": {
+          "description": "將 .app 或 .gz applet 套件拖入 Finder，它們就會出現在 /Applets 中",
+          "title": "從 Finder 開啟"
+        },
+        "shareApplets": {
+          "description": "使用「檔案 ▸ 分享 Applet」來複製連結或短碼，供他人貼上使用",
+          "title": "透過代碼分享"
+        },
+        "viewApplets": {
+          "description": "沙盒執行器可安全地執行儲存在系統中的任何 HTML Applet",
+          "title": "執行任何內容"
+        }
+      },
+      "labels": {
+        "addToFeatured": "加入精選",
+        "deleteApplet": "刪除 Applet",
+        "discover": "探索",
+        "removeFromFeatured": "從精選中移除",
+        "searchApplets": "搜尋小程式商店",
+        "showAll": "顯示全部"
+      },
+      "menu": {
+        "aboutApplets": "關於小程式",
+        "appletStore": "小程式商店",
+        "appletsHelp": "小程式輔助說明",
+        "checkForUpdates": "檢查更新項目",
+        "createAccount": "建立帳號⋯",
+        "exportAs": "輸出為⋯",
+        "html": "HTML",
+        "importFromDevice": "從裝置匯入⋯",
+        "logOut": "登出",
+        "login": "登入⋯",
+        "noAppletsOpen": "沒有開啟的小程式",
+        "open": "打開⋯",
+        "openAppletStore": "開啟小程式商店",
+        "ryosApp": "ryOS 應用程式",
+        "shareApplet": "分享小程式⋯",
+        "store": "商店",
+        "untitled": "未命名",
+        "updateApplets": "更新 {{count}} 個小程式",
+        "updateAppletsPlural": "更新 {{count}} 個小程式",
+        "window": "視窗"
+      },
+      "name": "小程式商店",
+      "sections": {
+        "featured": "精選",
+        "installed": "已安裝",
+        "newApplets": "新 Applet",
+        "updatesAvailable": "有可用的更新項目"
+      },
+      "status": {
+        "get": "取得",
+        "open": "打開",
+        "save": "儲存",
+        "update": "更新",
+        "updatedDaysAgo": "{{days}} 天前更新",
+        "updatedHoursAgo": "{{hours}} 小時前更新",
+        "updatedJustNow": "剛剛更新",
+        "updatedMinutesAgo": "{{minutes}} 分鐘前更新",
+        "updatedMonthsAgo": "{{months}} 個月前更新",
+        "updatedWeeksAgo": "{{weeks}} 週前更新",
+        "updatedYearsAgo": "{{years}} 年前更新",
+        "updatedYesterday": "昨天更新"
+      }
+    },
+    "books": {
+      "bookmarks": {
+        "add": "加入書籤",
+        "remove": "移除書籤",
+        "title": "書籤"
+      },
+      "chineseScript": {
+        "original": "原文",
+        "simplified": "简体",
+        "traditional": "繁體"
+      },
+      "columns": {
+        "auto": "自動",
+        "double": "雙頁",
+        "single": "單頁"
+      },
+      "contextMenu": {
+        "delete": "刪除",
+        "moveToBottom": "移至底端",
+        "moveToTop": "移至頂端"
+      },
+      "customize": {
+        "background": "背景",
+        "chinese": "中文",
+        "colors": "顏色",
+        "direction": "方向",
+        "lineSpacing": "行距",
+        "margins": "邊界",
+        "spacing": "間距",
+        "textColor": "文字",
+        "title": "自訂",
+        "transparent": "透明"
+      },
+      "description": "閱讀 EPUB 書籍",
+      "fonts": {
+        "eb-garamond": "Garamond",
+        "geneva": "Geneva",
+        "mono": "等寬",
+        "original": "原始",
+        "rounded": "圓體",
+        "sans": "無襯線體",
+        "serif": "襯線體"
+      },
+      "help": {
+        "bookshelf": {
+          "description": "匯入的 EPUB 書籍排列在木製書架上。點擊書籍即可開啟並開始閱讀。",
+          "title": "您的書架"
+        },
+        "darkMode": {
+          "description": "閱讀器會跟隨系統佈景主題，或者您可以從「檢視 ▸ 佈景主題」中設定淺色、懷舊褐色或深色頁面。",
+          "title": "深色模式"
+        },
+        "fonts": {
+          "description": "從「顯示」選單中選擇閱讀字體（包含 Garamond）、文字大小以及單欄或雙欄顯示。",
+          "title": "字體與版面"
+        },
+        "import": {
+          "description": "使用「檔案 ▸ 匯入」來加入 .epub 檔案。書籍會儲存至 /Books 並同步至雲端。",
+          "title": "匯入 EPUB"
+        },
+        "kosync": {
+          "description": "與其他裝置上的 KOReader 同步閱讀進度。在 KOReader Progress Sync 中，將自訂伺服器設為此 ryOS 主機的 /api/kosync URL，使用你的 ryOS 使用者名稱註冊，並對 /Books 中的 EPUB 使用檔名文件比對。",
+          "title": "KOReader 同步"
+        },
+        "pageTurn": {
+          "description": "點擊頁面邊緣、使用方向鍵或滑動來翻閱書籍。",
+          "title": "翻頁"
+        },
+        "progress": {
+          "description": "系統會自動儲存您的閱讀進度，並在下次開啟書籍時恢復。",
+          "title": "閱讀進度"
+        }
+      },
+      "import": {
+        "title": "匯入 EPUB"
+      },
+      "menu": {
+        "aboutBooks": "關於書籍",
+        "backToShelf": "返回書架",
+        "booksHelp": "書籍輔助說明",
+        "chapters": "章節",
+        "chineseScript": "簡繁轉換",
+        "columns": "直欄",
+        "customizeTheme": "自訂…",
+        "font": "字體",
+        "import": "匯入 EPUB⋯",
+        "nextPage": "下一頁",
+        "previousPage": "上一頁",
+        "speech": "語音",
+        "speechRate": "語音速率",
+        "startSpeaking": "開始朗讀",
+        "stopSpeaking": "停止朗讀",
+        "textLayout": "文字方向",
+        "textSize": "文字大小",
+        "theme": "主題"
+      },
+      "name": "書籍",
+      "reader": {
+        "backToShelf": "書架",
+        "error": "無法開啟此書。"
+      },
+      "selection": {
+        "askRyo": "詢問 Ryo",
+        "askRyoFailed": "無法取得回覆，請稍後再試。",
+        "askRyoQuestion": "這段文字是什麼意思？",
+        "color": {
+          "blue": "藍色螢光標示",
+          "green": "綠色螢光標示",
+          "pink": "粉紅色螢光標示",
+          "purple": "紫色螢光標示",
+          "yellow": "黃色螢光標示"
+        },
+        "controls": "選取範圍控制項目",
+        "copied": "已拷貝至剪貼簿",
+        "copy": "拷貝",
+        "copyFailed": "無法拷貝",
+        "removeHighlight": "移除螢光標示"
+      },
+      "shelf": {
+        "emptyHint": "點擊「新增書籍」以匯入 EPUB。",
+        "emptyTitle": "您的書架是空的",
+        "finished": "已完成",
+        "gridView": "格狀顯示方式",
+        "import": "新增書籍",
+        "listView": "列表顯示方式",
+        "percentRead": "{{percent}}%"
+      },
+      "speech": {
+        "controls": "朗讀控制項",
+        "pause": "暫停",
+        "resume": "繼續",
+        "rewind": "倒轉",
+        "skip": "跳過",
+        "stop": "停止"
+      },
+      "speechRate": {
+        "fast": "快",
+        "normal": "正常",
+        "slow": "慢",
+        "veryFast": "非常快"
+      },
+      "textLayout": {
+        "book": "書籍預設",
+        "horizontal": "橫排",
+        "vertical": "直排"
+      },
+      "theme": {
+        "accent": "強調色",
+        "auto": "自動",
+        "black": "黑色",
+        "custom": "自訂",
+        "dark": "深色",
+        "gray": "灰色",
+        "green": "綠色",
+        "light": "淺色",
+        "night": "夜間",
+        "paper": "紙張",
+        "sepia": "深褐色"
+      },
+      "title": "書籍",
+      "toasts": {
+        "deleteFailed": "刪除書籍失敗",
+        "deleted": "書籍已刪除",
+        "importFailed": "匯入書籍失敗",
+        "imported": "書籍已匯入",
+        "invalidFile": "不支援的檔案",
+        "invalidFileDesc": "僅能匯入 .epub 格式的書籍。"
+      }
+    },
+    "calculator": {
+      "angle": {
+        "deg": "度數",
+        "degShort": "度",
+        "rad": "弧度",
+        "radShort": "弧度"
+      },
+      "conversion": {
+        "amount": "數量",
+        "categories": {
+          "area": "面積",
+          "currency": "貨幣",
+          "energy": "能量",
+          "length": "長度",
+          "mass": "重量 & 質量",
+          "pressure": "壓力",
+          "speed": "速度",
+          "temperature": "溫度",
+          "time": "時間",
+          "volume": "體積"
+        },
+        "category": "類別",
+        "currencyError": "無法加載匯率",
+        "from": "從",
+        "result": "結果",
+        "selectUnit": "單位",
+        "swap": "互換",
+        "title": "轉換",
+        "to": "到",
+        "units": {
+          "acre": "英畝",
+          "atm": "大氣壓",
+          "bar": "巴",
+          "c": "攝氏",
+          "cal": "卡路里",
+          "cm": "公分",
+          "cup": "杯",
+          "day": "天",
+          "f": "華氏",
+          "floz": "液盎司",
+          "ft": "英尺",
+          "g": "克",
+          "gal": "加侖（美制）",
+          "ha": "公頃",
+          "hr": "小時",
+          "in": "英寸",
+          "j": "焦耳",
+          "k": "開爾文",
+          "kcal": "千卡路里",
+          "kg": "千克",
+          "kj": "千焦耳",
+          "km": "公里",
+          "knot": "節",
+          "kpa": "千帕斯卡",
+          "kph": "公里/小時",
+          "kwh": "千瓦時",
+          "l": "升",
+          "lb": "磅",
+          "m": "米",
+          "mg": "毫克",
+          "mi": "英里",
+          "min": "分鐘",
+          "ml": "毫升",
+          "mm": "毫米",
+          "mph": "英里/小時",
+          "mps": "米/秒",
+          "oz": "盎司",
+          "pa": "帕斯卡",
+          "psi": "磅/平方英寸",
+          "pt": "品脫",
+          "qt": "夸脫",
+          "s": "秒",
+          "sqft": "平方英尺",
+          "sqkm": "平方公里",
+          "sqm": "平方米",
+          "sqmi": "平方英里",
+          "t": "公噸",
+          "wh": "瓦時",
+          "wk": "週",
+          "yd": "碼"
+        }
+      },
+      "description": "基本、科學和單位轉換計算機",
+      "help": {
+        "basicMode": {
+          "description": "使用記憶鍵和百分比進行加、減、乘和除",
+          "title": "基本模式"
+        },
+        "conversionMode": {
+          "description": "以實時匯率轉換長度、質量、溫度、貨幣等",
+          "title": "轉換模式"
+        },
+        "keyboard": {
+          "description": "從鍵盤輸入數字和運算符；查看菜單可切換模式",
+          "title": "鍵盤"
+        },
+        "liveCurrency": {
+          "description": "貨幣轉換通過ryOS API獲取匯率",
+          "title": "實時貨幣"
+        },
+        "scientificMode": {
+          "description": "三角函數、對數、冪、根、階乘、π、e 和度/弧度切換",
+          "title": "科學模式"
+        },
+        "themeDesigns": {
+          "description": "經典Mac、Aqua、Windows 98和Windows XP計算機主題",
+          "title": "主題設計"
+        }
+      },
+      "menu": {
+        "about": "關於計算機",
+        "basic": "基本",
+        "clear": "清除",
+        "conversion": "轉換",
+        "help": "計算機輔助說明",
+        "scientific": "科學",
+        "sound": "聲音",
+        "speakButtonPresses": "朗讀按下的按鈕",
+        "speakResults": "朗讀結果",
+        "speechEnabled": "語音"
+      },
+      "name": "計算機",
+      "speech": {
+        "error": "錯誤",
+        "keys": {
+          "backspace": "退格",
+          "clear": "清除",
+          "clearEntry": "清除輸入",
+          "closeParenthesis": "右括號",
+          "cos": "餘弦",
+          "degrees": "度",
+          "divide": "除以",
+          "e": "e",
+          "equals": "等於",
+          "factorial": "階乘",
+          "ln": "自然對數",
+          "log": "對數",
+          "memoryClear": "清除記憶",
+          "memoryMinus": "記憶累減",
+          "memoryPlus": "記憶累加",
+          "memoryRecall": "顯示記憶數值",
+          "memoryStore": "記憶儲存",
+          "minus": "減",
+          "negate": "正負",
+          "openParenthesis": "左括號",
+          "percent": "百分比",
+          "pi": "圓周率",
+          "plus": "加",
+          "point": "點",
+          "power": "x 的 y 次方",
+          "radians": "弧度",
+          "random": "隨機",
+          "root": "x 的 y 次方根",
+          "sin": "正弦",
+          "sqrt": "平方根",
+          "tan": "正切",
+          "times": "乘"
+        },
+        "negative": "負 {{value}}",
+        "scientific": "{{mantissa}} 乘以 10 的 {{exponent}} 次方"
+      },
+      "status": {
+        "memory": "M={{value}}"
+      },
+      "title": "計算機"
+    },
+    "calendar": {
+      "description": "含有事件的行事曆",
+      "event": {
+        "allDay": "整日",
+        "calendar": "行事曆",
+        "cancel": "取消",
+        "color": "顏色",
+        "date": "日期",
+        "delete": "刪除",
+        "deleteConfirm": "刪除此事件？",
+        "editEvent": "編輯行程",
+        "endTime": "結束時間",
+        "newEvent": "新增事件",
+        "noEvents": "沒有事件",
+        "notes": "備註",
+        "save": "儲存",
+        "startTime": "開始時間",
+        "title": "標題"
+      },
+      "export": {
+        "noEvents": "沒有可匯出的事件",
+        "success": "已匯出 {{count}} 個事件",
+        "successPlural": "{{count}} 個事件已匯出"
+      },
+      "help": {
+        "createEvents": {
+          "description": "按兩下任何日期 — 或使用「檔案 ▸ 新增行程」— 來加入定時行程",
+          "title": "製作行程"
+        },
+        "icalImportExport": {
+          "description": "拖入 .ics 檔案進行批次匯入，或匯出您的行事曆與他人分享",
+          "title": "iCal 匯入 / 匯出"
+        },
+        "navigateMonths": {
+          "description": "使用箭頭按鈕切換月份，或點擊「今天」返回目前日期",
+          "title": "切換月份"
+        },
+        "ryoSchedules": {
+          "description": "在聊天中要求 Ryo 為您新增、編輯或摘要即將到來的行程",
+          "title": "Ryo 幫您排程"
+        },
+        "todosSidebar": {
+          "description": "切換待辦事項面板，在排定的行程旁管理任務",
+          "title": "待辦事項側邊欄"
+        },
+        "undoAutoSave": {
+          "description": "每一項變更都會自動儲存；⌘Z 可復原刪除、編輯，甚至是批次匯入",
+          "title": "復原與自動儲存"
+        }
+      },
+      "import": {
+        "success": "已匯入 {{count}} 個行程",
+        "successPlural": "{{count}} 個事件已匯入"
+      },
+      "menu": {
+        "about": "關於行事曆",
+        "dayView": "整日檢視區",
+        "deleteEvent": "刪除事件",
+        "editEvent": "編輯行程",
+        "exportToIcs": "匯出事件⋯",
+        "goToToday": "前往今天",
+        "help": "行事曆輔助說明",
+        "importFromDevice": "從裝置匯入⋯",
+        "monthView": "整月檢視區",
+        "newEvent": "新增行程",
+        "showToDoItems": "顯示待辦事項",
+        "syncCalendar": "同步行事曆",
+        "weekView": "整週檢視區"
+      },
+      "name": "行事曆",
+      "sidebar": {
+        "calendars": "行事曆",
+        "newTodoPlaceholder": "新增待辦事項⋯",
+        "noTodoItems": "沒有待辦事項",
+        "toDoItems": "待辦事項"
+      },
+      "title": "行事曆",
+      "today": "今天",
+      "tray": {
+        "done": "完成",
+        "due": "到期日",
+        "empty": "選擇事件或待辦事項",
+        "eventDetails": "事件詳細資訊",
+        "from": "來自",
+        "locationPlaceholder": "地點",
+        "markComplete": "標記為已完成",
+        "markIncomplete": "標記為未完成",
+        "newEventTitle": "新增行程",
+        "to": "至",
+        "todoDetails": "待辦事項詳細資訊"
+      },
+      "views": {
+        "allDay": "整日",
+        "day": "日",
+        "month": "月",
+        "week": "週"
+      }
+    },
+    "chats": {
+      "ariaLabels": {
+        "attachImage": "附加圖片",
+        "clearImage": "清除圖片",
+        "copyMessage": "複製訊息",
+        "deleteMessage": "刪除訊息",
+        "deleteRoom": "刪除聊天室",
+        "leaveConversation": "離開對話",
+        "mentionRyo": "提及 Ryo",
+        "messageUser": "傳訊息給 {{username}}",
+        "newChat": "新增聊天",
+        "pushToTalk": "即按即說",
+        "selectedImage": "已選圖片",
+        "sendNudge": "傳送抖動",
+        "speakMessage": "朗讀訊息",
+        "stopGeneration": "停止生成",
+        "stopSpeech": "停止語音"
+      },
+      "description": "與 AI 聊天",
+      "dialogs": {
+        "addUsersToPrivateChat": "新增使用者至私人聊天",
+        "cancel": "取消",
+        "clearChatsDescription": "您確定要清除此聊天記錄嗎？此動作無法復原。",
+        "clearChatsTitle": "清除聊天記錄",
+        "create": "建立",
+        "creating": "正在建立⋯",
+        "deleteChatRoomDescription": "您確定要刪除聊天室「{{name}}」嗎？此動作無法復原。",
+        "deleteChatRoomTitle": "刪除聊天室",
+        "failedToCreateRoom": "建立房間失敗",
+        "leaveConversationDescription": "您確定要離開「{{name}}」嗎？您將不再看到此對話中的訊息。",
+        "leaveConversationTitle": "離開對話",
+        "newChatDescription": "建立公開聊天室或開始私人對話",
+        "newChatDescriptionPrivate": "開始私人對話",
+        "newChatTitle": "新增聊天",
+        "passwordMinLengthError": "密碼必須至少 8 個字元",
+        "passwordSetFailed": "設定密碼失敗",
+        "passwordSetSuccess": "密碼已設定",
+        "passwordSetSuccessDescription": "您現在可以使用您的密碼來復原您的帳號",
+        "public": "公開",
+        "roomName": "聊天室名稱",
+        "roomNamePlaceholder": "一般",
+        "saveTranscriptDescription": "輸入您的聊天記錄檔案名稱",
+        "saveTranscriptTitle": "儲存記錄",
+        "searchUsernamePlaceholder": "搜尋使用者名稱⋯",
+        "setPasswordButton": "設定密碼",
+        "setPasswordDescription": "設定密碼以啟用帳號復原。如果您失去存取權，可以使用此密碼來取得新的權杖。",
+        "setPasswordTitle": "設定密碼"
+      },
+      "help": {
+        "chatWithRyo": {
+          "description": "詢問任何問題 —— Ryo 可以編寫程式碼、摘要文件或說明 ryOS 功能。",
+          "title": "與 Ryo 聊天"
+        },
+        "controlApps": {
+          "description": "Ryo 可以啟動 App、切換主題、移動便條紙、調整電視以及播放 iPod 歌曲。",
+          "title": "控制您的作業系統"
+        },
+        "createEditFiles": {
+          "description": "讓 Ryo 啟動 HTML Applet、編輯您的「文字編輯」文件，或瀏覽 Applet Store。",
+          "title": "建立與編輯檔案"
+        },
+        "joinChatRooms": {
+          "description": "進入聊天室與線上的每個人聊天 —— 標記 @ryo 即可獲得 AI 回覆。",
+          "title": "加入公開聊天室"
+        },
+        "nudgeDjMode": {
+          "description": "傳送 👋 叮咚以獲取情境相關提示；播放 iPod 時，Ryo 會化身為 DJ。",
+          "title": "叮咚與 DJ 模式"
+        },
+        "pushToTalk": {
+          "description": "按住空白鍵或點擊麥克風即可錄製並傳送語音訊息，並附帶逐字稿。",
+          "title": "按住說話"
+        }
+      },
+      "menu": {
+        "aboutChats": "關於聊天",
+        "chatSpeech": "聊天語音",
+        "chats": "聊天",
+        "chatsHelp": "聊天輔助說明",
+        "clearChat": "清除聊天",
+        "createAccount": "建立帳號⋯",
+        "decreaseFontSize": "縮小字級",
+        "increaseFontSize": "放大字級",
+        "keepTalking": "繼續對話",
+        "linkToTelegram": "連結到 Telegram",
+        "logOut": "登出",
+        "login": "登入⋯",
+        "newChat": "新增聊天⋯",
+        "resetFontSize": "重設字體大小",
+        "saveTranscript": "儲存聊天記錄⋯",
+        "showRooms": "顯示聊天室",
+        "sound": "聲音",
+        "systemNotifications": "系統通知",
+        "typingSynth": "輸入合成器"
+      },
+      "messages": {
+        "delete": "刪除",
+        "greeting": "👋 我是 ryo，什麼都可以問我！",
+        "ryo": "Ryo",
+        "you": "您"
+      },
+      "name": "聊天",
+      "notification": {
+        "openAction": "打開"
+      },
+      "sidebar": {
+        "chats": "聊天",
+        "new": "新的",
+        "online": "線上",
+        "private": "私人",
+        "rooms": "房間"
+      },
+      "status": {
+        "chatRequiresInternet": "聊天需要網路連線。",
+        "clear": "清除",
+        "createAccountToContinue": "建立帳號以繼續⋯",
+        "dailyLimitReached": "已達每日 AI 訊息限制。",
+        "describeThisImage": "描述此圖片",
+        "editing": "正在編輯⋯",
+        "leave": "離開",
+        "listening": "聽取",
+        "loginButton": "登入",
+        "loginRequired": "需要登入",
+        "loginToChat": "登入聊天",
+        "loginToContinue": "登入以繼續與 Ryo 聊天。",
+        "loginToRyOS": "登入 ryOS",
+        "newChat": "新增聊天",
+        "noTranscriptionText": "未收到轉錄文字。",
+        "nudgeSent": "👋 *輕推已送出*",
+        "pleaseLoginToDeleteRooms": "請登入以刪除聊天室。",
+        "pleaseLoginToSendMessages": "請登入以傳送訊息。",
+        "recording": "正在錄音⋯",
+        "retry": "再試一次",
+        "ryo": "@ryo",
+        "ryoWillRespond": "Ryo 將回覆此訊息。",
+        "scrollToBottom": "捲動至底部",
+        "sessionExpired": "工作階段已過期。請重新登入。",
+        "startNewConversation": "開始新的對話？",
+        "thinking": "正在思考",
+        "transcribing": "正在轉錄⋯",
+        "typeMessage": "輸入訊息⋯",
+        "typeOrPushSpace": "輸入或按空白鍵說話⋯",
+        "uploadingImage": "正在上傳影像…",
+        "usingModel": "使用 {{model}}"
+      },
+      "toasts": {
+        "aiError": "AI 錯誤",
+        "failedToGetResponse": "無法取得回應。",
+        "failedToSaveTranscript": "無法儲存逐字稿",
+        "loginButton": "登入",
+        "loginRequired": "需要登入",
+        "open": "打開",
+        "pleaseLoginToContinueChatting": "請登入以繼續對話。",
+        "rateLimitExceeded": "已達速率限制",
+        "rateLimitMessageLimitLogin": "您已達到訊息上限。請登入以繼續。",
+        "savedToFileName": "已儲存至 {{fileName}}",
+        "sessionExpiredLoginAgain": "您的工作階段已過期。請重新登入。",
+        "transcriptSaved": "逐字稿已儲存",
+        "transcriptUpdated": "逐字稿已更新",
+        "unknownError": "未知的錯誤"
+      },
+      "tokenStatus": {
+        "authenticated": "已登入",
+        "clickToRefresh": "點擊以手動重新整理權杖",
+        "daysAgo": "{{days}} 天前",
+        "daysOld": "{{days}} 天",
+        "hoursAgo": "{{hours}} 小時前",
+        "justNow": "剛剛",
+        "last": "最後",
+        "minutesAgo": "{{minutes}} 分鐘前",
+        "refresh": "重新整理",
+        "refreshed": "已重新整理",
+        "refreshing": "正在重新整理⋯",
+        "tokenRefreshed": "權杖已重新整理"
+      },
+      "toolCalls": {
+        "addedAndStartedPlaying": "已新增並開始播放新歌曲",
+        "addingSong": "新增歌曲⋯",
+        "appNotRunning": "{{appName}} 未在執行",
+        "applet": "小程式",
+        "calendar": {
+          "addedEvent": "已新增事件「{{title}}」",
+          "addedTodo": "已新增待辦事項「{{title}}」",
+          "addingEvent": "正在新增事件「{{title}}」⋯",
+          "addingTodo": "正在新增待辦事項「{{title}}」⋯",
+          "createEventMissingFields": "建立事件需要「title」和「date」。",
+          "createTodoMissingTitle": "建立待辦事項需要「title」。",
+          "createdEvent": "已於 {{date}} 建立事件「{{title}}」。",
+          "createdTodo": "已建立待辦事項「{{title}}」。",
+          "createdTodoDue": "已建立待辦事項「{{title}}」，截止日期為 {{date}}。",
+          "deleteEventMissingId": "刪除事件需要「id」。",
+          "deleteTodoMissingId": "刪除待辦事項需要「id」。",
+          "deletedEvent": "已刪除事件「{{title}}」",
+          "deletedEventMsg": "已刪除事件「{{title}}」。",
+          "deletedTodo": "已刪除待辦事項「{{title}}」",
+          "deletedTodoMsg": "已刪除待辦事項「{{title}}」。",
+          "deletingEvent": "正在刪除事件⋯",
+          "deletingTodo": "正在刪除待辦事項⋯",
+          "eventNotFound": "未找到 ID 為「{{id}}」的事件。",
+          "foundEvents": "找到 {{count}} 個事件",
+          "foundEventsForDate": "已找到 {{count}} 個於 {{date}} 的事件。",
+          "foundEventsForDatePlural": "已找到 {{count}} 個於 {{date}} 的事件。",
+          "foundEventsPlural": "已找到 {{count}} 個事件",
+          "foundEventsTotal": "總計找到 {{count}} 個事件。",
+          "foundEventsTotalPlural": "總計找到 {{count}} 個事件。",
+          "foundTodos": "找到 {{count}} 個待辦事項",
+          "foundTodosMsg": "已找到 {{count}} 個待辦事項。",
+          "foundTodosMsgPlural": "已找到 {{count}} 個待辦事項。",
+          "foundTodosPlural": "已找到 {{count}} 個待辦事項",
+          "listingEvents": "正在列出事件⋯",
+          "listingTodos": "正在列出待辦事項⋯",
+          "markedTodoCompleted": "已將待辦事項「{{title}}」標記為已完成。",
+          "markedTodoPending": "已將待辦事項「{{title}}」標記為待處理。",
+          "todoNotFound": "找不到 ID 為「{{id}}」的待辦事項。",
+          "toggleTodoMissingId": "切換待辦事項的狀態需要「id」。",
+          "toggledTodoCompleted": "已完成「{{title}}」",
+          "toggledTodoPending": "已將「{{title}}」標示為未完成",
+          "togglingTodo": "正在更新待辦事項⋯",
+          "unknownAction": "未知的動作：{{action}}",
+          "updateEventMissingId": "更新事件需要「id」。",
+          "updatedEvent": "已更新事件「{{title}}」",
+          "updatedEventMsg": "已更新事件「{{title}}」。",
+          "updatingEvent": "正在更新事件⋯"
+        },
+        "calling": "呼叫 {{toolName}}⋯",
+        "changingSettings": "正在變更設定⋯",
+        "closed": "已關閉 {{appName}}",
+        "closing": "關閉 {{appName}}⋯",
+        "contacts": {
+          "created": "已建立 {{name}}",
+          "createdContact": "已建立 {{name}}",
+          "creating": "正在建立聯絡人⋯",
+          "deleted": "已刪除 {{name}}",
+          "deleting": "正在刪除聯絡人⋯",
+          "found": "找到 {{count}} 位聯絡人",
+          "foundMany": "找到 {{count}} 位聯絡人",
+          "foundOne": "找到 1 位聯絡人",
+          "listing": "正在列出聯絡人⋯",
+          "loaded": "已載入 {{name}}",
+          "loadedContact": "已載入 {{name}}",
+          "loading": "正在載入聯絡人⋯",
+          "missingData": "至少新增一個姓名、電子郵件、電話或 Telegram 欄位",
+          "missingId": "缺少聯絡人 ID",
+          "noContacts": "未找到任何聯絡人",
+          "noUpdates": "未提供聯絡人更新資訊",
+          "notFound": "找不到聯絡人：{{id}}",
+          "updated": "已更新 {{name}}",
+          "updatedContact": "已更新 {{name}}",
+          "updating": "正在更新聯絡人⋯"
+        },
+        "contentWritten": "內容已寫入",
+        "controllingPlayback": "控制播放⋯",
+        "createdDocument": "已建立文件：{{path}}",
+        "cursorCloudAgent": {
+          "finished": "已完成",
+          "followupAriaLabel": "給 Cursor 代理程式的後續訊息",
+          "followupBusy": "代理程式仍在執行中⋯",
+          "followupPlaceholder": "回覆代理程式⋯",
+          "followupSend": "傳送後續訊息",
+          "followupSending": "正在傳送後續訊息⋯",
+          "noEventsYet": "正在等待串流事件⋯",
+          "openPr": "開啟 PR",
+          "panelTitle": "Cursor 存放庫代理程式",
+          "running": "執行中",
+          "starting": "正在啟動 Cursor Cloud 代理程式⋯",
+          "stream": {
+            "args": "引數",
+            "emptyAssistant": "(無訊息內容)",
+            "result": "結果",
+            "runEnded": "執行已完成 · {{status}}",
+            "runEndedError": "執行時發生錯誤並結束",
+            "showLess": "顯示較少",
+            "status": "狀態",
+            "system": "工作階段已開始",
+            "thinking": "正在思考⋯",
+            "toolCall": "工具 · {{name}}",
+            "toolUse": "工具請求 · {{name}}",
+            "truncated": "已截斷",
+            "userPrompt": "提示",
+            "workedFor": "工作了 {{duration}}"
+          }
+        },
+        "document": "文件",
+        "edited": "已編輯 {{fileName}}",
+        "editedApplet": "成功編輯小程式：{{path}}",
+        "editedDocument": "成功編輯文件：{{path}}",
+        "editingFile": "編輯檔案⋯",
+        "error": "錯誤：{{errorText}}",
+        "failedToEditFile": "無法編輯檔案",
+        "failedToListItems": "無法列出項目",
+        "failedToOpen": "無法開啟",
+        "failedToReadFile": "無法讀取檔案",
+        "failedToWriteFile": "無法寫入檔案",
+        "fetchingApplet": "取得小程式⋯",
+        "fileContent": "{{fileLabel}} 內容：{{fileName}} ({{charCount}} 個字元)",
+        "fileCreated": "檔案已建立",
+        "findingFiles": "尋找檔案⋯",
+        "foundApplets": "找到 {{count}} 個小程式",
+        "foundAppletsPlural": "找到 {{count}} 個小程式",
+        "foundApplications": "找到 {{count}} 個應用程式",
+        "foundApplicationsList": "找到 {{count}} 個應用程式",
+        "foundApplicationsListPlural": "找到 {{count}} 個應用程式",
+        "foundApplicationsPlural": "找到 {{count}} 個應用程式",
+        "foundDocuments": "找到 {{count}} 個檔案",
+        "foundDocumentsPlural": "找到 {{count}} 個檔案",
+        "foundFileType": "找到 {{count}} 個 {{fileType}}",
+        "foundFileTypePlural": "找到 {{count}} 個 {{fileType}}",
+        "foundSharedApplets": "找到 {{count}} 個共享小程式",
+        "foundSharedAppletsPlural": "找到 {{count}} 個共享小程式",
+        "foundSongs": "找到 {{count}} 首歌曲",
+        "foundSongsInMusic": "在音樂庫中找到 {{count}} 首歌曲",
+        "foundSongsInMusicPlural": "在音樂庫中找到 {{count}} 首歌曲",
+        "foundSongsPlural": "找到 {{count}} 首歌曲",
+        "foundVideos": "找到 {{count}} 部影片",
+        "generating": "產生中⋯",
+        "infiniteMac": {
+          "capturedScreen": "已擷取螢幕",
+          "capturingScreen": "正在擷取螢幕⋯",
+          "clicked": "已在 ({{x}}, {{y}}) 點擊",
+          "clicking": "正在點擊⋯",
+          "doubleClicked": "已在 ({{x}}, {{y}}) 雙擊",
+          "doubleClicking": "正在雙擊⋯",
+          "gettingStatus": "正在取得狀態⋯",
+          "movedMouse": "已移動至 ({{x}}, {{y}})",
+          "movingMouse": "正在移動滑鼠⋯",
+          "paused": "已暫停",
+          "pausing": "正在暫停⋯",
+          "pressedKey": "已按下 {{key}}",
+          "pressingKey": "正在按下按鍵⋯",
+          "resumed": "已恢復",
+          "resuming": "正在恢復⋯",
+          "rightClicked": "已在 ({{x}}, {{y}}) 按右鍵",
+          "startedSystem": "{{system}} 已啟動",
+          "startingSystem": "{{system}} 正在啟動⋯",
+          "statusNotRunning": "無系統執行中",
+          "statusRunning": "{{system}} 執行中",
+          "systemLoading": "{{system}} 載入中⋯"
+        },
+        "invalidFilename": "無效的檔名：{{fileName}}。文件檔名必須以 .md 副檔名結尾 (例如：/Documents/my-notes.md)",
+        "invalidPath": "無效的路徑：{{path}}",
+        "invalidPathForEdit": "無效的編輯路徑：{{path}}。請使用 /Documents/* 或 /Applets/*",
+        "invalidPathForList": "無效的路徑：{{path}}。支援的路徑：/Applets、/Documents、/Applications、/Music、/Applets 商店",
+        "invalidPathForRead": "無效的讀取路徑：{{path}}。請使用 /Applets/*、/Documents/* 或 /Applets 商店/*",
+        "invalidPathForWrite": "無效的路徑：{{path}}。文件請使用 /Documents/filename.md。小程式請使用 generateHtml (新增) 或 edit (小幅修改)。",
+        "ipodAdded": "已將「{{title}}」新增至 iPod。請按 iPod 上的中央按鈕或播放按鈕開始播放",
+        "ipodAddedAndPlaying": "已將「{{title}}」新增至 iPod 並開始播放",
+        "ipodCannotAdd": "無法新增 {{id}}：影片無法使用或無效",
+        "ipodFailedToAdd": "無法將 {{id}} 新增至 iPod",
+        "ipodFailedToAddWithError": "無法將 {{id}} 新增：{{error}}",
+        "ipodPaused": "已暫停",
+        "ipodPausedTrack": "已暫停 {{trackDesc}}",
+        "ipodPlaying": "播放中",
+        "ipodPlayingTrack": "正在播放 {{trackDesc}}",
+        "ipodReady": "iPod 已準備就緒。請按 iPod 上的中央按鈕或播放按鈕開始播放",
+        "ipodSelected": "已選擇 {{trackDesc}}。請按 iPod 上的中央按鈕或播放按鈕開始播放",
+        "ipodSkippedTo": "跳到 {{trackDesc}}",
+        "ipodSkippedToNext": "跳到下一首",
+        "ipodSongNotFound": "在 iPod 資料庫中找不到歌曲",
+        "ipodTranslatedLyricsTo": "已將歌詞翻譯為 {{langName}}",
+        "ipodTurnedOffFullScreen": "已關閉全螢幕模式",
+        "ipodTurnedOffLyricsTranslation": "已關閉歌詞翻譯",
+        "ipodTurnedOffVideo": "已關閉影片",
+        "ipodTurnedOnFullScreen": "已開啟全螢幕模式",
+        "ipodTurnedOnVideo": "已開啟影片",
+        "ipodWentBackTo": "回到 {{trackDesc}}",
+        "ipodWentBackToPrevious": "回到上一首",
+        "karaokeAdded": "已將「{{title}}」加入資料庫。輕點播放以在卡拉OK中開始。",
+        "karaokeAddedAndPlaying": "已加入「{{title}}」並已在卡拉OK中開始播放。",
+        "karaokeCannotAdd": "無法加入 {{id}}：影片無法使用或無效。",
+        "karaokeFailedToAdd": "無法將 {{id}} 加入資料庫。",
+        "karaokeFailedToAddWithError": "無法加入 {{id}}：{{error}}",
+        "karaokeNoIdProvided": "未提供 YouTube ID 或 URL 以供 addAndPlay 使用",
+        "karaokePaused": "卡拉OK已暫停",
+        "karaokePausedTrack": "卡拉OK已暫停：{{trackDesc}}",
+        "karaokePlaying": "卡拉OK正在播放",
+        "karaokePlayingTrack": "卡拉OK正在播放：{{trackDesc}}",
+        "karaokeReady": "卡拉OK已就緒。輕觸播放即可開始。",
+        "karaokeSelected": "在卡拉OK中選取了{{trackDesc}}。輕觸播放即可開始。",
+        "karaokeSkippedTo": "已跳到{{trackDesc}}。",
+        "karaokeSkippedToNext": "已跳到下一首歌曲。",
+        "karaokeSongNotFound": "在資料庫中找不到所要求的歌曲。",
+        "karaokeWentBackTo": "已返回到{{trackDesc}}。",
+        "karaokeWentBackToPrevious": "已返回到上一首歌曲。",
+        "launched": "已啟動 {{appName}}",
+        "launchedApp": "已啟動 {{appName}}",
+        "launchedWithUrl": "已啟動 {{url}}",
+        "launchedWithUrlAndYear": "已在 {{year}} 啟動 {{url}}",
+        "launching": "啟動 {{appName}}⋯",
+        "launchingApp": "啟動應用程式⋯",
+        "listCursorCloudAgentRuns": {
+          "listed": "已列出最近的 {{count}} 次執行。",
+          "loading": "正在列出 Cursor Cloud 代理執行⋯",
+          "openDashboard": "在 Cursor 中打開代理",
+          "truncatedHint": "（列表可能已截斷）"
+        },
+        "listedItems": "已列出項目",
+        "listingApplications": "列出應用程式⋯",
+        "listingSharedApplets": "列出共享小程式⋯",
+        "loadingMusicLibrary": "載入資料庫⋯",
+        "location": {
+          "allow": "允許",
+          "denied": "已拒絕位置要求",
+          "dontAllow": "不允許",
+          "failed": "無法取得你的位置",
+          "gettingLocation": "正在取得你的位置⋯",
+          "permissionBody": "Ryo 想使用您的精確位置來回應此要求。",
+          "permissionReason": "Ryo 想取得您的精確位置以{{reason}}。",
+          "permissionTitle": "要使用您的精確位置嗎？",
+          "requesting": "正在要求位置⋯",
+          "shared": "已分享位置：{{city}}",
+          "sharedNoCity": "已分享你的位置"
+        },
+        "maps": {
+          "foundMany": "找到 {{count}} 個「{{query}}」的地點。",
+          "foundOne": "找到 1 個「{{query}}」的地點。",
+          "noResults": "找不到「{{query}}」的地點。",
+          "openInAppleMaps": "在「Apple 地圖」中打開",
+          "openInMaps": "在「地圖」中打開 {{name}}",
+          "searching": "正在「地圖」中搜尋「{{query}}」⋯",
+          "searchingNoQuery": "正在搜尋「地圖」⋯"
+        },
+        "memory": {
+          "deleting": "正在刪除記憶⋯",
+          "recalling": "正在回想記憶⋯",
+          "saving": "正在儲存記憶⋯"
+        },
+        "missingEditParameters": "缺少必要參數：path、old_string 和 new_string",
+        "multipleMatchesFound": "找到多個符合項目",
+        "musicLibraryEmpty": "資料庫是空的",
+        "noAppIdProvided": "未提供應用程式 ID",
+        "noContentProvided": "未提供內容",
+        "noFileTypeFound": "在 {{path}} 目錄中未找到 {{fileType}}",
+        "noItemsFound": "找不到項目",
+        "noPathProvided": "未提供路徑",
+        "noSharedAppletsAvailable": "沒有可用的共享小程式",
+        "noSharedAppletsMatched": "沒有共享小程式符合「{{query}}」",
+        "oldStringMultipleMatches": "old_string 匹配到 {{count}} 個位置。請提供更多上下文使其唯一。",
+        "oldStringNotFound": "在檔案中找不到 old_string。請使用讀取工具驗證目前內容。",
+        "opened": "已開啟",
+        "openedApplet": "已開啟 {{appletName}}",
+        "openedDocument": "已開啟檔案：{{fileName}}",
+        "openedFile": "已開啟 {{fileName}}",
+        "openingAppletPreview": "開啟小程式預覽⋯",
+        "openingFile": "開啟檔案⋯",
+        "pausedIpod": "iPod 已暫停",
+        "playing": "播放 {{title}}",
+        "playingByArtist": "播放 {{title}} - {{artist}}",
+        "playingIpod": "iPod 播放中",
+        "playingSong": "播放歌曲⋯",
+        "playingSongByArtist": "播放 {{artist}} 的歌曲",
+        "playingSongGeneric": "播放歌曲",
+        "playingSongWithId": "播放歌曲 ({{id}})",
+        "playingTrack": "播放 {{title}}",
+        "playingTrackByArtist": "播放 {{title}} - {{artist}}",
+        "preparingHtmlPreview": "準備 HTML 預覽⋯",
+        "read": "已讀取 {{fileName}}",
+        "readingFile": "讀取檔案⋯",
+        "runJs": {
+          "failed": "腳本失敗",
+          "failedWithError": "腳本失敗：{{error}}",
+          "hideCode": "隱藏程式碼",
+          "noOutput": "(無輸出)",
+          "ran": "腳本執行耗時 {{duration}}",
+          "running": "正在執行腳本…",
+          "save": "儲存",
+          "saved": "已儲存",
+          "showCode": "顯示程式碼",
+          "truncated": "(輸出已截斷)"
+        },
+        "running": "執行 {{toolName}}⋯",
+        "searchedWeb": "已搜尋網路",
+        "searchedWebFor": "已搜尋網路尋找 {{query}}",
+        "searchingSongs": "正在搜尋「{{query}}」⋯",
+        "searchingWeb": "正在搜尋網路⋯",
+        "settingsAccentChanged": "強調顏色已設定為 {{accent}}",
+        "settingsAccentNotSupported": "{{theme}} 主題不支援強調顏色",
+        "settingsCheckingForUpdates": "正在檢查更新項目⋯",
+        "settingsLanguageChanged": "語言已變更為{{language}}",
+        "settingsMasterVolumeSet": "音量設定為 {{volume}}%",
+        "settingsNoChanges": "沒有變更",
+        "settingsSpeechDisabled": "已停用語音朗讀",
+        "settingsSpeechEnabled": "已啟用語音朗讀",
+        "settingsSpeechRequiresLogin": "登入以啟用聊天語音",
+        "settingsThemeChanged": "主題已變更為{{theme}}",
+        "settingsUiSoundsDisabled": "使用者介面聲音已停用",
+        "settingsUiSoundsEnabled": "使用者介面聲音已啟用",
+        "settingsUpdated": "設定已更新",
+        "settingsWallpaperChanged": "背景圖片已更改為 {{name}}",
+        "settingsWallpaperConflict": "提供了衝突的背景圖片欄位 ({{fields}})；未更改任何設定。請僅使用使用者要求的設定重試，且 'wallpaper'、'wallpaperShuffle' 或 'wallpaperDynamic' 中最多僅能使用一個。",
+        "settingsWallpaperNotFound": "沒有符合「{{query}}」的背景圖片",
+        "settingsWallpaperShuffleChanged": "背景圖片已設定為隨機顯示{{category}}",
+        "settingsWallpaperSuggestions": "找不到名為「{{query}}」的背景圖片。最接近的項目：{{suggestions}}",
+        "skippedToNextTrack": "跳到下一首",
+        "skippedToPreviousTrack": "跳到上一首",
+        "skippingToNext": "跳到下一首⋯",
+        "skippingToPrevious": "跳到上一首⋯",
+        "stickies": {
+          "cleared": "已清除 {{count}} 張便條紙",
+          "createdWithColor": "已建立{{color}}便條紙",
+          "deleted": "已刪除便條紙",
+          "foundStickies": "找到 {{count}} 張便條紙",
+          "invalidAction": "無效的動作：{{action}}",
+          "managing": "管理便條紙⋯",
+          "missingId": "缺少便條紙 ID",
+          "noStickies": "沒有便條紙",
+          "noUpdates": "沒有提供更新內容",
+          "notFound": "找不到便條紙：{{id}}",
+          "nothingToClear": "沒有便條紙可清除",
+          "updated": "已更新便條紙"
+        },
+        "switchedTo": "已切換至 {{theme}}",
+        "switchingTheme": "切換主題⋯",
+        "textNotFound": "找不到文字",
+        "toggledIpodPlayback": "切換 iPod 播放",
+        "toolAttempted": "已嘗試 {{toolName}}",
+        "toolExecutionFailed": "工具執行失敗",
+        "tv": {
+          "addedVideo": "已將 {{title}} 新增至 {{channel}}",
+          "addingVideo": "正在將影片新增至頻道⋯",
+          "cannotDeleteBuiltin": "無法刪除內建頻道",
+          "cannotEditBuiltin": "內建頻道為唯讀。請改為建立自訂頻道。",
+          "channelNotFound": "找不到頻道",
+          "createFailed": "規劃頻道失敗",
+          "createNoVideos": "找不到符合該頻道構想的影片。請嘗試更具體的提示詞。",
+          "createRateLimited": "目前頻道建立次數受限。請稍後再試。",
+          "createdChannel": "已建立頻道 {{label}}",
+          "createdChannelWithVideos": "已建立 {{label}}（{{count}} 部影片）",
+          "creating": "正在規劃頻道並尋找影片⋯",
+          "deletedChannel": "已刪除頻道 {{label}}",
+          "deleting": "正在刪除頻道⋯",
+          "foundChannels": "找到 {{count}} 個頻道",
+          "invalidAction": "無效的操作：{{action}}",
+          "invalidVideo": "無效的 YouTube ID 或網址：{{id}}",
+          "listing": "正在列出電視頻道⋯",
+          "missingChannelId": "需要 channelId",
+          "missingPrompt": "createChannel 需要「prompt」（單行主題/描述）。伺服器會自動展開 YouTube 搜尋 — 請勿預先挑選影片。",
+          "missingRemoveVideoId": "需要 removeVideoId",
+          "removedVideo": "已從 {{channel}} 移除 {{title}}",
+          "removingVideo": "正在從頻道移除影片⋯",
+          "tunedTo": "已調至 {{label}}",
+          "tuning": "正在切換頻道⋯",
+          "videoAlreadyInChannel": "{{title}} 已在 {{channel}} 中",
+          "videoNotInChannel": "頻道中找不到影片"
+        },
+        "unhandledTool": "未處理的工具：{{toolName}}",
+        "unknownError": "未知的錯誤",
+        "updatedDocument": "文件已更新：{{path}}",
+        "weather": {
+          "checking": "正在檢查天氣⋯",
+          "checkingIn": "正在檢查{{location}}的天氣⋯",
+          "result": "{{city}} · {{tempC}}°C / {{tempF}}°F · {{condition}}",
+          "resultNoCity": "{{tempC}}°C / {{tempF}}°F · {{condition}}"
+        },
+        "webFetch": {
+          "fetched": "閱讀 {{siteName}}",
+          "fetchedPage": "閱讀「{{title}}」",
+          "fetching": "正在閱讀 {{hostname}}⋯"
+        },
+        "writingContent": "寫入內容⋯"
+      }
+    },
+    "contacts": {
+      "badges": {
+        "mine": "我的名片"
+      },
+      "buttons": {
+        "done": "完成",
+        "edit": "編輯"
+      },
+      "cardLabels": {
+        "address": "地址",
+        "birthday": "生日",
+        "email": "電子郵件",
+        "home": "住家",
+        "nickname": "暱稱",
+        "note": "備註",
+        "phone": "電話",
+        "url": "網址"
+      },
+      "changePicture": "更改圖片",
+      "description": "通訊錄（支援 vCard 匯入）",
+      "emptySelection": "選取聯絡人或建立新聯絡人",
+      "emptyState": "尚無聯絡人。建立聯絡人或匯入 vCard 以開始使用。",
+      "fields": {
+        "addresses": "地址",
+        "birthday": "生日",
+        "displayName": "顯示名稱",
+        "emails": "電子郵件地址",
+        "firstName": "名字",
+        "jobTitle": "職稱",
+        "lastName": "姓氏",
+        "nickname": "暱稱",
+        "notes": "備註",
+        "organization": "機構",
+        "phones": "電話號碼",
+        "source": "來源",
+        "telegramUserId": "Telegram 使用者 ID",
+        "telegramUsername": "Telegram 使用者名稱",
+        "urls": "網站／連結"
+      },
+      "groupHeaders": {
+        "groups": "群組",
+        "names": "姓名"
+      },
+      "groups": {
+        "all": "全部",
+        "birthdays": "生日",
+        "imported": "已輸入",
+        "telegram": "Telegram",
+        "work": "工作"
+      },
+      "help": {
+        "browseContacts": {
+          "description": "使用左側邊欄來搜尋、篩選及切換已儲存的聯絡人",
+          "title": "瀏覽聯絡人"
+        },
+        "cloudSync": {
+          "description": "在「控制台」中啟用「聯絡人」同步，將您的通訊錄備份至雲端",
+          "title": "雲端同步"
+        },
+        "createContacts": {
+          "description": "「檔案 ▸ 新增聯絡人」可加入姓名、電話、電子郵件、地址及自由格式的備註",
+          "title": "建立聯絡人"
+        },
+        "importVCards": {
+          "description": "拖入 .vcf 檔案（或使用「檔案 ▸ 匯入」）以匯入聯絡人與相片",
+          "title": "匯入 vCard"
+        },
+        "smartGroups": {
+          "description": "自動分類功能可顯示生日、工作聯絡人及 Telegram 使用者",
+          "title": "智慧型群組"
+        },
+        "useWithRyo": {
+          "description": "Ryo 可以直接從「聊天」中列出、建立、更新及搜尋聯絡人",
+          "title": "詢問 Ryo"
+        }
+      },
+      "menu": {
+        "about": "關於聯絡人",
+        "deleteContact": "刪除聯絡人",
+        "help": "聯絡人輔助說明",
+        "importVCard": "匯入 vCard⋯",
+        "markAsMine": "標記為我的",
+        "newContact": "新增聯絡人",
+        "syncContacts": "同步聯絡人"
+      },
+      "messages": {
+        "deleted": "已刪除 {{name}}",
+        "importEmpty": "沒有聯絡人從該 vCard 檔案匯入。",
+        "importFailed": "無法匯入 vCard 檔案。",
+        "imported": "已匯入 {{imported}} 個新聯絡人並合併了 {{merged}} 個重複項目。"
+      },
+      "name": "聯絡人",
+      "noSummary": "尚未有電話號碼、電子郵件或備註",
+      "picturePicker": {
+        "cancel": "取消",
+        "chooseCustom": "選擇影像⋯",
+        "description": "為此聯絡人選擇圖片",
+        "remove": "移除",
+        "title": "選擇圖片"
+      },
+      "placeholders": {
+        "multiValue": "每行一個"
+      },
+      "searchPlaceholder": "搜尋聯絡人⋯",
+      "status": {
+        "cardsCount": "{{count}} 張卡片",
+        "cardsCount_one": "{{count}} 名片"
+      },
+      "title": "聯絡人",
+      "views": {
+        "cardOnly": "僅限卡片",
+        "toggleGroups": "切換群組"
+      }
+    },
+    "control-panels": {
+      "accent": "強調色彩",
+      "accentColors": {
+        "blue": "藍色",
+        "default": "系統",
+        "graphite": "石墨色",
+        "green": "綠色",
+        "orange": "橙色",
+        "pink": "粉紅色",
+        "purple": "紫色",
+        "red": "紅色",
+        "teal": "藍綠色",
+        "wallpaper": "背景圖片",
+        "yellow": "黃色"
+      },
+      "accentDescription": "為選取項目、選單和控制項目著色",
+      "accountJoined": "加入於 {{date}}",
+      "accountMenu": "帳號",
+      "accountsTabs": {
+        "accounts": "帳號",
+        "debug": "除錯",
+        "security": "安全性"
+      },
+      "aiModel": "AI 模型",
+      "aiModelDescription": "用於聊天、IE 等",
+      "alerts": {
+        "errorUploadingWallpaper": "上傳桌布時發生錯誤。請使用較小的檔案再試一次。",
+        "failedToBackupFileSystem": "無法備份檔案系統資料。只有設定會被備份。",
+        "failedToCreateBackup": "無法建立壓縮備份：{{error}}",
+        "failedToRestoreBackup": "無法回復備份：{{error}}",
+        "failedToRestoreFileSystem": "無法回復檔案系統資料。只有設定會被回復。",
+        "selectImageFile": "請選取圖片檔。不支援影片。",
+        "unknownError": "未知的錯誤"
+      },
+      "appearance": "外觀",
+      "assistant": {
+        "behavior": {
+          "greeting": "問候語",
+          "greetingDescription": "在打開輔助程式時打招呼",
+          "instructions": "指令",
+          "instructionsHint": "告訴輔助程式如何運作。這會套用到此帳號裝置上的新回覆。",
+          "instructionsPlaceholder": "例如：稱呼我為船長，並以烹飪比喻來解釋事情。",
+          "responseStyle": "回覆風格",
+          "responseStyleDescription": "助理應如何回覆",
+          "responseStyleOptions": {
+            "chatty": "詳盡",
+            "concise": "精簡",
+            "detailed": "詳細",
+            "friendly": "親切",
+            "normal": "標準",
+            "playful": "活潑",
+            "professional": "專業"
+          },
+          "speech": "語音",
+          "speechDescription": "朗讀回覆內容"
+        },
+        "description": "能聊天、還能幫你做事的角色",
+        "hint": "提示：在桌面上的角色按右鍵或長按即可開啟快速選單。",
+        "tabs": {
+          "behavior": "行為",
+          "character": "角色"
+        },
+        "title": "桌面小幫手"
+      },
+      "autoSync": {
+        "books": "書籍",
+        "calendar": "行事曆",
+        "checking": "正在檢查雲端更新⋯",
+        "contacts": "聯絡人",
+        "daysAgo": "{{count}}天前",
+        "description": "在重要更新後，自動將選取的資料與設定同步到雲端",
+        "error": "同步問題：{{error}}",
+        "fetching": "正在擷取",
+        "files": "檔案",
+        "hoursAgo": "{{count}}小時前",
+        "justNow": "剛剛",
+        "lastChecked": "上次檢查{{date}}",
+        "lastFetched": "已於{{date}}擷取",
+        "lastSynced": "上次同步{{date}}",
+        "lastUploaded": "已於{{date}}上傳",
+        "maps": "地圖",
+        "minutesAgo": "{{count}}分鐘前",
+        "neverFetched": "從未擷取",
+        "neverSynced": "尚未同步",
+        "neverUploaded": "從未上傳",
+        "openSettings": "同步設定⋯",
+        "settings": "設定",
+        "songs": "歌曲",
+        "stickies": "便條紙",
+        "stuff": "Stuff",
+        "title": "雲端同步",
+        "tvChannels": "電視頻道",
+        "uploading": "正在上傳",
+        "videos": "影片",
+        "waiting": "正在等待下一個可同步的變更"
+      },
+      "backup": "備份",
+      "backupRestoreDescription": "備份或還原所有應用程式設定和檔案",
+      "bootScreen": "開機畫面",
+      "bootScreenDescription": "測試開機畫面動畫",
+      "browserTtsVoice": "TTS 語音",
+      "browserTtsVoiceAutomatic": "自動",
+      "browserTtsVoiceDescription": "用於「書籍」朗讀和「計算機」的系統語音",
+      "changePassword": "更改密碼",
+      "changePasswordButton": "更改",
+      "chatSynth": "聊天合成器",
+      "chatSynthDescription": "聊天打字音效的合成器預設",
+      "chatSynthVolume": "聊天合成器音量",
+      "checkForUpdates": "檢查更新",
+      "cloudSync": {
+        "accountDescription": "在裝置間同步設定",
+        "confirmForceDownload": "從雲端下載？",
+        "confirmForceDownloadDesc": "每個已啟用的自動同步項目的裝置資料將被雲端資料覆蓋。",
+        "confirmForceUpload": "上傳至雲端？",
+        "confirmForceUploadDesc": "每個已啟用的自動同步項目的雲端資料將被此裝置的目前資料覆蓋。",
+        "forceDownload": "下載",
+        "forceDownloadFailed": "從雲端下載失敗",
+        "forceDownloadNoData": "未找到已啟用項目的雲端資料",
+        "forceDownloadSuccess": "從雲端下載已完成",
+        "forceDownloading": "下載中⋯",
+        "forceSyncDescription": "強制上傳或下載已啟用的自動同步項目。",
+        "forceSyncNoDomains": "請先啟用至少一個自動同步項目",
+        "forceUpload": "上傳",
+        "forceUploadFailed": "上傳至雲端失敗",
+        "forceUploadSuccess": "上傳至雲端已完成",
+        "forceUploading": "上傳中⋯",
+        "loginRequired": "請先登入以使用雲端同步"
+      },
+      "color": "顏色",
+      "connectionStatus": {
+        "connected": "已連線",
+        "connecting": "連線中⋯",
+        "disconnected": "已中斷連線"
+      },
+      "crashApp": "App 崩潰",
+      "crashDesktop": "桌面崩潰",
+      "crt": "CRT",
+      "currentTime": "目前時間",
+      "custom": "自訂",
+      "darkMode": "深色模式",
+      "darkModeDark": "深色",
+      "darkModeDescription": "跟隨系統，或強制使用深色版本",
+      "darkModeLight": "淺色",
+      "darkModeSystem": "系統",
+      "dateTimeDescription": "日期與時間由您的裝置設定。ryOS 會將您的時區偏好設定用於時鐘、排程及 AI 內容脈絡。",
+      "debugMode": "除錯模式",
+      "debugModeDescription": "啟用偵錯設定",
+      "default": "預設",
+      "deleteAccount": {
+        "cancel": "取消",
+        "confirmLabel": "輸入您的使用者名稱以確認",
+        "confirmMismatch": "使用者名稱不符",
+        "confirmPlaceholder": "{{username}}",
+        "deleting": "正在刪除⋯",
+        "description": "這將永久刪除您的帳號、密碼、備援電子郵件、連結的 Telegram 以及同步數據。此操作無法復原。",
+        "genericError": "無法刪除帳號。請再試一次。",
+        "openButton": "刪除帳號⋯",
+        "passwordLabel": "目前密碼",
+        "passwordRequired": "輸入您目前的密碼",
+        "submit": "刪除帳號",
+        "successDescription": "您的帳號和數據已移除。",
+        "successTitle": "帳號已刪除",
+        "title": "刪除帳號"
+      },
+      "deleteAccountMenu": "刪除帳號⋯",
+      "deleteAccountRowDescription": "永久移除您的帳號及同步資料",
+      "description": "系統設定",
+      "desktopAndScreenSaver": "桌面與螢幕保護程式",
+      "desktopTab": "桌面",
+      "displayMode": "顯示模式",
+      "displayModeDescription": "在桌面桌布上套用色彩濾鏡",
+      "downloadMacApp": "下載 Mac 應用程式",
+      "dream": "夢境",
+      "dynamicWallpapers": {
+        "dayNight": "日與夜",
+        "lyrics": "歌詞",
+        "nowPlaying": "播放中",
+        "shuffle": "隨機播放",
+        "weather": "天氣"
+      },
+      "elevenlabs": "ElevenLabs",
+      "elevenlabsVoiceId": "ElevenLabs 語音 ID",
+      "email": {
+        "add": "加入",
+        "checking": "正在檢查電子郵件⋯",
+        "description": "新增用於重設密碼的電子郵件",
+        "link": "連結",
+        "linkForRecovery": "連結電子郵件以供帳號救援",
+        "loggedOutDescription": "登入以管理電子郵件",
+        "manage": "管理",
+        "notAvailable": "此伺服器不支援電子郵件復原",
+        "title": "電子郵件",
+        "unverifiedAs": "{{email}} · 未驗證",
+        "verifiedAs": "{{email}} · 已驗證",
+        "verify": "驗證⋯"
+      },
+      "errorBoundaries": "錯誤邊界",
+      "errorBoundariesDescription": "觸發 App 或桌面崩潰的備用方案以供測試。",
+      "formatFileSystem": "格式化檔案系統",
+      "formatFileSystemDescription": "這將清除所有檔案（範例檔案除外）、圖片和自訂桌布。格式化後 ryOS 將重新啟動。",
+      "formatSamples": {
+        "dates": "日期：",
+        "numbers": "數字：",
+        "times": "時間："
+      },
+      "help": {
+        "aiModel": {
+          "description": "選擇驅動「聊天」與「終端機 Ryo 助手」的 AI 模型",
+          "title": "AI 模型"
+        },
+        "appearance": {
+          "description": "選擇桌布、圖樣或即時著色器效果來個人化您的桌面",
+          "title": "外觀"
+        },
+        "backupRestore": {
+          "description": "匯出所有內容、從備份還原，或格式化虛擬磁碟",
+          "title": "備份與重設"
+        },
+        "shaderEffects": {
+          "description": "開啟 CRT、銀河或極光疊加效果，營造經典的 CRT 氛圍",
+          "title": "著色器效果"
+        },
+        "sounds": {
+          "description": "切換使用者介面點擊聲、打字合成器以及終端機/IE 音效",
+          "title": "聲音"
+        },
+        "sync": {
+          "description": "設定聯絡人、行事曆等項目的自動同步與手動雲端備份",
+          "title": "雲端同步"
+        }
+      },
+      "highContrast": "高對比",
+      "internationalHelp": "拖移語言來設定在應用程式選單、對話框和文字處理中使用的偏好順序",
+      "internationalTabs": {
+        "dateTime": "日期與時間",
+        "language": "語言"
+      },
+      "invert": "反相",
+      "iosVolumeHint": "在 iOS 上，使用硬體按鈕控制媒體音量",
+      "ipod": "iPod",
+      "ipodVolume": "iPod 音量",
+      "logIn": "登入",
+      "logOut": "登出",
+      "logOutAll": "全部登出⋯",
+      "logOutButton": "登出⋯",
+      "logOutOfAllDevices": "登出所有裝置",
+      "logOutOfAllDevicesRowDescription": "在所有裝置上登出您的 ryOS 帳號",
+      "logOutRowDescription": "在此裝置登出您的 ryOS 帳號",
+      "loggedInToRyOS": "已登入 ryOS",
+      "loggingOut": "正在登出⋯",
+      "login": "登入",
+      "loginToSendMessages": "登入以傳送訊息及更多功能",
+      "logoutAll": {
+        "authErrorDescription": "未認證",
+        "authErrorTitle": "身份驗證錯誤",
+        "failedDescription": "無法從所有裝置登出",
+        "failedTitle": "登出失敗",
+        "networkErrorDescription": "無法連線至伺服器",
+        "networkErrorTitle": "網路錯誤",
+        "successDescription": "已從所有裝置登出",
+        "successTitle": "已登出"
+      },
+      "manage": "管理",
+      "master": "主控",
+      "masterVolume": "主音量",
+      "menu": {
+        "aboutControlPanels": "關於控制台",
+        "aboutControlPanelsForMacosX": "關於系統偏好設定",
+        "app": "App",
+        "controlPanelsHelp": "控制台輔助說明",
+        "controlPanelsHelpForMacosX": "系統偏好設定輔助說明"
+      },
+      "min": "分鐘",
+      "minute": "分鐘",
+      "minutes": "分鐘",
+      "mono": "黑白",
+      "name": "控制台",
+      "nameForMacosX": "系統偏好設定",
+      "noMatchingPreferences": "沒有相符的偏好設定",
+      "noWallpapers": "沒有背景圖片",
+      "openai": "OpenAI",
+      "openaiVoice": "OpenAI 語音",
+      "panes": {
+        "accounts": "帳號",
+        "appearance": "外觀",
+        "assistant": "小幫手",
+        "desktopScreenSaver": "桌面與螢幕保護程式",
+        "displays": "顯示器",
+        "dotMac": "雲端同步",
+        "international": "語言與地區",
+        "security": "安全性",
+        "sharing": "備份與還原",
+        "softwareUpdate": "軟體更新",
+        "sound": "聲音"
+      },
+      "password": "密碼",
+      "passwordDescription": "使用密碼保護您的 ryOS 帳號",
+      "patterns": "花紋",
+      "preview": "預覽",
+      "previewActive": "按一下任何位置即可離開",
+      "privacyPolicy": "隱私權政策",
+      "recoveryEmail": {
+        "close": "關閉",
+        "codeLabel": "驗證碼",
+        "codeRequired": "輸入驗證碼",
+        "codeSentDescription": "請檢查您的收件匣以取得驗證碼。",
+        "codeSentTitle": "驗證碼已傳送",
+        "currentLabel": "目前的備援電子郵件",
+        "description": "新增電子郵件，以便在忘記密碼時重設。",
+        "emailLabel": "電子郵件地址",
+        "genericError": "發生錯誤。請再試一次。",
+        "invalidEmail": "請輸入有效的電子郵件地址",
+        "notConfigured": "此伺服器不支援電子郵件復原。您仍可透過已連結的 Telegram 帳號進行復原。",
+        "remove": "移除",
+        "removedToast": "已移除復原電子郵件",
+        "removing": "正在移除⋯",
+        "save": "傳送驗證",
+        "saving": "傳送中⋯",
+        "title": "復原電子郵件",
+        "unverified": "未驗證",
+        "verified": "已驗證",
+        "verifiedToast": "復原電子郵件已驗證",
+        "verify": "驗證",
+        "verifying": "正在驗證⋯"
+      },
+      "recoveryEmailDescription": "新增電子郵件以復原密碼",
+      "recoveryEmailMenu": "復原電子郵件⋯",
+      "recoveryEmailTitle": "復原電子郵件",
+      "resetAllSettings": "重設所有設定",
+      "resetAllSettingsDescription": "這將清除所有已儲存的設定並還原為預設值",
+      "restore": "回復",
+      "ryOSAccount": "ryOS 帳號",
+      "screenSaver": "螢幕保護程式",
+      "screenSaverDescription": "在閒置一段時間後啟用",
+      "screenSaverExitHint": "點擊或按下任何鍵即可退出",
+      "screenSaverOptions": {
+        "bouncingLogo": {
+          "description": "DVD 式彈跳",
+          "name": "彈跳標誌"
+        },
+        "flyingToasters": {
+          "description": "After Dark 經典",
+          "name": "飛行烤麵包機"
+        },
+        "matrix": {
+          "description": "數位雨滴效果",
+          "name": "矩陣"
+        },
+        "maze": {
+          "description": "第一人稱迷宮漫步",
+          "name": "3D 迷宮"
+        },
+        "pipes": {
+          "description": "Windows 3D 水管",
+          "name": "3D 水管"
+        },
+        "starfield": {
+          "description": "經典星際穿梭效果",
+          "name": "星空"
+        }
+      },
+      "screenSaverTab": "螢幕保護程式",
+      "screenSaverType": "類型",
+      "sections": {
+        "hardwareSystem": "硬體與系統",
+        "internetNetwork": "網路與連線",
+        "personal": "個人"
+      },
+      "select": "選取",
+      "selectACategory": "選取類別",
+      "selectAPreset": "選取預設值",
+      "selectScreenSaver": "選取螢幕保護程式",
+      "sepia": "深褐色",
+      "setPassword": "設定密碼⋯",
+      "setPasswordDialog": {
+        "description": "設定密碼以啟用帳號復原。如果您失去存取權，可以使用此密碼來取得新的權杖。",
+        "submitLabel": "設定密碼",
+        "title": "設定密碼"
+      },
+      "setup": "設定",
+      "shaderEffect": "著色器效果",
+      "shaderEffectDescription": "效能密集型背景效果",
+      "sharingDescription": "使用雲端儲存空間備份並分享您的 ryOS 資料",
+      "show": "顯示",
+      "showBootScreen": "顯示啟動畫面",
+      "showResizers": "顯示調整大小控點",
+      "showResizersDescription": "醒目提示視窗調整大小控點",
+      "signUp": "註冊",
+      "softwareUpdateDescription": "檢查是否有較新版本的 ryOS 可供使用",
+      "sound": "音效",
+      "soundTabs": {
+        "effects": "效果",
+        "output": "輸出"
+      },
+      "speech": "語音",
+      "speechDescription": "朗讀助理訊息與選取文字",
+      "speechVolume": "語音音量",
+      "startAfter": "閒置後啟動",
+      "startupDiskDescription": "選擇用來啟動電腦的系統",
+      "startupDiskNote": "當「帳號」中啟用「除錯模式」時，即可預覽啟動畫面。",
+      "sync": "同步",
+      "synth": "合成器",
+      "system": "系統",
+      "systemFont": "系統字型",
+      "systemFontDescription": "覆寫 OS UI 字型堆疊",
+      "systemFontThemeDefault": "主題",
+      "telegram": {
+        "checking": "正在檢查 Telegram 連結⋯",
+        "codeCopied": "Telegram 連結代碼已複製",
+        "codeValue": "代碼：{{code}}",
+        "connect": "連結 Telegram",
+        "copyCode": "拷貝認證碼",
+        "copyFailed": "無法複製 Telegram 連結代碼",
+        "deepLinkUnavailable": "Telegram 深度連結無法使用",
+        "description": "在 Telegram 與 Ryo 聊天",
+        "disconnect": "中斷連線",
+        "disconnectFailed": "無法中斷 Telegram 連結",
+        "disconnected": "Telegram 已中斷連結",
+        "disconnecting": "正在中斷連線⋯",
+        "expiresInMinutes": "約 {{minutes}} 分鐘後到期",
+        "heartbeatInstructionsDescription": "自訂 Ryo 在主動傳送 Telegram 詢問時應優先考慮的事項。",
+        "heartbeatInstructionsFailed": "儲存 Telegram 心跳指令失敗",
+        "heartbeatInstructionsLabel": "心跳指令",
+        "heartbeatInstructionsPlaceholder": "範例：專注於未完成的 ryOS 工作，避免籠統的提醒，並保持早晨簡報以行動為導向。",
+        "heartbeatInstructionsSaved": "已儲存 Telegram 心跳指令",
+        "instructionsCodeOnly": "複製下方代碼並在 Telegram 中使用以完成連結。",
+        "instructionsDeepLink": "使用下方按鈕開啟 Telegram，然後按下「開始」以完成連結。",
+        "link": "連結",
+        "linkFailed": "無法建立 Telegram 連結",
+        "linkPending": "連結已準備就緒 - 在 Telegram 中完成它",
+        "linkReady": "Telegram 連結已準備就緒",
+        "linkedAs": "已連結為 {{account}}",
+        "loggedOutDescription": "登入以連結 Telegram 至您的 ryOS 帳號",
+        "loginRequired": "請登入以連結 Telegram",
+        "manage": "管理",
+        "openTelegram": "開啟 Telegram",
+        "preparing": "準備中⋯",
+        "resetInstructions": "重置",
+        "saveInstructions": "儲存",
+        "savingInstructions": "儲存中⋯",
+        "title": "Telegram"
+      },
+      "terminalIeAmbientSynth": "合成器",
+      "terminalIeAmbientSynthDescription": "終端機與 IE 的音效與合成器",
+      "termsOfService": "服務條款",
+      "theme": "主題",
+      "themeDescription": "變更視窗、選單和控制項的外觀",
+      "themeNames": {
+        "aqua": "Aqua",
+        "aquaGlass": "Aqua Glass",
+        "volos": "Volos",
+        "system7": "System 7",
+        "win98": "98",
+        "xp": "XP"
+      },
+      "themePreview": "主題預覽",
+      "themePreviewButton": "好",
+      "themePreviewFirstItem": "第一個項目",
+      "themePreviewMenus": {
+        "edit": "編輯",
+        "file": "檔案",
+        "finder": "Finder"
+      },
+      "themePreviewOtherItem": "其他項目",
+      "themePreviewSelectedItem": "已選取項目",
+      "themePreviewTabs": {
+        "general": "一般",
+        "sharing": "共享"
+      },
+      "themePreviewWindowTitle": "文件",
+      "timeZone": "時區",
+      "timeZoneDescription": "用於時鐘、排程、格式設定及 AI 內容脈絡",
+      "timezoneAutomatic": "自動",
+      "timezoneAutomaticCity": "自動 ({{city}})",
+      "timezoneNoResults": "沒有相符的時區",
+      "timezoneRegions": {
+        "africa": "非洲",
+        "america": "美洲",
+        "antarctica": "南極洲",
+        "arctic": "北極",
+        "asia": "亞洲",
+        "atlantic": "大西洋",
+        "australia": "澳洲",
+        "europe": "歐洲",
+        "indian": "印度洋",
+        "other": "其他",
+        "pacific": "太平洋"
+      },
+      "timezoneSearchPlaceholder": "搜尋時區⋯",
+      "toolbar": {
+        "back": "返回",
+        "forward": "前進",
+        "lock": "鎖定",
+        "search": "搜尋",
+        "showAll": "顯示全部"
+      },
+      "ttsModel": "TTS 模型",
+      "ttsModelDescription": "僅用於 Ryo 聊天。其他應用使用系統語音。",
+      "ttsVoice": "TTS 語音",
+      "ttsVoices": {
+        "alloy": "合金",
+        "echo": "回聲",
+        "fable": "寓言",
+        "nova": "新星",
+        "onyx": "縞瑪瑙",
+        "ryo": "Ryo",
+        "ryoV2": "Ryo v2",
+        "ryoV3": "Ryo v3",
+        "ryoInstantV4": "Ryo Instant v4",
+        "ryoPvc": "Ryo PVC",
+        "shimmer": "微光"
+      },
+      "ui": "使用者介面",
+      "uiSounds": "UI 音效",
+      "uiSoundsDescription": "視窗和選單的點擊聲與回饋",
+      "uiVolume": "使用者介面音量",
+      "verify": "驗證",
+      "verifyAccount": "驗證帳號",
+      "verifyAccountDescription": "確認您的身分以存取受保護的功能",
+      "viewChangelog": "更新日誌",
+      "wallpaperCategories": {
+        "aqua": "水藍",
+        "black_and_white": "黑白",
+        "convergency": "匯聚",
+        "dynamic": "動態",
+        "foliage": "葉子",
+        "graphics": "圖形",
+        "landscapes": "風景",
+        "nature": "自然",
+        "nostalgia": "懷舊",
+        "objects": "物件",
+        "plants": "植物",
+        "structures": "建築"
+      }
+    },
+    "dashboard": {
+      "calendar": {
+        "colors": {
+          "blue": "藍色",
+          "green": "綠色",
+          "orange": "橘色",
+          "purple": "紫色",
+          "red": "紅色"
+        },
+        "showColors": "顯示顏色"
+      },
+      "cities": {
+        "berlin": "柏林",
+        "hongKong": "香港",
+        "local": "本地",
+        "london": "倫敦",
+        "newYork": "紐約",
+        "paris": "巴黎",
+        "sanFrancisco": "舊金山",
+        "shanghai": "上海",
+        "singapore": "新加坡",
+        "sydney": "雪梨",
+        "taipei": "台北",
+        "tokyo": "東京"
+      },
+      "currency": {
+        "about": "參考匯率來自 Frankfurter（ECB）或備援來源。僅供參考，非投資建議。",
+        "amountPlaceholder": "金額",
+        "asOfDate": "截至 {{date}}",
+        "cachedHint": "使用快取匯率（變更幣對以重新整理）",
+        "defaultPair": "預設幣別對",
+        "error": "無法載入匯率",
+        "from": "來源",
+        "loading": "載入匯率中⋯",
+        "staleRates": "使用快取匯率 · {{time}}",
+        "swap": "交換幣別",
+        "to": "目標",
+        "updated": "更新於 {{time}}"
+      },
+      "description": "小工具儀表板疊層",
+      "dictionary": {
+        "dataSources": "資料來源為維基詞典及其他開放詞典。不常見的詞彙結果可能有所不同。",
+        "error": "查詢失敗。",
+        "loading": "正在查詢⋯",
+        "noDefinition": "找不到定義。",
+        "noResults": "沒有結果。",
+        "placeholder": "輸入單字以查詢。",
+        "poweredBy": "定義由 Free Dictionary API (一個開源專案) 提供。",
+        "searchPlaceholder": "搜尋⋯",
+        "thesaurus": "同義詞典",
+        "title": "辭典"
+      },
+      "help": {
+        "closeDashboard": {
+          "description": "按一下背景或按下 F4/Esc 即可立即淡出 Dashboard",
+          "title": "快速關閉"
+        },
+        "layoutPersists": {
+          "description": "您的小工具組合與位置在不同工作階段或更換主題後仍會保持不變",
+          "title": "保持佈局"
+        },
+        "moveWidgets": {
+          "description": "拖移任何小工具以重新定位；新小工具會自動放置以避免重疊",
+          "title": "拖移以排列"
+        },
+        "openDashboard": {
+          "description": "按下 F4（或按一下 Dashboard 圖示）即可在任何位置淡入小工具圖層",
+          "title": "開啟 Dashboard"
+        },
+        "weatherWidget": {
+          "description": "天氣小工具會在取得權限後抓取您所在位置的即時天氣狀況",
+          "title": "即時天氣"
+        },
+        "widgetLibrary": {
+          "description": "新增時鐘、天氣、行事曆、股市、迷你 iPod、便利貼、字典等",
+          "title": "小工具庫"
+        }
+      },
+      "ipod": {
+        "controlLabel": "控制項",
+        "iTunesNotOpen": "iTunes 未開啟",
+        "karaokeNotOpen": "Karaoke 尚未開啟",
+        "menu": "選單",
+        "modeIpod": "iPod",
+        "modeKaraoke": "卡拉OK",
+        "next": "下一首",
+        "noTrack": "無曲目",
+        "nowPlaying": "播放中",
+        "openIpod": "開啟 iPod App",
+        "openKaraoke": "開啟 Karaoke App",
+        "pause": "暫停",
+        "play": "播放",
+        "previous": "上一首",
+        "repeatAll": "重複全部",
+        "repeatOne": "重複一首",
+        "shuffle": "隨機播放"
+      },
+      "menu": {
+        "about": "關於儀表板",
+        "addWidget": "加入小工具",
+        "help": "儀表板輔助說明",
+        "resetWidgets": "重設為預設值"
+      },
+      "name": "儀表板",
+      "stickyNote": {
+        "colors": {
+          "blue": "藍色",
+          "green": "綠色",
+          "pink": "粉紅色",
+          "purple": "紫色",
+          "yellow": "黃色"
+        },
+        "noteColor": "備註顏色",
+        "placeholder": "輸入備註⋯"
+      },
+      "stocks": {
+        "allAdded": "已加入所有符號",
+        "currentSymbols": "目前符號",
+        "delayed": "最多延遲 20 分鐘",
+        "loading": "正在載入股票⋯",
+        "noResults": "找不到符號",
+        "resetDefaults": "恢復預設值",
+        "retry": "再試一次",
+        "searchSymbol": "搜尋符號⋯",
+        "searching": "搜尋中⋯",
+        "unavailable": "股票資料無法取得"
+      },
+      "title": "儀表板",
+      "translation": {
+        "defaultLanguages": "預設語言",
+        "error": "翻譯失敗",
+        "from": "從",
+        "inputPlaceholder": "輸入文字⋯",
+        "outputPlaceholder": "翻譯",
+        "poweredBy": "由 MyMemory 提供技術支援",
+        "save": "儲存",
+        "swap": "交換語言",
+        "to": "到",
+        "translateFrom": "從⋯翻譯",
+        "translating": "翻譯中⋯"
+      },
+      "weather": {
+        "changeCity": "更改城市",
+        "conditions": {
+          "clear": "晴朗",
+          "drizzle": "毛毛雨",
+          "fog": "霧",
+          "partlyCloudy": "局部多雲",
+          "rain": "下雨",
+          "snow": "雪",
+          "thunderstorm": "雷雨"
+        },
+        "enableLocation": "啟用定位以取得天氣",
+        "feelsLike": "體感溫度",
+        "high": "最高",
+        "humidity": "濕度",
+        "loading": "正在載入天氣⋯",
+        "locationDenied": "位置取用遭拒",
+        "low": "低:",
+        "noResults": "找不到城市",
+        "searchCity": "搜尋城市⋯",
+        "searching": "搜尋中⋯",
+        "selectCity": "選擇城市",
+        "unavailable": "天氣資訊無法取得",
+        "useMyLocation": "使用我的位置",
+        "wind": "風"
+      },
+      "widgets": {
+        "addWidget": "加入小工具⋯",
+        "aquarium": "水族館",
+        "calendar": "行事曆",
+        "clock": "時鐘",
+        "currencyConverter": "匯率換算",
+        "dictionary": "辭典",
+        "ipod": "iPod",
+        "removeWidget": "移除小工具",
+        "stickyNote": "便條紙",
+        "stocks": "股市",
+        "terrarium": "動植物培養槽",
+        "translation": "翻譯",
+        "weather": "天氣"
+      }
+    },
+    "finder": {
+      "airdrop": {
+        "accept": "接受",
+        "decline": "拒絕",
+        "fileNotFound": "找不到檔案",
+        "fileReceived": "已從 @{{sender}} 收到「{{fileName}}」",
+        "hint": "將檔案拖曳到使用者以分享，或對任一檔案按右鍵使用操作選單。",
+        "incomingFile": "@{{sender}} 想傳送「{{fileName}}」給您",
+        "loginRequired": "請先登入 Chats，才能使用 AirDrop 並與附近使用者分享檔案。",
+        "looking": "正在尋找附近的使用者⋯",
+        "noContent": "無法讀取檔案內容",
+        "noUsers": "附近沒有其他人。請對方開啟 AirDrop。",
+        "saveFailed": "無法儲存收到的檔案",
+        "title": "AirDrop"
+      },
+      "contextMenu": {
+        "addToDesktop": "加入桌面",
+        "date": "日期",
+        "duplicate": "複製",
+        "emptyTrash": "清空垃圾桶⋯",
+        "kind": "種類",
+        "moveToTrash": "丟到垃圾桶",
+        "name": "名稱",
+        "newFolder": "新增檔案夾⋯",
+        "noAirDropUsersAvailable": "附近沒有使用者",
+        "open": "打開",
+        "openAirDrop": "開啟 AirDrop",
+        "openWith": "打開方式",
+        "putBack": "還原",
+        "rename": "重新命名⋯",
+        "searchingForAirDropUsers": "正在尋找附近的使用者⋯",
+        "shareViaAirDrop": "透過 AirDrop 分享",
+        "size": "大小",
+        "sortBy": "排序方式"
+      },
+      "defaultNames": {
+        "copy": "拷貝",
+        "untitledFolder": "未命名檔案夾"
+      },
+      "description": "瀏覽和管理檔案",
+      "dialogs": {
+        "emptyTrash": {
+          "description": "您確定要清空垃圾桶嗎？此動作無法復原。",
+          "title": "清空垃圾桶"
+        },
+        "newFolder": {
+          "description": "輸入新檔案夾的名稱：",
+          "title": "新增檔案夾"
+        },
+        "renameItem": {
+          "description": "輸入「{{name}}」的新名稱",
+          "title": "重新命名項目"
+        }
+      },
+      "fileTypes": {
+        "application": "應用程式",
+        "bmpImage": "BMP 影像",
+        "book": "書籍",
+        "directory": "目錄",
+        "document": "文件",
+        "file": "檔案",
+        "folder": "檔案夾",
+        "gifImage": "GIF影像",
+        "htmlApplet": "HTML 小程式",
+        "internetShortcut": "網際網路捷徑",
+        "jpegImage": "JPEG影像",
+        "mp3Audio": "MP3 音訊",
+        "pdfDocument": "PDF文件",
+        "pngImage": "PNG影像",
+        "quicktimeMovie": "QuickTime影片",
+        "svgImage": "SVG影像",
+        "unknown": "未知",
+        "webpImage": "WebP 影像"
+      },
+      "folders": {
+        "applets": "小程式",
+        "applications": "應用程式",
+        "books": "書籍",
+        "desktop": "桌面",
+        "documents": "文件",
+        "downloads": "下載項目",
+        "images": "影像",
+        "music": "音樂",
+        "sites": "網站",
+        "system": "系統",
+        "trash": "垃圾桶",
+        "videos": "影片"
+      },
+      "help": {
+        "airdropSharing": {
+          "description": "右鍵點擊任何檔案即可立即透過 AirDrop 傳送給附近的 ryOS 使用者",
+          "title": "AirDrop 分享"
+        },
+        "browseNavigate": {
+          "description": "透過「返回」、「前進」、位址列與「前往」選單，跳轉至檔案系統中的任何位置",
+          "title": "瀏覽與導覽"
+        },
+        "dropToImport": {
+          "description": "將 .app、.gz 或 .html 檔案拖放到任何位置即可安裝至 Applets",
+          "title": "拖放匯入"
+        },
+        "fileManagement": {
+          "description": "透過建立資料夾、重新命名、拖移及製作複本來整理您的檔案",
+          "title": "檔案管理"
+        },
+        "quickAccess": {
+          "description": "側邊欄釘選可快速跳轉至「文件」、「應用程式」、「圖片」和「垃圾桶」",
+          "title": "快速存取"
+        },
+        "trashUndo": {
+          "description": "將檔案移至垃圾桶後，選擇「編輯 ▸ 還原」即可立即救回",
+          "title": "垃圾桶與還原"
+        }
+      },
+      "menu": {
+        "aboutFinder": "關於Finder",
+        "back": "返回",
+        "byDate": "依日期",
+        "byIcon": "依圖像",
+        "byKind": "依種類",
+        "byList": "依列表",
+        "byName": "依名稱",
+        "bySize": "依大小",
+        "bySmallIcon": "依小圖像",
+        "duplicate": "複製",
+        "emptyTrash": "清空垃圾桶⋯",
+        "finderHelp": "Finder 輔助說明",
+        "forward": "往前",
+        "goUp": "前往上層",
+        "import": "輸入檔案⋯",
+        "importFromDevice": "從裝置匯入⋯",
+        "moveToTrash": "丟到垃圾桶",
+        "newFinderWindow": "新增Finder視窗",
+        "newFolder": "新增檔案夾⋯",
+        "newWindow": "新增視窗",
+        "putBack": "還原",
+        "rename": "重新命名⋯",
+        "sidebar": "側邊欄"
+      },
+      "messages": {
+        "appletImported": "小程式已匯入！",
+        "appletImportedDesc": "{{name}} 已儲存至 /Applets{{iconText}}",
+        "appletImportedIconText": "附有 {{icon}} 圖示",
+        "folderExists": "名稱為「{{name}}」的項目已存在。",
+        "importFailed": "匯入失敗",
+        "importFailedAppletDesc": "無法匯入小程式檔案。",
+        "importFailedDesc": "無法匯入檔案。",
+        "invalidFileType": "無效的檔案類型",
+        "invalidFileTypeDesc": "只有 .app、.gz 和 .html 檔案可以匯入到 Applets",
+        "invalidFolderName": "無法使用該名稱。請嘗試使用其他名稱。",
+        "loading": "載入中⋯",
+        "reservedFolderName": "「{{name}}」是保留名稱。請選擇其他名稱。"
+      },
+      "name": "Finder",
+      "placeholders": {
+        "enterPath": "輸入路徑",
+        "search": "搜尋"
+      },
+      "statusBar": {
+        "available": "可用",
+        "item": "個項目",
+        "items": "個項目"
+      },
+      "tableHeaders": {
+        "modified": "修改日期",
+        "name": "名稱",
+        "size": "大小",
+        "type": "類型"
+      },
+      "window": {
+        "finder": "Finder",
+        "macintoshHd": "Macintosh HD"
+      },
+      "view": {
+        "list": "列表",
+        "map": "地圖"
+      }
+    },
+    "infinite-mac": {
+      "description": "經典 Mac OS 模擬器",
+      "help": {
+        "captureScreenshot": {
+          "description": "「顯示 ▸ 擷取螢幕截圖」可將目前畫面直接儲存為檔案",
+          "title": "擷取截圖"
+        },
+        "chatsCanDriveIt": {
+          "description": "在聊天室中要求 Ryo 暫停、恢復、縮放模擬器或擷取螢幕截圖",
+          "title": "透過聊天室控制"
+        },
+        "classicMacEmulator": {
+          "description": "在瀏覽器中啟動真實的 System 6、7、8 或 9，由 Infinite Mac 提供技術支援",
+          "title": "瀏覽器中的經典 Mac"
+        },
+        "displayScaling": {
+          "description": "「顯示 ▸ 縮放」可在 1x、1.5x 或 2x 之間切換，以適應任何螢幕",
+          "title": "顯示比例"
+        },
+        "pauseResume": {
+          "description": "「顯示 ▸ 暫停」可停止虛擬機器，避免在閒置時消耗 CPU",
+          "title": "暫停以節省電力"
+        },
+        "selectSystem": {
+          "description": "從網格中選擇任何經典 Mac OS 預設設定以啟動模擬器",
+          "title": "選擇系統"
+        }
+      },
+      "loadingEmulator": "正在載入模擬器⋯",
+      "loadingSystem": "正在載入 {{name}}⋯",
+      "menu": {
+        "aboutInfiniteMac": "關於 Infinite Mac",
+        "backToPresets": "返回系統",
+        "captureScreenshot": "擷取截圖",
+        "infiniteMacHelp": "Infinite Mac 說明",
+        "pause": "暫停",
+        "resume": "繼續",
+        "scaling": "縮放"
+      },
+      "name": "Infinite Mac",
+      "screenshotUnavailable": "無法擷取螢幕截圖。請使用瀏覽器的截圖工具 (Mac 上為 Cmd+Shift+4，Windows 上為 Win+Shift+S)。",
+      "selectSystem": "選擇經典 Mac 系統",
+      "systemsAvailable": "{{count}} 個系統可用",
+      "title": "Infinite Mac"
+    },
+    "internet-explorer": {
+      "addFavorite": "加入我的最愛",
+      "aiLanguage": "AI 語言",
+      "alienLanguage": "外星語言",
+      "anErrorOccurred": "發生錯誤",
+      "appName": "網際網路總管",
+      "areYouSureClearFavorites": "您確定要清除所有我的最愛嗎？",
+      "areYouSureClearHistory": "您確定要清除所有瀏覽記錄嗎？",
+      "areYouSureResetFavorites": "您確定要將我的最愛重設為預設值嗎？",
+      "aurora": "極光",
+      "australia": "澳洲",
+      "autodetected": "自動偵測",
+      "back": "返回",
+      "brazil": "巴西",
+      "canada": "加拿大",
+      "cannotAccessWebsite": "無法存取 {{url}}。該網站可能阻擋了存取，或需要驗證。",
+      "cannotFindServerOrDnsError": "找不到伺服器或 DNS 錯誤",
+      "checkWebAddressAndTryAgain": "請檢查您輸入的網址，然後再試一次。",
+      "china": "中國",
+      "chineseTraditional": "繁體中文",
+      "clearFavorites": "清除我的最愛",
+      "clearHistory": "清除瀏覽記錄",
+      "closeTimeMachine": "關閉時光機",
+      "description": "瀏覽網頁",
+      "digitalBeingLanguage": "數位生命語言",
+      "english": "英文",
+      "enterTitleForFavorite": "輸入此最愛的標題",
+      "enterUrl": "輸入URL",
+      "error": "錯誤",
+      "errorLoadingPreview": "載入預覽時發生錯誤。",
+      "failedToGenerateFuturisticWebsite": "無法產生未來風格網站。可能未選取 AI 模型。",
+      "favorite": "喜好項目",
+      "fetch": "擷取",
+      "fetchingContentForReconstruction": "正在擷取 {{hostname}} 的內容以進行重建⋯",
+      "fetchingFromYear": "正在擷取 {{year}} 年的 {{hostname}}⋯",
+      "folder": "檔案夾",
+      "france": "法國",
+      "french": "法文",
+      "from": "從",
+      "futureTimeline": {
+        "description": "編輯未來時間軸的設定",
+        "reset": "重置",
+        "selectYear": "選擇年份",
+        "title": "編輯未來時間軸"
+      },
+      "galaxy": "銀河",
+      "german": "德文",
+      "germany": "德國",
+      "goBackToPreviousPage": "返回上一頁。",
+      "goToNow": "前往現在",
+      "help": {
+        "browseWeb": {
+          "description": "輸入任何網址，並使用「返回」、「前進」、「重新整理」與「停止」進行導覽。",
+          "title": "瀏覽網頁"
+        },
+        "exploreTimeNodes": {
+          "description": "點擊網址列中的時鐘，在任何網站的快取快照之間跳轉。",
+          "title": "探索時間節點"
+        },
+        "historyReimagined": {
+          "description": "1996 年之前的頁面與未來年份由 AI 以串流 HTML 即時重建。",
+          "title": "AI 重塑歷史"
+        },
+        "saveFavorites": {
+          "description": "將特定年份的網站加入收藏，使其始終在該年代開啟。",
+          "title": "年份鎖定收藏"
+        },
+        "shareJourney": {
+          "description": "產生分享連結，重新開啟你正在查看的確切頁面與年份。",
+          "title": "分享你的旅程"
+        },
+        "travelThroughTime": {
+          "description": "選擇從 1000 年到遙遠未來的任何年份，查看網站過去或可能的樣貌 — 或是未來的樣子。",
+          "title": "穿越時空"
+        }
+      },
+      "history": "瀏覽記錄",
+      "host": "主機：{{hostname}}",
+      "in": "在",
+      "india": "印度",
+      "invalidShareLink": "無效的分享連結",
+      "japan": "日本",
+      "japanese": "日文",
+      "korean": "韓文",
+      "latin": "拉丁文",
+      "loading": "正在載入 {{hostname}}⋯",
+      "loadingEllipsis": "載入中⋯",
+      "loadingTitle": "Internet Explorer - 正在載入",
+      "loadingTitleWithSite": "{{site}} - 正在載入",
+      "menu": {
+        "aboutInternetExplorer": "關於 Internet Explorer",
+        "addToFavorites": "加入我的最愛⋯",
+        "aiLanguage": "AI 語言",
+        "alien": "外星人",
+        "australia": "澳洲",
+        "auto": "自動",
+        "back": "返回",
+        "brazil": "巴西",
+        "canada": "加拿大",
+        "china": "中國",
+        "chinese": "中文",
+        "clearFavorites": "清除我的最愛⋯",
+        "clearHistory": "清除瀏覽記錄⋯",
+        "debug": "除錯",
+        "digitalBeing": "數位生命",
+        "editFuture": "編輯未來⋯",
+        "english": "英文",
+        "favorites": "喜好項目",
+        "folder": "檔案夾",
+        "forceHeadless": "強制無介面算圖",
+        "forward": "前進",
+        "france": "法國",
+        "french": "法文",
+        "german": "德文",
+        "germany": "德國",
+        "goHome": "回首頁",
+        "goToUrl": "前往 URL",
+        "history": "瀏覽記錄",
+        "india": "印度",
+        "internetExplorerHelp": "Internet Explorer 輔助說明",
+        "italian": "義大利文",
+        "japan": "日本",
+        "japanese": "日文",
+        "korea": "韓國",
+        "korean": "韓文",
+        "language": "語言",
+        "latin": "拉丁文",
+        "location": "位置",
+        "now": "現在",
+        "openTimeMachine": "打開時光機",
+        "portugal": "葡萄牙",
+        "portuguese": "葡萄牙文",
+        "proxySessions": "Cookie / 工作階段透通",
+        "refresh": "重新整理",
+        "resetFavorites": "重設我的最愛⋯",
+        "russia": "俄羅斯",
+        "russian": "俄文",
+        "sanskrit": "梵文",
+        "sharePage": "分享頁面⋯",
+        "spain": "西班牙",
+        "spanish": "西班牙文",
+        "stop": "停止",
+        "unitedKingdom": "英國",
+        "unitedStates": "美國",
+        "verboseLogging": "詳細記錄",
+        "welsh": "威爾斯文",
+        "year": "年"
+      },
+      "name": "Internet Explorer",
+      "nebula": "星雲",
+      "newer": "較新",
+      "newerVersion": "較新版本",
+      "newest": "最新",
+      "now": "現在",
+      "off": "關閉",
+      "older": "較舊",
+      "olderVersion": "較舊的版本",
+      "oldest": "最舊",
+      "openInLiveBrowser": "在即時瀏覽器中打開此頁面。",
+      "openingRequestedPage": "正在開啟所請求的頁面",
+      "openingSharedPage": "正在開啟已分享的頁面",
+      "page": "頁面",
+      "pageCouldNotBeLoadedInIframe": "無法在 iframe 中載入此頁面。這可能是因為安全性限制或網路問題。",
+      "pageLoadTimedOut": "網頁載入時間過長。Internet Explorer 已停止等待，以保持 ryOS 的回應能力。",
+      "pageLoadTimedOutTitle": "網頁已停止",
+      "pleaseTryTheFollowing": "請嘗試以下操作：",
+      "portugal": "葡萄牙",
+      "portuguese": "葡萄牙文",
+      "reconstructingHistoryForYear": "正在重建 {{hostname}} 在 {{year}} 年的歷史⋯",
+      "refresh": "重新整理",
+      "reimaginingForYear": "正在重新構想 {{hostname}} 在 {{year}} 年的樣貌⋯",
+      "requiresInternetConnection": "Internet Explorer 需要網際網路連線才能瀏覽",
+      "resetFavorites": "重設我的最愛",
+      "russia": "俄羅斯",
+      "sanskrit": "梵文",
+      "search": "搜尋",
+      "shareLinkInvalidOrCorrupted": "提供的分享連結無效或已損壞。",
+      "shareThisPage": "分享此頁面",
+      "shareThisPageAndTime": "分享此頁面和時間",
+      "showCachedVersionsTimeMachine": "顯示快取版本 (時光機)",
+      "site": "網站",
+      "southKorea": "南韓",
+      "spain": "西班牙",
+      "spanish": "西班牙文",
+      "timeNodes": "{{count}} 個時間節點",
+      "timeNodes_plural": "{{count}} 個時間節點",
+      "travel": "旅遊",
+      "travellingTitle": "Internet Explorer - 旅行中",
+      "travellingTitleWithSite": "{{site}} - 旅行中",
+      "tryRefreshingThePage": "請嘗試重新整理頁面。",
+      "unableToLoadPreview": "無法載入預覽。",
+      "unitedKingdom": "英國",
+      "unitedStates": "美國",
+      "welsh": "威爾斯文",
+      "year": "年"
+    },
+    "ipod": {
+      "ariaLabels": {
+        "closeFullscreen": "關閉全螢幕",
+        "cycleLyricFont": "循環歌詞字體",
+        "cycleLyricLayout": "切換歌詞佈局",
+        "enterFullscreen": "開啟全螢幕",
+        "nextTrack": "下一個音軌",
+        "playPause": "播放/暫停",
+        "previousTrack": "上一個音軌",
+        "select": "選取",
+        "shuffleOn": "隨機播放已開啟",
+        "toggleFurigana": "切換振假名",
+        "toggleHangulRomanization": "切換韓文 / 羅馬拼音",
+        "toggleRomanization": "切換羅馬拼音",
+        "translateLyrics": "翻譯歌詞"
+      },
+      "brickGame": {
+        "gameOver": "遊戲結束",
+        "gameOverTitle": "遊戲結束",
+        "menuToExit": "按 Menu 鍵退出",
+        "paused": "已暫停",
+        "pressCenterToContinue": "按下中央鍵繼續",
+        "pressCenterToReplay": "按下中央鍵再次遊玩",
+        "pressCenterToStart": "按下中央鍵啟動",
+        "pts": "分",
+        "results": "結果",
+        "title": "磚塊",
+        "youWin": "你贏了！"
+      },
+      "coverFlow": {
+        "hideMedia": "隱藏媒體",
+        "noTrack": "沒有曲目",
+        "showMedia": "顯示媒體"
+      },
+      "description": "音樂播放器",
+      "dialogs": {
+        "addSongDescription": "貼上 YouTube 連結以新增至您的 iPod",
+        "addSongTitle": "新增歌曲",
+        "addedNewSongsToTop": "已新增 {{newCount}} 首新歌到頂部{{updatedText}}。總計：{{total}} 首歌曲",
+        "addedSongsToTop": "已新增 {{count}} 首歌曲到頂部。第一首歌已準備好播放！",
+        "addingNewTrack": "正在從 URL 新增歌曲⋯",
+        "andUpdated": "並更新了 {{count}} 首曲目",
+        "appleMusicAddToFavoritesFailed": "無法加入最愛",
+        "appleMusicAddedToFavorites": "已加入最愛",
+        "appleMusicFavoritesFailed": "無法載入最愛歌曲",
+        "appleMusicGeniusFailed": "無法播放 Apple Music 推薦",
+        "appleMusicLibraryFailed": "無法載入 Apple Music 資料庫",
+        "appleMusicLibraryLoaded": "已載入 Apple Music 資料庫 — {{count}} 首歌曲",
+        "appleMusicLibraryLoading": "正在載入 Apple Music 資料庫⋯",
+        "appleMusicLibraryProgress": "正在載入 Apple Music 資料庫⋯ {{loaded}} 首歌曲",
+        "appleMusicLibraryProgressOf": "正在載入 Apple Music 資料庫⋯ {{loaded}} / {{total}}",
+        "appleMusicNoRecommendations": "目前尚無可用的 Apple Music 推薦",
+        "appleMusicNotConfigured": "Apple Music 尚未設定",
+        "appleMusicNotConfiguredDescription": "請設定 MUSICKIT_TEAM_ID、MUSICKIT_KEY_ID 與 MUSICKIT_PRIVATE_KEY。",
+        "appleMusicNotConfiguredDescriptionShort": "設定 MUSICKIT_TEAM_ID / MUSICKIT_KEY_ID / MUSICKIT_PRIVATE_KEY",
+        "appleMusicPlaylistsFailed": "載入播放列表失敗",
+        "appleMusicRadioFailed": "無法載入 Apple Music 廣播",
+        "appleMusicRecentlyAddedFailed": "無法載入最近加入的歌曲",
+        "appleMusicSearchAppleMusic": "Apple Music",
+        "appleMusicSearchLibrary": "資料庫",
+        "appleMusicSearchPlaceholder": "搜尋 Apple Music⋯",
+        "appleMusicSearchSelectResult": "選擇要加入的歌曲：",
+        "appleMusicSearchSignInRequired": "登入 Apple Music 以進行搜尋",
+        "appleMusicSearchUnavailable": "Apple Music 搜尋目前無法使用",
+        "appleMusicSignInFailed": "登入失敗",
+        "autoUpdateFailed": "自動更新失敗",
+        "autoUpdatedLibraryAddedSongs": "資料庫已自動更新：新增了 {{newCount}} 首新歌到頂部{{updatedText}}",
+        "autoUpdatedTrackMetadata": "已自動更新 {{count}} 首曲目的中繼資料",
+        "clearLibraryDescription": "您確定要清除整個音樂資料庫嗎？此動作無法復原。",
+        "clearLibraryTitle": "清除資料庫",
+        "errorAdding": "新增錯誤：",
+        "failedToAutoUpdateLibrary": "無法自動更新資料庫",
+        "failedToCheckForLibraryUpdates": "無法檢查資料庫更新",
+        "failedToExportLibrary": "無法匯出資料庫",
+        "failedToImportLibrary": "無法匯入資料庫：格式無效",
+        "failedToLoadSharedTrack": "無法載入分享的歌曲",
+        "failedToSyncWithServerLibrary": "無法與伺服器資料庫同步",
+        "ipodRequiresInternet": "iPod 需要網際網路連線",
+        "libraryAlreadyUpToDate": "您的資料庫已是最新版本",
+        "libraryAutoUpdated": "資料庫已自動更新",
+        "libraryExportedSuccessfully": "資料庫已成功匯出",
+        "libraryImportedSuccessfully": "資料庫已成功匯入",
+        "librarySynced": "資料庫已同步",
+        "libraryUpToDateWithSongs": "資料庫已是最新版本，共 {{count}} 首歌曲",
+        "libraryUpdated": "資料庫已更新",
+        "listenSessionJoinFailed": "無法加入工作階段",
+        "lyricsSearchCurrentSelection": "目前選擇：",
+        "lyricsSearchDescription": "搜尋「{{title}}」的歌詞，演唱者：{{artist}}",
+        "lyricsSearchEmptyQuery": "請輸入搜尋關鍵字",
+        "lyricsSearchError": "搜尋歌詞時發生錯誤",
+        "lyricsSearchHttpError": "搜尋失敗（狀態 {{status}}）",
+        "lyricsSearchInvalidResponse": "伺服器回應無效",
+        "lyricsSearchNoResults": "找不到結果",
+        "lyricsSearchPlaceholder": "輸入搜尋關鍵字（例如：歌曲名稱、藝人）",
+        "lyricsSearchReset": "重設為自動",
+        "lyricsSearchSearch": "搜尋",
+        "lyricsSearchSearching": "搜尋中⋯",
+        "lyricsSearchSelectResult": "選擇結果：",
+        "lyricsSearchTitle": "搜尋歌詞",
+        "lyricsSearchUseSelected": "使用選取的項目",
+        "noUpdates": "沒有更新項目",
+        "openedSharedTrack": "已開啟共享曲目。按下 ⏯ 開始播放。",
+        "pleaseTryAgain": "請再試一次。",
+        "sharedTrackVideoId": "影片 ID：{{videoId}}",
+        "songSearchAdd": "加入",
+        "songSearchAddSelected": "新增歌曲",
+        "songSearchAdding": "正在新增歌曲⋯",
+        "songSearchDescription": "搜尋歌曲、藝人，或貼上 YouTube 網址",
+        "songSearchEmptyQuery": "請輸入搜尋字詞",
+        "songSearchError": "搜尋歌曲時發生錯誤",
+        "songSearchHttpError": "搜尋失敗（狀態 {{status}}）",
+        "songSearchHttpErrorWithHint": "{{error}} - {{hint}}",
+        "songSearchInvalidResponse": "伺服器回應無效",
+        "songSearchNoResults": "找不到結果",
+        "songSearchPlaceholder": "搜尋或貼上網址⋯",
+        "songSearchSearch": "搜尋",
+        "songSearchSearching": "搜尋中⋯",
+        "songSearchSelectResult": "請選擇要新增的歌曲：",
+        "songSearchTitle": "搜尋歌曲",
+        "syncFailed": "同步失敗",
+        "unknownError": "未知的錯誤",
+        "updateCheckFailed": "檢查更新失敗",
+        "youreOffline": "您已離線"
+      },
+      "help": {
+        "addSongs": {
+          "description": "新增 YouTube 曲目，或切換到 Apple Music 瀏覽你的資料庫、播放列表、最近加入和喜好項目",
+          "title": "YouTube 與 Apple Music"
+        },
+        "coverFlow": {
+          "description": "長按螢幕以開啟 Cover Flow 並翻閱專輯",
+          "title": "Cover Flow"
+        },
+        "displayFullscreen": {
+          "description": "選擇封面、風景、扭曲、網格或水波視覺效果；Apple Music 預設使用封面並隱藏影片模式",
+          "title": "全螢幕視覺效果"
+        },
+        "lyricsPronunciation": {
+          "description": "查看包含翻譯、振假名、羅馬拼音與漢語拼音的即時同步歌詞",
+          "title": "同步歌詞"
+        },
+        "shareSongs": {
+          "description": "YouTube 歌曲會分享 ryOS 連結，Apple Music 歌曲則會複製 Apple Music 連結",
+          "title": "分享歌曲"
+        },
+        "wheelNavigation": {
+          "description": "旋轉選盤（或滾輪）以瀏覽選單與曲目",
+          "title": "Click Wheel"
+        }
+      },
+      "keys": {
+        "enter": "Enter",
+        "escape": "Escape",
+        "select": "選取"
+      },
+      "lyrics": {
+        "noLyricsAvailable": "沒有歌詞",
+        "noLyricsFound": "找不到歌詞",
+        "search": "搜尋",
+        "searchForLyrics": "手動搜尋歌詞",
+        "unableToLoad": "無法載入歌詞"
+      },
+      "menu": {
+        "aboutIpod": "關於 iPod",
+        "addSong": "加入歌曲⋯",
+        "addToFavorites": "加入最愛",
+        "addToLibrary": "加入資料庫⋯",
+        "adjustTiming": "調整時間⋯",
+        "allSongs": "所有歌曲",
+        "alternating": "交替",
+        "appleMusicSignIn": "登入 Apple Music⋯",
+        "appleMusicSignOut": "登出 Apple Music⋯",
+        "backlight": "背光燈",
+        "black": "石墨色",
+        "cacheCleared": "緩存已清除",
+        "chinesePinyin": "中文（拼音）",
+        "chineseSoramimi": "空耳（中文）",
+        "chineseZhuyin": "中文（注音）",
+        "classic": "經典",
+        "clearCache": "清除緩存",
+        "clearLibrary": "清除資料庫⋯",
+        "controls": "控制",
+        "coverFlow": "Cover Flow",
+        "deviceTheme": "裝置主題",
+        "display": "顯示",
+        "displayCover": "封面",
+        "displayGradient": "漸層",
+        "displayLandscapes": "風景",
+        "displayLiquid": "液體",
+        "displayMesh": "網格",
+        "displayShader": "扭曲",
+        "displayVideo": "影片",
+        "displayWater": "水面",
+        "enableRomanization": "啟用羅馬拼音",
+        "exportLibrary": "輸出資料庫⋯",
+        "file": "檔案",
+        "fontGoldGlow": "光暈",
+        "fontGradient": "漸層",
+        "fontRounded": "圓體",
+        "fontSansSerif": "無襯線體",
+        "fontSerif": "襯線體",
+        "fontSerifRed": "襯線（外框）",
+        "fullScreen": "全螢幕",
+        "furigana": "假名標音",
+        "goToAlbum": "前往專輯",
+        "goToArtist": "前往藝人",
+        "goToPlaylist": "前往播放清單",
+        "importLibrary": "匯入資料庫⋯",
+        "ipodHelp": "iPod 輔助說明",
+        "japaneseFurigana": "日文（假名）",
+        "japaneseRomaji": "日文（羅馬字）",
+        "korean": "韓文",
+        "koreanRomanization": "韓文",
+        "lcdFilter": "LCD 濾鏡",
+        "library": "資料庫",
+        "libraryAppleMusic": "Apple Music",
+        "librarySource": "資料庫",
+        "libraryYoutube": "YouTube 資料庫",
+        "lyrics": "歌詞",
+        "menubarArtistLimit": "正在顯示 {{total}} 位演出者中的 {{limit}} 位",
+        "menubarTrackLimit": "正在顯示 {{total}} 個中的 {{limit}} 個 — 開啟 iPod 以瀏覽全部",
+        "multi": "多行",
+        "next": "下一首",
+        "pause": "暫停",
+        "play": "播放",
+        "previous": "上一首",
+        "pronunciation": "發音",
+        "pronunciationOnly": "僅發音",
+        "refreshAppleMusic": "重新整理資料庫",
+        "refreshLyrics": "搜尋歌詞⋯",
+        "repeatAll": "全部重複",
+        "repeatOne": "單曲重複",
+        "romanization": "羅馬拼音",
+        "screen": "螢幕",
+        "screenAqua": "水玻璃",
+        "screenClassic": "經典",
+        "screenModern": "現代",
+        "searchSongs": "搜尋歌曲",
+        "shareApp": "分享App⋯",
+        "shareSong": "分享歌曲⋯",
+        "showLyrics": "顯示歌詞",
+        "shuffle": "隨機播放",
+        "single": "單行",
+        "soramimi": "空耳（英文）",
+        "switchToAppleMusic": "切換至 Apple Music",
+        "switchToYoutubeLibrary": "切換至 YouTube 資料庫",
+        "syncLibrary": "同步資料庫⋯",
+        "traditionalChinese": "繁體",
+        "translate": "翻譯",
+        "u2": "U2",
+        "uiTheme": "介面主題",
+        "unknownArtist": "未知的藝人",
+        "video": "影片",
+        "view": "檢視"
+      },
+      "menuItems": {
+        "albums": "專輯",
+        "all": "全部",
+        "allSongs": "所有歌曲",
+        "alwaysOn": "保持開啟",
+        "appleMusicSignIn": "Apple Music",
+        "appleMusicSignOut": "Apple Music",
+        "artists": "藝人",
+        "backlight": "背光燈",
+        "brickGame": "磚塊",
+        "extras": "附加功能",
+        "favoriteSongs": "最愛歌曲",
+        "genius": "智選推薦",
+        "ipod": "iPod",
+        "libraryAppleMusic": "Apple Music",
+        "librarySource": "資料庫",
+        "libraryYoutube": "YouTube",
+        "loading": "載入中⋯",
+        "music": "音樂",
+        "musicQuiz": "音樂問答",
+        "noSongs": "沒有歌曲",
+        "noStations": "沒有電台",
+        "nowPlaying": "播放中",
+        "off": "關閉",
+        "on": "開啟",
+        "one": "單一",
+        "playlistTrackCount_one": "{{count}} 首歌曲",
+        "playlistTrackCount_other": "{{count}} 首歌曲",
+        "playlists": "播放列表",
+        "radio": "廣播",
+        "recentlyAdded": "最近加入",
+        "repeat": "重複",
+        "settings": "設定",
+        "shuffle": "隨機播放",
+        "shuffleSongs": "隨機播放歌曲",
+        "signedIn": "已登入",
+        "signedOut": "已登出",
+        "songs": "歌曲",
+        "theme": "主題",
+        "unconfigured": "未設定",
+        "unknownAlbum": "未知的專輯"
+      },
+      "musicQuiz": {
+        "correct": "正確！",
+        "correctWithPoints": "答對了！+{{points}}",
+        "finalScore": "最終得分",
+        "greatJob": "表現出色！",
+        "guessTheSong": "猜猜這首歌",
+        "keepPracticing": "繼續聆聽！",
+        "loading": "正在載入片段⋯",
+        "menuToExit": "按 Menu 鍵退出",
+        "notBad": "還不錯！",
+        "notEnoughTracks": "加入更多歌曲以開始問答",
+        "perfect": "滿分！",
+        "pressCenterToReplay": "按下中心鍵再次開始",
+        "pressCenterToStart": "按下中心鍵開始",
+        "results": "結果",
+        "scoreShort": "分數",
+        "timesUp": "時間到！",
+        "title": "音樂問答",
+        "wrong": "不太對！"
+      },
+      "name": "iPod",
+      "nowPlaying": {
+        "live": "現場",
+        "mix": "混音",
+        "trackPosition": "{{current}}/{{total}}"
+      },
+      "status": {
+        "added": "♬ 已新增",
+        "appleMusicAddedToFavorites": "已加入最愛",
+        "appleMusicGeniusPlaying": "智選推薦組曲",
+        "appleMusicLibrarySynced": "資料庫：{{count}} 首歌曲",
+        "appleMusicSignedIn": "Apple Music ✓",
+        "appleMusicSignedOut": "已登出",
+        "fontGoldGlow": "字體：光暈",
+        "fontGradient": "字體：漸層",
+        "fontRounded": "字體：圓體",
+        "fontSansSerif": "字體：無襯線體",
+        "fontSerif": "字體：襯線體",
+        "fontSerifRed": "字體：襯線（外框）",
+        "furiganaOff": "振假名：關",
+        "furiganaOn": "振假名：開",
+        "layoutAlternating": "版面配置：交替",
+        "layoutCenter": "版面配置：置中",
+        "layoutFocus": "版面配置：焦點",
+        "libraryAppleMusic": "資料庫：Apple Music",
+        "libraryCleared": "資料庫已清除",
+        "libraryYoutube": "資料庫：YouTube",
+        "lightOff": "關燈",
+        "lightOn": "開燈",
+        "loadingFurigana": "正在載入假名⋯",
+        "loadingLyrics": "正在載入歌詞⋯",
+        "noTrack": "無曲目",
+        "offset": "位移",
+        "repeatAll": "全部重複",
+        "repeatOff": "關閉重複",
+        "repeatOne": "單曲重複",
+        "romanizationOff": "羅馬拼音關閉",
+        "romanizationOn": "羅馬拼音開啟",
+        "shuffleOff": "隨機播放關",
+        "shuffleOn": "隨機播放開",
+        "themeBlack": "主題：黑色",
+        "themeClassic": "主題：經典",
+        "themeU2": "主題：U2",
+        "translatingLyrics": "正在翻譯歌詞⋯"
+      },
+      "syncMode": {
+        "decreaseOffset": "減少偏移",
+        "hint": "按 ESC 或 X 關閉",
+        "increaseOffset": "增加偏移",
+        "instructions": "點擊你正在聽到的歌詞",
+        "offset": "位移",
+        "searchLyrics": "搜尋歌詞",
+        "syncScroll": "同步捲動",
+        "title": "同步歌詞"
+      },
+      "translationLanguages": {
+        "auto": "自動",
+        "chinese": "中文",
+        "english": "英文",
+        "french": "法文",
+        "german": "德文",
+        "italian": "義大利文",
+        "japanese": "日文",
+        "korean": "韓文",
+        "original": "原文",
+        "portuguese": "葡萄牙文",
+        "russian": "俄文",
+        "spanish": "西班牙文"
+      }
+    },
+    "karaoke": {
+      "description": "附同步歌詞的卡拉OK播放器",
+      "emptyLibrary": {
+        "addSongs": "新增歌曲",
+        "subtitle": "從 YouTube 新增音樂即可開始。",
+        "title": "卡拉OK 中尚無歌曲"
+      },
+      "help": {
+        "addSearchSongs": {
+          "description": "搜尋 YouTube 或貼上任何網址，即可立即將曲目新增至資料庫",
+          "title": "新增與搜尋歌曲"
+        },
+        "keyboardShortcuts": {
+          "description": "空白鍵 播放/暫停，←/→ 搜尋 5 秒，↑/↓ 切換曲目，F 全螢幕",
+          "title": "鍵盤快速鍵"
+        },
+        "listenParty": {
+          "description": "舉辦或加入同步卡拉 OK 聚會 — 跟隨者會看到相同的播放進度",
+          "title": "聆聽派對"
+        },
+        "stylePronunciation": {
+          "description": "切換字體與版面配置；顯示翻譯、振假名、羅馬拼音或漢語拼音",
+          "title": "樣式與發音"
+        },
+        "syncLyricsTiming": {
+          "description": "按下 [ 或 ]（或使用滑鼠滾輪捲動歌詞）以 ±50 毫秒微調偏移量",
+          "title": "調整歌詞時間"
+        },
+        "syncedWithIpod": {
+          "description": "與 iPod App 使用相同的資料庫與歌詞資料庫 — 隨處皆可新增曲目",
+          "title": "與 iPod 共享"
+        }
+      },
+      "ktvRoomFx": "觀眾反應",
+      "ktvRoomFxHint": "切換全螢幕卡拉 OK 漂浮觀眾反應",
+      "liveListen": {
+        "activeSessions": "進行中的包房",
+        "anonymous": "{{count}} 位匿名使用者",
+        "cancel": "取消",
+        "copyFailed": "複製失敗",
+        "copyFailedDescription": "請選取連結並手動複製。",
+        "copyLink": "拷貝連結",
+        "djLabel": "DJ",
+        "end": "關閉包房",
+        "endSession": "關房",
+        "hostLabel": "主持人",
+        "idle": "暫無歌曲",
+        "invite": "邀請加入包房",
+        "inviteTitle": "邀請",
+        "inviteToListen": "邀請加入包房",
+        "join": "加入包房⋯",
+        "joinButton": "加入",
+        "joinSession": "加入包房",
+        "leave": "離開包房",
+        "leaveSession": "離房",
+        "linkCopied": "已拷貝連結",
+        "linkCopiedDescription": "把連結分享出去，邀請大家進包房。",
+        "listener": "人",
+        "listenerPlural": "人",
+        "listening": "{{count}} 人在包房",
+        "loadingSessions": "正在載入包房⋯",
+        "makeHost": "設為主持人",
+        "noActiveSessions": "目前沒有進行中的包房",
+        "nowPlaying": "正在唱",
+        "orEnterSessionId": "或輸入房號",
+        "passPlayback": "轉交播放",
+        "pasteLinkOrId": "貼上包房連結或房號即可加入。",
+        "playbackBadge": "播放",
+        "playbackOnDevice": "播放裝置",
+        "refreshSessions": "重新整理",
+        "remoteBadge": "遙控",
+        "sendReaction": "傳送回應",
+        "sessionLinkPlaceholder": "包房連結或房號",
+        "shareLinkInvite": "分享這個連結，邀請朋友一起進包房。",
+        "start": "開包房"
+      },
+      "lyrics": {
+        "noLyricsFound": "找不到歌詞",
+        "search": "搜尋",
+        "searchForLyrics": "手動搜尋歌詞"
+      },
+      "menu": {
+        "aboutKaraoke": "關於卡拉OK",
+        "controls": "控制",
+        "file": "檔案",
+        "karaokeHelp": "卡拉OK輔助說明",
+        "next": "下一首",
+        "playPause": "播放/暫停",
+        "previous": "上一首",
+        "repeatAll": "全部重複",
+        "repeatOne": "單曲重複",
+        "shareApp": "分享App⋯",
+        "showLyrics": "顯示歌詞",
+        "shuffle": "隨機播放",
+        "view": "檢視"
+      },
+      "name": "卡拉OK",
+      "noTrack": "未載入任何曲目。開啟 iPod 以選取歌曲。"
+    },
+    "maps": {
+      "description": "使用 Apple 地圖尋找地點",
+      "help": {
+        "directions": {
+          "description": "從地點卡開啟 Apple 地圖的開車路線，或在臺灣規劃 YouBike 行程，於地圖上顯示步行與騎乘路段。",
+          "title": "路線"
+        },
+        "dropPins": {
+          "description": "從清單中選擇一個結果以放置大頭針，並將地圖重新對焦於該處",
+          "title": "放置大頭針"
+        },
+        "locateMe": {
+          "description": "按一下「定位我」按鈕，將地圖重新對焦於你的目前位置",
+          "title": "定位我"
+        },
+        "mapTypes": {
+          "description": "從「顯示」選單切換地圖類型，並可開啟或關閉臺灣 YouBike 站點圖層。",
+          "title": "地圖類型"
+        },
+        "poweredByApple": {
+          "description": "地圖圖塊、搜尋和地理編碼由 Apple MapKit JS 提供",
+          "title": "由 Apple 地圖提供技術支援"
+        },
+        "searchPlaces": {
+          "description": "在搜尋列中輸入城市、商家或地址，以便在地圖上尋找",
+          "title": "搜尋地點"
+        }
+      },
+      "locateMe": "我的位置",
+      "mapAriaLabel": "地圖",
+      "menu": {
+        "about": "關於地圖",
+        "help": "地圖輔助說明",
+        "hybrid": "混合",
+        "locateMe": "我的位置",
+        "mutedStandard": "淡化標準",
+        "satellite": "衛星",
+        "standard": "標準",
+        "youbike": "YouBike"
+      },
+      "name": "地圖",
+      "noResults": "沒有結果",
+      "placeCard": {
+        "addFavorite": "加入最愛",
+        "close": "關閉地點卡",
+        "directions": "路線",
+        "favorite": "喜好項目",
+        "favorited": "已加入喜好項目",
+        "home": "住家",
+        "moreActions": "更多",
+        "openDirections": "在 Apple 地圖取得路線",
+        "regionLabel": "已選取的地點",
+        "removeFavorite": "從最愛移除",
+        "setHome": "設為住家",
+        "setWork": "設為公司",
+        "unsetHome": "取消住家",
+        "unsetWork": "取消公司",
+        "work": "公司"
+      },
+      "places": {
+        "allEmpty": "搜尋地點並使用卡片動作將其儲存為「住家」、「公司」或「最愛」。",
+        "favorites": "喜好項目",
+        "home": "住家",
+        "recents": "最近使用過的位置",
+        "title": "地點",
+        "work": "公司"
+      },
+      "poiCategory": {
+        "airport": "機場",
+        "amusementPark": "遊樂園",
+        "aquarium": "水族館",
+        "atm": "提款機",
+        "bakery": "麵包店",
+        "bank": "銀行",
+        "beach": "海灘",
+        "brewery": "釀酒廠",
+        "cafe": "咖啡廳",
+        "campground": "露營地",
+        "carRental": "租車",
+        "evCharger": "電動車充電站",
+        "fireStation": "消防局",
+        "fitnessCenter": "健身中心",
+        "foodMarket": "食品市場",
+        "gasStation": "加油站",
+        "hospital": "醫院",
+        "hotel": "飯店",
+        "laundry": "洗衣店",
+        "library": "圖書館",
+        "marina": "遊艇碼頭",
+        "movieTheater": "電影院",
+        "museum": "博物館",
+        "nationalPark": "國家公園",
+        "nightlife": "夜生活",
+        "park": "公園",
+        "parking": "停車場",
+        "pharmacy": "藥局",
+        "police": "警察局",
+        "postOffice": "郵局",
+        "publicTransport": "大眾運輸",
+        "restaurant": "餐廳",
+        "school": "學校",
+        "stadium": "體育場",
+        "store": "商店",
+        "theater": "戲院",
+        "university": "大學",
+        "winery": "酒莊",
+        "youbike": "YouBike",
+        "zoo": "動物園"
+      },
+      "searchButton": "搜尋",
+      "searchFailed": "搜尋失敗",
+      "searchPlaceholder": "搜尋地圖",
+      "searching": "搜尋中⋯",
+      "status": {
+        "error": "無法載入 Apple 地圖：{{error}}",
+        "idle": "Apple 地圖正在初始化⋯",
+        "loading": "正在載入 Apple 地圖⋯",
+        "missingToken": "尚未設定 Apple 地圖。請要求開發者新增 MapKit 憑證。",
+        "tokenHint": "設定憑證後，伺服器會自動簽署短期 MapKit 權杖。"
+      },
+      "title": "地圖",
+      "youbike": {
+        "availability": "{{bikes}} 輛單車 · {{docks}} 個空位",
+        "clearRoute": "清除 YouBike 路線",
+        "directions": "YouBike",
+        "directionsTitle": "YouBike 路線",
+        "distanceKilometers": "{{distance}} 公里",
+        "distanceMeters": "{{distance}} 公尺",
+        "done": "完成",
+        "errors": {
+          "destination_not_in_taiwan": "YouBike 路線僅適用於台灣。",
+          "no_destination_station": "目的地附近沒有足夠近的 YouBike 站點。",
+          "no_distinct_stations": "規劃 YouBike 路線需要兩個不同的站點。",
+          "no_origin": "請開啟「定位服務」或將「住家」設在台灣以開始 YouBike 行程。",
+          "no_origin_station": "起點附近沒有足夠近的 YouBike 站點。",
+          "route_failed": "目前無法規劃 YouBike 行程。"
+        },
+        "hideSteps": "隱藏步驟",
+        "inactive": "站點關閉",
+        "legBike": "騎單車前往 {{station}}",
+        "legMeta": "{{minutes}} 分鐘 · {{distance}}",
+        "legWalk": "步行前往 {{place}}",
+        "maneuver": {
+          "arrive": "抵達",
+          "arrivedAtPlace": "已抵達 {{place}}",
+          "continue": "繼續向{{direction}}",
+          "continuePlain": "繼續",
+          "depart": "向{{direction}}",
+          "departPlain": "出發",
+          "direction": {
+            "east": "東",
+            "left": "左",
+            "north": "北",
+            "northeast": "東北",
+            "northwest": "西北",
+            "right": "右",
+            "sharpLeft": "左急",
+            "sharpRight": "右急",
+            "slightLeft": "左前方",
+            "slightRight": "右前方",
+            "south": "南",
+            "southeast": "東南",
+            "southwest": "西南",
+            "straight": "前",
+            "uturn": "反方向",
+            "west": "西"
+          },
+          "dockBike": "還車",
+          "fork": "靠{{direction}}行駛",
+          "forkPlain": "分岔路",
+          "merge": "匯入{{direction}}",
+          "mergePlain": "匯入",
+          "pickUpBike": "取車",
+          "roundabout": "圓環",
+          "turn": "向{{direction}}轉",
+          "turnPlain": "轉彎"
+        },
+        "navigationRegionLabel": "逐步導航",
+        "routeRegionLabel": "YouBike 路線",
+        "routeSummary": "{{minutes}} 分鐘 · {{distance}}",
+        "routeTitle": "YouBike 路線",
+        "routing": "正在尋找 YouBike 路線⋯",
+        "showSteps": "步驟",
+        "speech": {
+          "then": "接著 {{label}}"
+        },
+        "startNavigation": "開始導航",
+        "stepAria": "第 {{index}} 步：{{label}}",
+        "stepsRegionLabel": "逐步導航路線",
+        "stopNavigation": "停止導航",
+        "thenStep": "接著",
+        "thenStepAria": "接著 {{label}}",
+        "warningNoBikes": "最近的起點站目前可能沒有自行車。",
+        "warningNoDocks": "最近的終點站目前可能沒有空位。"
+      }
+    },
+    "minesweeper": {
+      "description": "經典益智遊戲",
+      "dialogs": {
+        "newGameDescription": "您確定要開始新遊戲嗎？",
+        "newGameTitle": "新遊戲"
+      },
+      "help": {
+        "chordReveal": {
+          "description": "雙擊旗幟數量正確的數字格，即可自動清除所有鄰近的安全方格",
+          "title": "自動開格"
+        },
+        "desktopControls": {
+          "description": "左鍵點擊揭開方格，右鍵點擊標記疑似地雷",
+          "title": "電腦版控制"
+        },
+        "mineCounterTimer": {
+          "description": "頂端列會顯示剩餘未標記的地雷數以及已用時間",
+          "title": "地雷計數器與計時器"
+        },
+        "mobileControls": {
+          "description": "點擊揭開，長按標記 — 在手機和平板電腦上體驗極佳",
+          "title": "行動裝置控制"
+        },
+        "quickRestart": {
+          "description": "隨時點擊笑臉或使用「檔案 ▸ 新遊戲」即可重新開始新局",
+          "title": "快速重新開始"
+        },
+        "smileyStatus": {
+          "description": "笑臉顯示遊戲狀態：🙂 遊戲中、💀 踩雷、😎 勝利",
+          "title": "笑臉狀態"
+        }
+      },
+      "lcd": {
+        "left": "剩餘",
+        "total": "總計"
+      },
+      "menu": {
+        "aboutMinesweeper": "關於踩地雷",
+        "minesweeperHelp": "踩地雷輔助說明",
+        "newGame": "新遊戲"
+      },
+      "name": "踩地雷"
+    },
+    "paint": {
+      "description": "繪製和編輯圖片",
+      "dialogs": {
+        "discardChanges": "捨棄所作更動",
+        "discardChangesDescription": "您有未儲存的變更。確定要建立新檔案嗎？",
+        "enterImageName": "輸入影像名稱",
+        "error": "錯誤",
+        "failedToLoadImageContent": "無法載入影像內容。",
+        "failedToSaveImage": "無法儲存影像",
+        "imageSavedSuccessfully": "影像已成功儲存",
+        "saveImage": "儲存影像"
+      },
+      "filtersMenu": {
+        "openFiltersMenu": "開啟濾鏡選單"
+      },
+      "help": {
+        "autoSaveExport": {
+          "description": "編輯內容每隔幾秒會自動儲存；可將 PNG 匯出至 /Images 以供 Finder 使用",
+          "title": "自動儲存與匯出"
+        },
+        "cutCopyPaste": {
+          "description": "使用套索選取區域，然後直接在畫布中剪下、複製或貼上點陣像素",
+          "title": "剪下、複製與貼上"
+        },
+        "drawingTools": {
+          "description": "從左側工具列選擇鉛筆、筆刷、噴槍、形狀、橡皮擦或填滿工具",
+          "title": "繪圖工具"
+        },
+        "filters": {
+          "description": "從「濾鏡」選單套用反相、灰階、亮度等效果",
+          "title": "濾鏡"
+        },
+        "patterns": {
+          "description": "從底部色板選擇經典 Mac 圖樣，以填滿任何形狀或區域",
+          "title": "圖樣填滿"
+        },
+        "strokeWidth": {
+          "description": "使用工具下方的尺寸選擇器調整筆刷和鉛筆的粗細",
+          "title": "線條寬度"
+        }
+      },
+      "menu": {
+        "aboutPaint": "關於小畫家",
+        "export": "輸出",
+        "filterBlur": "模糊",
+        "filterBrightnessMinus": "亮度 -",
+        "filterBrightnessPlus": "亮度 +",
+        "filterCategoryArtistic": "藝術效果",
+        "filterCategoryBlur": "模糊",
+        "filterCategoryColor": "色彩",
+        "filterCategoryRetro": "復古",
+        "filterCrt": "CRT",
+        "filterDither": "抖色",
+        "filterEdgeDetect": "邊緣偵測",
+        "filterGaussianBlur": "高斯模糊",
+        "filterGlitch": "故障",
+        "filterGrayscale": "灰階",
+        "filterInvert": "反相",
+        "filterMotionBlur": "動態模糊",
+        "filterNoise": "雜訊",
+        "filterOldPhoto": "老舊照片",
+        "filterPixelate": "像素化",
+        "filterRadialBlur": "放射狀模糊",
+        "filterSepia": "深褐色",
+        "filterSharpen": "銳化",
+        "filterVhs": "錄影帶",
+        "filters": "濾鏡",
+        "importFromDevice": "從裝置匯入⋯",
+        "newFile": "開新檔案",
+        "open": "打開⋯",
+        "paintHelp": "小畫家輔助說明",
+        "save": "儲存",
+        "saveEllipsis": "儲存⋯"
+      },
+      "name": "小畫家",
+      "selectedPattern": "選取的圖樣",
+      "toolbar": {
+        "brush": "筆刷",
+        "eraser": "橡皮擦",
+        "fillColor": "填充顏色",
+        "hand": "手形",
+        "line": "線條",
+        "oval": "橢圓",
+        "pencil": "鉛筆",
+        "rectangle": "矩形",
+        "rectangleSelect": "矩形選取",
+        "select": "選取",
+        "spray": "噴霧",
+        "text": "文字"
+      },
+      "untitled": "未命名"
+    },
+    "pc": {
+      "aspectRatios": {
+        "1/1": "1:1",
+        "16/10": "16:10",
+        "16/9": "16:9",
+        "4/3": "4:3",
+        "5/4": "5:4",
+        "AsIs": "原始比例",
+        "Fit": "適應螢幕"
+      },
+      "description": "x86 作業系統模擬 (v86) 與經典 DOS 遊戲",
+      "dialogs": {
+        "resetVirtualPcDescription": "您確定要重設此 PC 嗎？這將清除所有目前的狀態。",
+        "resetVirtualPcTitle": "重設虛擬 PC"
+      },
+      "help": {
+        "backToSystems": {
+          "description": "「檔案 ▸ 返回」可回到作業系統與遊戲瀏覽器以選擇新的映像檔",
+          "title": "返回系統"
+        },
+        "dosGames": {
+          "description": "切換至「遊戲」分頁，查看精選的 js-dos 經典遊戲",
+          "title": "DOS 遊戲庫"
+        },
+        "keyboardInput": {
+          "description": "幾乎所有按鍵（包括 Ctrl 組合鍵）都會直接傳送至虛擬機器 (VM)",
+          "title": "鍵盤直通"
+        },
+        "mouseCapture": {
+          "description": "點擊螢幕內部以擷取游標；按 Esc 鍵釋放",
+          "title": "滑鼠擷取"
+        },
+        "pcEmulator": {
+          "description": "透過 v86 在瀏覽器中啟動真實的 Windows、Linux 和 FreeDOS 映像檔",
+          "title": "x86 作業系統模擬器"
+        },
+        "screenshotFullscreen": {
+          "description": "使用「檢視」來擷取螢幕或以全螢幕填滿顯示器",
+          "title": "螢幕截圖與全螢幕"
+        }
+      },
+      "loadingEmulator": "載入模擬器",
+      "loadingGame": "載入 {{gameName}}⋯",
+      "loadingSystem": "正在載入 {{name}}⋯",
+      "menu": {
+        "aboutVirtualPc": "關於虛擬 PC",
+        "aspectRatio": "顯示比例",
+        "backToBrowse": "返回",
+        "backToPresets": "返回系統列表",
+        "captureScreenshot": "擷取截圖",
+        "controls": "控制",
+        "fullScreen": "全螢幕",
+        "loadGame": "載入遊戲",
+        "loadState": "載入狀態",
+        "mouseSensitivity": "滑鼠靈敏度",
+        "reset": "重置",
+        "saveState": "儲存狀態",
+        "toggleMouseCapture": "切換滑鼠擷取",
+        "virtualPcHelp": "虛擬 PC 輔助說明"
+      },
+      "name": "虛擬 PC",
+      "presets": {
+        "archlinux": {
+          "description": "搭載 i3 視窗管理員的滾動更新版 Linux",
+          "name": "Arch Linux",
+          "year": "2019"
+        },
+        "beos": {
+          "description": "Be Inc. 開發、專注於多媒體的桌上型作業系統",
+          "name": "BeOS 5",
+          "year": "2000"
+        },
+        "buildroot": {
+          "description": "適用於嵌入式系統的極簡 Linux",
+          "name": "Buildroot Linux",
+          "year": "2014"
+        },
+        "doof": {
+          "description": "塞進 1.44MB 磁碟片的 DOOM",
+          "name": "磁碟片上的 Doom",
+          "year": "2024"
+        },
+        "dsl": {
+          "description": "僅 50MB 的微型 Live Linux 發行版",
+          "name": "Damn Small Linux",
+          "year": "2006"
+        },
+        "fiwix": {
+          "description": "教育用途的類 Unix 核心",
+          "name": "FiwixOS",
+          "year": "2018"
+        },
+        "freebsd": {
+          "description": "BSD 類 Unix 作業系統",
+          "name": "FreeBSD",
+          "year": "2003"
+        },
+        "freedos": {
+          "description": "免費、開源且相容於 DOS 的作業系統",
+          "name": "FreeDOS",
+          "year": "1998"
+        },
+        "haiku": {
+          "description": "BeOS 的開源復刻版",
+          "name": "Haiku",
+          "year": "2009"
+        },
+        "helenos": {
+          "description": "多伺服器微核心研究型作業系統",
+          "name": "HelenOS",
+          "year": "2011"
+        },
+        "kolibrios": {
+          "description": "以組合語言編寫的微型圖形介面作業系統，可裝入磁碟片",
+          "name": "KolibriOS",
+          "year": "2009"
+        },
+        "linux26": {
+          "description": "搭載 BusyBox 使用者空間的經典 Linux 核心",
+          "name": "Linux 2.6",
+          "year": "2003"
+        },
+        "linux4": {
+          "description": "現代 Linux 核心，無顯示器終端機啟動",
+          "name": "Linux 4.x",
+          "year": "2017"
+        },
+        "mikeos": {
+          "description": "以組合語言編寫並具備 CLI 選單的愛好者 x86 作業系統",
+          "name": "MikeOS",
+          "year": "2009"
+        },
+        "minix": {
+          "description": "Tanenbaum 的微核心教學作業系統",
+          "name": "Minix",
+          "year": "1987"
+        },
+        "msdos": {
+          "description": "經典的 Microsoft 磁碟作業系統",
+          "name": "MS-DOS 6.22",
+          "year": "1994"
+        },
+        "netbsd": {
+          "description": "可攜式 BSD Unix ——「它當然能執行 NetBSD」",
+          "name": "NetBSD",
+          "year": "2018"
+        },
+        "oberon": {
+          "description": "Wirth 的平鋪式視窗研究作業系統",
+          "name": "Oberon",
+          "year": "1990"
+        },
+        "openbsd": {
+          "description": "專注於安全性的 BSD Unix",
+          "name": "OpenBSD",
+          "year": "2010"
+        },
+        "reactos": {
+          "description": "與 Windows 相容的開源作業系統",
+          "name": "ReactOS",
+          "year": "2018"
+        },
+        "redox": {
+          "description": "以 Rust 編寫的現代微核心作業系統",
+          "name": "Redox",
+          "year": "2016"
+        },
+        "serenity": {
+          "description": "具備現代 Unix 靈魂的 90 年代末期美學",
+          "name": "SerenityOS",
+          "year": "2018"
+        },
+        "solos": {
+          "description": "可裝進單張磁碟片的業餘作業系統",
+          "name": "Sol OS",
+          "year": "2012"
+        },
+        "windows-me": {
+          "description": "Millennium Edition - 最後一款 9x 核心",
+          "name": "Windows ME",
+          "year": "2000"
+        },
+        "windows1": {
+          "description": "首款以磁碟片發行的 Windows 版本",
+          "name": "Windows 1.01",
+          "year": "1985"
+        },
+        "windows2000": {
+          "description": "基於 NT 的穩定性，專業桌面",
+          "name": "Windows 2000",
+          "year": "2000"
+        },
+        "windows30": {
+          "description": "程式管理員與 16 色圖示",
+          "name": "Windows 3.0",
+          "year": "1990"
+        },
+        "windows31": {
+          "description": "TrueType 字型與經典的「熱狗攤」佈景主題",
+          "name": "Windows 3.1",
+          "year": "1992"
+        },
+        "windows95": {
+          "description": "開始功能表、工作列與 32 位元革命",
+          "name": "Windows 95",
+          "year": "1995"
+        },
+        "windows98": {
+          "description": "Active Desktop、USB 支援與 Internet Explorer 4",
+          "name": "Windows 98",
+          "year": "1998"
+        }
+      },
+      "programsAvailable": "{{count}} 個程式可用",
+      "screenshotUnavailable": "無法提供螢幕截圖。請使用瀏覽器的截圖工具（Mac 請按 Cmd+Shift+4，Windows 請按 Win+Shift+S）。",
+      "selectSystem": "選擇一個 x86 作業系統",
+      "status": {
+        "booting": "正在啟動⋯",
+        "bytesZero": "0 MB",
+        "connecting": "連線中⋯",
+        "emulatorStartFailed": "啟動模擬器失敗",
+        "loading": "載入中⋯"
+      },
+      "systemsAvailable": "{{count}} 個可用系統",
+      "tabs": {
+        "games": "遊戲",
+        "os": "作業系統"
+      },
+      "title": "虛擬 PC",
+      "virtualPc": "虛擬 PC"
+    },
+    "photo-booth": {
+      "ariaLabels": {
+        "photo": "相片 {{index}}"
+      },
+      "buttons": {
+        "effects": "效果"
+      },
+      "description": "使用效果拍照",
+      "effects": {
+        "blackAndWhite": "黑白",
+        "bulge": "凹凸鏡",
+        "coldBlue": "冷藍",
+        "fishEye": "魚眼",
+        "glitch": "故障",
+        "highContrast": "高對比",
+        "kaleidoscope": "萬花筒",
+        "neon": "霓虹",
+        "normal": "一般",
+        "pinch": "捏合",
+        "rainbow": "彩虹",
+        "ripple": "漣漪",
+        "squeeze": "擠壓",
+        "stretch": "伸展",
+        "twirl": "旋轉",
+        "vibrant": "鮮豔",
+        "vintage": "復古",
+        "xRay": "X光"
+      },
+      "errors": {
+        "cameraApiNotAvailable": "相機 API 無法使用",
+        "cameraError": "相機錯誤：{{error}}",
+        "cameraPermissionDenied": "相機權限遭拒",
+        "cameraRequiresHttps": "相機需要 HTTPS",
+        "couldNotAccessCamera": "無法存取相機",
+        "noCameraFound": "找不到相機"
+      },
+      "help": {
+        "applyingEffects": {
+          "description": "開啟「特效」以滑動瀏覽即時套用的 CSS 濾鏡與扭曲著色器",
+          "title": "即時特效"
+        },
+        "downloadingPhotos": {
+          "description": "照片會自動儲存至 /Images — 點擊縮圖即可立即下載",
+          "title": "自動儲存至 Finder"
+        },
+        "quickSnaps": {
+          "description": "點擊計時器按鈕，以一秒為間隔快速連續拍攝四張照片",
+          "title": "四連拍"
+        },
+        "switchingCameras": {
+          "description": "從選單列的「相機」選單中選擇任何已連接的相機（前置、後置、USB）",
+          "title": "切換相機"
+        },
+        "takingPhoto": {
+          "description": "點擊紅色大相機按鈕，透過視訊鏡頭拍攝單張照片",
+          "title": "拍照"
+        },
+        "viewingPhotos": {
+          "description": "切換照片堆疊，在視窗底部滑動查看已儲存的照片",
+          "title": "照片串"
+        }
+      },
+      "menu": {
+        "aboutPhotoBooth": "關於Photo Booth",
+        "camera": "相機",
+        "clearAllPhotos": "清除所有照片",
+        "effects": "效果",
+        "exportPhotos": "輸出照片",
+        "photoBoothHelp": "Photo Booth輔助說明"
+      },
+      "name": "Photo Booth"
+    },
+    "preview": {
+      "description": "檢視影像、PDF和文件",
+      "empty": {
+        "hint": "選擇檔案或將其拖移到此處",
+        "title": "打開文件"
+      },
+      "help": {
+        "images": {
+          "description": "打開常見的影像格式而不更改原始檔案",
+          "title": "預覽影像"
+        },
+        "openFiles": {
+          "description": "使用「檔案」>「打開」來預覽裝置上的檔案",
+          "title": "打開檔案"
+        },
+        "openWith": {
+          "description": "將可編輯的檔案傳送到「小畫家」、「文字編輯」或 Applet 檢視器",
+          "title": "打開方式"
+        },
+        "pdfs": {
+          "description": "使用內建的文件檢視器檢視 PDF 文件",
+          "title": "閱讀 PDF"
+        },
+        "safeHtml": {
+          "description": "在沙箱中預覽 HTML 文件而不執行工序指令",
+          "title": "安全 HTML"
+        },
+        "zoom": {
+          "description": "兩指開合或點兩下即可縮放影像，或使其符合視窗大小",
+          "title": "縮放"
+        }
+      },
+      "menu": {
+        "aboutPreview": "關於預覽程式",
+        "actualSize": "實際大小",
+        "export": "輸出…",
+        "fitToWindow": "縮放以符合視窗",
+        "importFromDevice": "從裝置輸入…",
+        "open": "打開⋯",
+        "openWith": "打開方式",
+        "previewHelp": "預覽程式輔助說明",
+        "saveAs": "另存新檔…",
+        "zoomIn": "放大",
+        "zoomOut": "縮小"
+      },
+      "name": "預覽程式",
+      "saveAs": {
+        "description": "輸入此拷貝的名稱",
+        "title": "另存新檔"
+      },
+      "status": {
+        "loadFailed": "無法打開此檔案。",
+        "loading": "正在載入預覽⋯",
+        "notFound": "找不到檔案內容。",
+        "unsupported": "無法預覽",
+        "unsupportedDescription": "「預覽程式」不支援此檔案格式。"
+      },
+      "supportedFiles": "預覽程式文件",
+      "title": "預覽程式",
+      "toasts": {
+        "exportFailed": "無法輸出檔案",
+        "importFailed": "無法輸入檔案",
+        "imported": "檔案已輸入",
+        "saveFailed": "無法儲存檔案",
+        "saved": "檔案已儲存"
+      },
+      "untitled": "未命名"
+    },
+    "soundboard": {
+      "description": "播放音效",
+      "help": {
+        "customizeSlot": {
+          "description": "為每個插槽標記表情符號和名稱，方便隨時查找",
+          "title": "自訂表情符號與標題"
+        },
+        "importExport": {
+          "description": "將面板分享為檔案，並將其拖回即可立即載入",
+          "title": "匯入 / 匯出"
+        },
+        "keyboardPlay": {
+          "description": "按下 1–9 即可立即播放音效 — 非常適合現場表演",
+          "title": "鍵盤觸發鍵"
+        },
+        "multipleBoards": {
+          "description": "針對不同的音效組合建立、重新命名及切換面板",
+          "title": "多個面板"
+        },
+        "recordSlot": {
+          "description": "點擊任何空白插槽即可直接從麥克風錄音；再次點擊即可停止",
+          "title": "錄音插槽"
+        },
+        "waveformView": {
+          "description": "在錄製或播放每個片段時查看即時波形",
+          "title": "即時波形"
+        }
+      },
+      "importedSoundboard": "已匯入的音效板",
+      "menu": {
+        "aboutSoundboard": "關於音效板",
+        "deleteSoundboard": "刪除音效板",
+        "emojis": "表情符號",
+        "exportSoundboards": "輸出音效板⋯",
+        "importSoundboards": "輸入音效板⋯",
+        "loadSpecialSoundboards": "載入特殊音效板",
+        "newSoundboard": "新增音效板",
+        "renameSoundboard": "重新命名音效板",
+        "resetSoundboards": "重設音效板",
+        "soundboardHelp": "音效板輔助說明",
+        "waveforms": "波形"
+      },
+      "name": "音效板",
+      "newSoundboardDefault": "新增音效板",
+      "soundboards": "音效板"
+    },
+    "stickies": {
+      "colors": {
+        "blue": "藍色",
+        "green": "綠色",
+        "orange": "橘色",
+        "pink": "粉紅色",
+        "purple": "紫色",
+        "yellow": "黃色"
+      },
+      "description": "用於快速提醒的便條紙",
+      "empty": {
+        "createNote": "新增便條紙",
+        "description": "建立便條紙以開始使用",
+        "title": "尚未有便條紙"
+      },
+      "help": {
+        "autoSave": {
+          "description": "便條紙會自動儲存，下次開啟「便條紙」時仍會顯示在相同位置",
+          "title": "自動儲存"
+        },
+        "clearAll": {
+          "description": "「檔案 ▸ 清除所有便條紙」可一次清空所有便條紙",
+          "title": "全部清除"
+        },
+        "colors": {
+          "description": "從「顏色」選單中選擇黃色、粉紅色、藍色、綠色、紫色等顏色",
+          "title": "顏色標籤"
+        },
+        "createNote": {
+          "description": "「檔案 ▸ 新增便條紙」（或 ⌘N）即可在桌面上放置一個新的便條紙",
+          "title": "建立便條紙"
+        },
+        "moveResize": {
+          "description": "拖移標題列以重新定位；拖移角落以自由調整大小",
+          "title": "移動與調整大小"
+        },
+        "ryoCanEdit": {
+          "description": "在對話中請 Ryo 為您新增、移動、重新著色或重寫便條紙",
+          "title": "Ryo 可編輯"
+        }
+      },
+      "menu": {
+        "about": "關於便條紙",
+        "clearAll": "清除所有便條紙",
+        "color": "顏色",
+        "deleteNote": "刪除便條紙",
+        "help": "便條紙輔助說明",
+        "newNote": "新增便條紙",
+        "note": "便條紙",
+        "syncStickies": "同步便條紙"
+      },
+      "name": "便條紙",
+      "placeholder": "撰寫便條紙⋯",
+      "title": "便條紙"
+    },
+    "stuff": {
+      "contextMenu": {
+        "delete": "刪除",
+        "edit": "編輯",
+        "printLabel": "列印標籤"
+      },
+      "defaultLocations": {
+        "box": "箱子",
+        "carry-on": "隨身行李",
+        "checked-in": "託運行李",
+        "closet": "衣櫃",
+        "storage": "收納"
+      },
+      "defaultTags": {
+        "books": "書籍",
+        "cd": "CD",
+        "clothing": "服飾",
+        "electronics": "電子產品",
+        "furniture": "家具",
+        "kitchen": "廚房",
+        "other": "其他"
+      },
+      "description": "在木製架子上整理您的物品",
+      "detail": {
+        "applyImageUrl": "套用",
+        "chooseImage": "選擇影像⋯",
+        "delete": "刪除",
+        "imageFetchFailed": "無法擷取該影像 URL。",
+        "imageInvalid": "無法使用該影像。",
+        "imageUrlDialogDescription": "貼上影像 URL 以用作封面。",
+        "imageUrlDialogTitle": "影像 URL",
+        "imageUrlPlaceholder": "影像 URL⋯",
+        "lookup": "查詢",
+        "pasteImageUrl": "貼上 URL⋯",
+        "print": "列印",
+        "qrCode": "QR Code",
+        "removeBackground": "移除背景",
+        "removeBackgroundFailed": "無法移除背景。",
+        "removeBackgroundSignIn": "登入以移除背景。",
+        "removeImage": "移除",
+        "title": "詳細資訊"
+      },
+      "dialogs": {
+        "clearShelfDescription": "確定要清除整個貨架嗎？所有項目都會移除，只保留預設標籤。此動作無法復原。",
+        "clearShelfTitle": "清除貨架",
+        "newLocation": {
+          "description": "輸入新位置的名稱。",
+          "title": "新增位置"
+        },
+        "newTag": {
+          "description": "輸入新標籤的名稱。",
+          "title": "新增標籤"
+        },
+        "productLookup": {
+          "applying": "正在套用⋯",
+          "description": "選擇與「{{query}}」相符的項目",
+          "error": "產品查詢失敗",
+          "noResults": "找不到產品",
+          "selectResult": "選擇結果：",
+          "title": "選擇產品",
+          "useSelected": "使用所選項目"
+        }
+      },
+      "empty": {
+        "description": "加入項目或掃描條碼來開始填滿您的架子。",
+        "title": "尚無物品"
+      },
+      "fields": {
+        "brand": "品牌",
+        "currency": "貨幣",
+        "discountedPrice": "要價",
+        "location": "位置",
+        "locationCreate": "新增「{{name}}」",
+        "locationEmpty": "找不到位置",
+        "locationNone": "無",
+        "locationSearchPlaceholder": "搜尋或新增位置…",
+        "notes": "備註",
+        "originalPrice": "原價",
+        "productBarcode": "產品條碼",
+        "quantity": "數量",
+        "ryosLabel": "ryOS 標籤",
+        "soldPrice": "成交價",
+        "status": "狀態",
+        "tags": "標籤",
+        "tagsCreate": "新增「{{name}}」",
+        "tagsEmpty": "找不到標籤",
+        "tagsNone": "無",
+        "tagsSearchPlaceholder": "搜尋或新增標籤…",
+        "thumbnail": "縮圖",
+        "title": "標題"
+      },
+      "help": {
+        "prices": {
+          "description": "追蹤原價、折扣價和售價。將項目標記為使用中、已收納、待售、已售出或已丟棄。",
+          "title": "價格與狀態"
+        },
+        "print": {
+          "description": "從「列印」▸「列印項目/標籤標籤」列印項目或標籤的 ryOS ID 條碼。掃描印出的標籤可打開該項目或依標籤過濾。",
+          "title": "列印標籤"
+        },
+        "scan": {
+          "description": "使用「檔案」▸「掃描條碼」來擷取 UPC、EAN、Code 128、QR 等。找到時會自動填寫產品詳細資訊。",
+          "title": "掃描條碼"
+        },
+        "share": {
+          "description": "將所選項目發佈到公開網址。已登入的訪客可以預留項目並進行最高出價。",
+          "title": "分享與出價"
+        },
+        "shelf": {
+          "description": "在木製架子上瀏覽您的庫存。按一下項目以編輯詳細資訊、狀態和價格。",
+          "title": "您的架子"
+        },
+        "tags": {
+          "description": "使用「廚房」或「電子產品」等標籤整理物品。從側邊欄過濾架子上的項目。",
+          "title": "標籤"
+        }
+      },
+      "menu": {
+        "about": "關於 Stuff",
+        "backToShelf": "回到我的架子",
+        "clearShelf": "清除貨架⋯",
+        "exportShelf": "匯出貨架…",
+        "gridView": "格狀檢視",
+        "help": "Stuff 輔助說明",
+        "importShelf": "匯入貨架…",
+        "listView": "列表檢視",
+        "newItem": "新增項目",
+        "print": "列印",
+        "printItemLabels": "列印項目標籤⋯",
+        "printTagLabels": "列印標籤標籤⋯",
+        "scanBarcode": "掃描條碼⋯",
+        "share": "分享架子…",
+        "showSidebar": "顯示側邊欄"
+      },
+      "name": "Stuff",
+      "newItemTitle": "新增項目",
+      "price": {
+        "free": "免費"
+      },
+      "scannedItemTitle": "掃描的項目",
+      "scanner": {
+        "add": "加入",
+        "addedWithoutMeta": "條碼已儲存 — 找不到產品資訊",
+        "cameraError": "無法取用相機。在下方手動輸入條碼。",
+        "coverFetchFailed": "找到產品 — 無法下載封面",
+        "description": "將相機對準條碼（UPC、EAN、Code 128、QR 等）。",
+        "found": "產品已加入",
+        "foundNoCover": "已加入產品 — 找不到封面",
+        "foundWithCover": "已加入產品（含封面）",
+        "lookingUp": "正在查詢產品…",
+        "lookupFailed": "產品查詢失敗",
+        "manualPlaceholder": "或輸入條碼…",
+        "noLookupQuery": "輸入標題、品牌或條碼來查詢。",
+        "notFoundExisting": "找不到產品資訊",
+        "openedItem": "已打開 {{title}}",
+        "openedTag": "已篩選為 {{name}}",
+        "title": "掃描條碼",
+        "unknownItem": "找不到該 ryOS 標籤的項目。",
+        "unknownTag": "找不到該 ryOS 標籤的標籤。",
+        "updated": "產品詳細資訊已更新",
+        "updatedNoCover": "產品詳細資訊已更新 — 找不到封面",
+        "updatedWithCover": "產品詳細資訊與封面已更新"
+      },
+      "searchPlaceholder": "搜尋 Stuff…",
+      "share": {
+        "description": "發佈選取的項目。訪客必須登入才能預訂或競標。",
+        "empty": "沒有可分享的項目。",
+        "failed": "無法發佈分享。",
+        "noneSelected": "請至少選擇一個項目來分享。",
+        "publish": "發佈",
+        "published": "書架已發佈",
+        "publishing": "正在發佈⋯",
+        "shelfTitle": "分享標題",
+        "title": "分享物品"
+      },
+      "shared": {
+        "back": "返回",
+        "bid": "出價",
+        "bidFailed": "無法出價。",
+        "bidPlaced": "已出價",
+        "by": "由 {{username}} 分享",
+        "invalidBid": "請輸入有效的出價金額。",
+        "loading": "載入中⋯",
+        "loadingTitle": "已分享物品",
+        "notFound": "找不到此分享書架。",
+        "reserve": "預訂",
+        "reserveFailed": "無法預訂項目。",
+        "reserved": "項目已預訂",
+        "reservedBy": "由 {{username}} 預訂",
+        "signIn": "登入以出價",
+        "topOffer": "最高出價 {{amount}}",
+        "yourOffer": "你的出價"
+      },
+      "shelf": {
+        "gridView": "格狀檢視",
+        "listView": "列表檢視"
+      },
+      "sidebar": {
+        "allLocations": "所有位置",
+        "allStuff": "所有物品",
+        "deleteLocation": "刪除位置",
+        "deleteTag": "刪除標籤",
+        "newLocation": "新增位置…",
+        "newTag": "新增標籤…",
+        "printTag": "列印標籤",
+        "status": "狀態",
+        "tags": "標籤"
+      },
+      "status": {
+        "all": "所有狀態",
+        "discarded": "已捨棄",
+        "for_sale": "待售",
+        "in_use": "使用中",
+        "reserved": "已預訂",
+        "sold": "已售出",
+        "stowed": "已收納"
+      },
+      "title": "物品",
+      "toasts": {
+        "exportFailed": "無法匯出貨架",
+        "exportSuccess": "貨架已匯出",
+        "importEmpty": "該檔案中找不到新的物品或標籤",
+        "importFailed": "無法匯入貨架 — 檔案可能無效",
+        "importSuccess": "已匯入 {{items}} 件物品和 {{tags}} 個標籤（略過 {{skipped}} 個）",
+        "shelfCleared": "已清除貨架"
+      },
+      "toolbar": {
+        "add": "加入",
+        "scan": "掃描",
+        "share": "分享",
+        "toggleSidebar": "切換側邊欄"
+      }
+    },
+    "synth": {
+      "addPreset": "新增預設",
+      "controls": "控制",
+      "description": "虛擬合成器",
+      "dialogs": {
+        "enterPresetName": "輸入預設名稱",
+        "saveNewPreset": "儲存新預設",
+        "updatePreset": "更新預設",
+        "updatePresetName": "更新預設名稱"
+      },
+      "effects": "效果",
+      "effectsParams": {
+        "bitcrusher": "位元粉碎器",
+        "chorus": "合唱",
+        "delay": "延遲",
+        "distortion": "破音",
+        "gain": "增益",
+        "phaser": "移相器",
+        "reverb": "殘響"
+      },
+      "envelope": "信封",
+      "envelopeParams": {
+        "attack": "起音",
+        "decay": "衰減",
+        "release": "釋放",
+        "sustain": "延音"
+      },
+      "help": {
+        "controlsPanel": {
+          "description": "開啟「控制」以調整振盪器、包絡、濾波器和特效 (FX)",
+          "title": "控制面板"
+        },
+        "effects": {
+          "description": "為每個聲部串接殘響、延遲、失真、合唱、移相和位元粉碎器",
+          "title": "堆疊效果"
+        },
+        "octaveShift": {
+          "description": "按下 -/+ 或使用按鈕將琴鍵向上或向下移動一個八度",
+          "title": "八度音位移"
+        },
+        "presets": {
+          "description": "儲存、載入及重新命名自訂預設值，以建立專屬音色庫",
+          "title": "儲存預設值"
+        },
+        "virtualKeyboard": {
+          "description": "使用螢幕按鍵演奏音符，或將 QWERTY 鍵盤當作琴鍵使用",
+          "title": "虛擬鍵盤"
+        },
+        "waveform3d": {
+          "description": "面板開啟時，可觀看即時 3D 波形網格對每個音符的反應",
+          "title": "3D FFT 視覺化工具"
+        }
+      },
+      "menu": {
+        "aboutSynth": "關於合成器",
+        "keyLabels": "琴鍵標籤",
+        "newPreset": "新增預設",
+        "noLabels": "沒有標籤",
+        "noteLabels": "音符標籤",
+        "presets": "預設組",
+        "resetSynth": "重設合成器",
+        "synthHelp": "合成器輔助說明"
+      },
+      "name": "合成器",
+      "noPresetsYet": "尚無預設。請使用「新增」按鈕建立一個。",
+      "oscillator": "振盪器",
+      "selectPreset": "選擇預設",
+      "status": {
+        "octave": "八度 {{offset}}",
+        "presetLoaded": "預設「{{name}}」已載入",
+        "presetSaved": "預設「{{name}}」已儲存",
+        "presetUpdated": "預設「{{name}}」已更新",
+        "synthResetToDefaults": "合成器已重設為預設值"
+      },
+      "waveform": "波形",
+      "waveforms": {
+        "sawtooth": "鋸齒波",
+        "sine": "正弦波",
+        "square": "方波",
+        "triangle": "三角波"
+      }
+    },
+    "terminal": {
+      "commands": {
+        "about": "關於終端機",
+        "ai": "進入與 ryo 的 AI 聊天模式",
+        "cat": "檢視檔案內容",
+        "cd": "變更目錄",
+        "chat": "與 ryo 聊天 (別名)",
+        "clear": "清除終端機畫面",
+        "cowsay": "一隻會說話的牛",
+        "date": "顯示目前日期/時間",
+        "echo": "顯示文字",
+        "edit": "以文字編輯器開啟",
+        "grep": "於檔案中搜尋樣式",
+        "help": "顯示可用指令",
+        "history": "顯示指令歷史記錄",
+        "logout": "登出目前使用者",
+        "ls": "列出目錄內容",
+        "mkdir": "建立目錄",
+        "open": "開啟應用程式、檔案或小程式",
+        "pwd": "顯示目前目錄",
+        "rm": "將檔案移至垃圾桶",
+        "ryo": "與 ryo 聊天",
+        "su": "切換或建立使用者",
+        "touch": "建立空白檔案",
+        "uptime": "顯示系統開機時間",
+        "vim": "在 vim 編輯器中開啟檔案",
+        "whoami": "顯示目前使用者"
+      },
+      "description": "命令列介面",
+      "help": {
+        "aiAssistant": {
+          "description": "輸入「ryo <提示詞>」（或僅輸入「ai」）即可在附帶 OS 上下文的情況下與 Ryo 聊天",
+          "title": "行內詢問 Ryo"
+        },
+        "basicCommands": {
+          "description": "使用 ls、cd、cat、pwd、mkdir、touch 和 clear 在檔案系統中導覽",
+          "title": "Unix 基礎"
+        },
+        "commandHistory": {
+          "description": "按下 ↑ / ↓ 鍵可循環瀏覽先前的指令並快速重新執行",
+          "title": "指令紀錄"
+        },
+        "fileEditing": {
+          "description": "執行 edit <檔案> 以使用「文字編輯器」，或執行 vim <檔案> 以使用真正的模態 Vim 編輯器",
+          "title": "Edit 與 Vim"
+        },
+        "navigation": {
+          "description": "與 Finder 使用相同的虛擬檔案系統 — 在任一 App 中的編輯都會立即同步",
+          "title": "與 Finder 共享"
+        },
+        "terminalSounds": {
+          "description": "針對輸出、錯誤和 AI 回覆提供清脆的點擊聲和提示音效 — 可在「顯示方式 ▸ 音效」中切換",
+          "title": "終端機音效"
+        }
+      },
+      "menu": {
+        "aboutTerminal": "關於終端機",
+        "clearTerminal": "清除終端機",
+        "decreaseFontSize": "縮小字級",
+        "increaseFontSize": "放大字級",
+        "muteSounds": "靜音",
+        "resetFontSize": "重設字體大小",
+        "terminalHelp": "終端機輔助說明"
+      },
+      "name": "終端機",
+      "output": {
+        "addedAndStartedPlaying": "已新增並開始播放新歌曲",
+        "askRyoAnything": "問 Ryo 任何事。輸入 'exit' 返回終端機。",
+        "askRyoWithPrompt": "問 Ryo 任何事。輸入 'exit' 返回終端機。\n→ 來自您的指令：{{prompt}}",
+        "chatCleared": "對話已清除。您仍在與 Ryo 對話。輸入 'exit' 返回終端機。",
+        "commandNotFound": "找不到指令：{{cmd}}。輸入 'help' 以查看可用指令清單。",
+        "contentWritten": "內容已寫入",
+        "fileCreated": "檔案已建立",
+        "fileEdited": "檔案已編輯",
+        "foundApplets": "找到 {{count}} 個小程式",
+        "foundAppletsPlural": "找到 {{count}} 個小程式",
+        "foundApplications": "找到 {{count}} 個應用程式",
+        "foundApplicationsPlural": "找到 {{count}} 個應用程式",
+        "foundDocuments": "找到 {{count}} 份檔案",
+        "foundDocumentsPlural": "找到 {{count}} 份檔案",
+        "isThinking": "思考中",
+        "lastLogin": "上次登入：{{time}}",
+        "listedItems": "已列出項目",
+        "multipleMatchesFound": "已找到多個符合項目",
+        "noFilesFound": "沒有找到檔案",
+        "noItemsFound": "找不到項目",
+        "noSuchDirectory": "cd: {{dir}}: 沒有此目錄",
+        "openExamples": "範例",
+        "openNotFound": "無法開啟 '{{target}}'：找不到應用程式或檔案",
+        "opened": "已開啟",
+        "openedApp": "已開啟 {{app}}",
+        "openedApplet": "已在小程式檢視器中開啟 {{applet}}",
+        "openedFile": "已開啟 {{file}}",
+        "openedFolder": "已在 Finder 中開啟 {{folder}}",
+        "pausedIpod": "已暫停 iPod",
+        "playingIpod": "正在播放 iPod",
+        "playingSong": "正在播放歌曲",
+        "readFile": "已讀取 {{fileName}}",
+        "skippedToNextTrack": "已跳至下一首曲目",
+        "skippedToPreviousTrack": "已跳至上一首曲目",
+        "textNotFound": "找不到文字",
+        "toggledIpodPlayback": "已切換 iPod 播放",
+        "typeHelpForCommands": "輸入 'help' 以查看可用指令",
+        "unknown": "未知",
+        "untitled": "未命名"
+      }
+    },
+    "textedit": {
+      "alignCenter": "中央對齊",
+      "alignLeft": "齊左",
+      "alignRight": "齊右",
+      "bold": "粗體",
+      "bulletList": "項目符號清單",
+      "description": "簡單的富文字編輯器",
+      "dialogs": {
+        "discardChanges": "捨棄所作更動",
+        "doYouWantToDiscardYourChangesAndCreateANewFile": "您要捨棄變更並建立新檔案嗎？",
+        "enterANameForYourFile": "輸入檔案名稱",
+        "enterFilenameToSaveOrDeleteItBeforeClosing": "輸入要儲存的檔案名稱，或在關閉前將其刪除。",
+        "keepNewDocument": "保留新檔案",
+        "saveChanges": "儲存所作更動",
+        "saveFile": "儲存檔案",
+        "saveYourChangesBeforeClosing": "在關閉前儲存您的變更。"
+      },
+      "failedToUpdateEditorWithDocumentUpdatedEvent": "更新編輯器失敗，檔案更新事件：",
+      "heading1": "標題1",
+      "heading2": "標題2",
+      "heading3": "標題3",
+      "help": {
+        "aiCoEditor": {
+          "description": "在聊天中要求 Ryo 閱讀、摘要或重寫開啟的文件",
+          "title": "AI 協作編輯器"
+        },
+        "fileManagement": {
+          "description": "匯出為 Markdown、HTML 或純文字，並可將檔案拖回以進行匯入",
+          "title": "儲存為 HTML、MD 或 TXT"
+        },
+        "formatting": {
+          "description": "粗體、斜體、底線、標題、對齊方式和行內連結",
+          "title": "豐富文字格式"
+        },
+        "listsTasks": {
+          "description": "在任何文件中混合使用項目符號、編號和互動式核取方塊列表",
+          "title": "列表與工作方塊"
+        },
+        "slashCommands": {
+          "description": "輸入 / 即可開啟標題、列表和樣式的即時選單",
+          "title": "斜線指令"
+        },
+        "voiceDictation": {
+          "description": "點擊麥克風即可進行免持聽寫；語音將直接轉換為文字",
+          "title": "語音聽寫"
+        }
+      },
+      "italic": "斜體",
+      "menu": {
+        "aboutTextEdit": "關於文字編輯",
+        "alignCenter": "中央對齊",
+        "alignLeft": "齊左",
+        "alignRight": "齊右",
+        "bold": "粗體",
+        "bulletList": "項目符號列表",
+        "exportAs": "輸出為⋯",
+        "format": "格式",
+        "heading1": "標題1",
+        "heading2": "標題2",
+        "heading3": "標題3",
+        "html": "HTML",
+        "importFromDevice": "從裝置輸入⋯",
+        "italic": "斜體",
+        "markdown": "Markdown",
+        "newFile": "新增檔案",
+        "numberedList": "編號列表",
+        "open": "打開⋯",
+        "plainText": "純文字",
+        "save": "儲存",
+        "saveEllipsis": "儲存⋯",
+        "taskList": "作業列表",
+        "text": "文字",
+        "texteditHelp": "文字編輯輔助說明",
+        "underline": "底線"
+      },
+      "name": "文字編輯",
+      "numberedList": "編號列表",
+      "slashCommands": {
+        "bulletList": {
+          "description": "建立簡單的項目符號列表",
+          "title": "項目符號列表"
+        },
+        "heading1": {
+          "description": "大型區段標題",
+          "title": "標題1"
+        },
+        "heading2": {
+          "description": "中型區段標題",
+          "title": "標題2"
+        },
+        "heading3": {
+          "description": "小型區段標題",
+          "title": "標題3"
+        },
+        "numberedList": {
+          "description": "建立編號列表",
+          "title": "編號列表"
+        },
+        "taskList": {
+          "description": "建立含核取方塊的檢查清單",
+          "title": "作業列表"
+        },
+        "text": {
+          "description": "只需開始輸入純文字",
+          "title": "文字"
+        }
+      },
+      "speak": "朗讀",
+      "stopSpeech": "停止語音",
+      "text": "文字",
+      "underline": "底線",
+      "untitled": "未命名"
+    },
+    "tv": {
+      "channelBadge": "CH {{number}} — {{name}}",
+      "create": {
+        "creating": "正在建立⋯",
+        "description": "描述頻道內容，AI 將會使用 YouTube 影片進行編排。",
+        "errorEmpty": "描述頻道內容以開始。",
+        "errorGeneric": "無法建立頻道。請再試一次。",
+        "errorNoVideos": "找不到與該構想相關的影片。請嘗試不同的描述。",
+        "errorRateLimit": "已建立太多頻道。請稍候再試。",
+        "inlinePlaceholder": "建立新頻道⋯",
+        "placeholder": "例如：滑板技巧與公園",
+        "signInRequired": "登入以建立頻道",
+        "signInRequiredDescription": "登入或建立帳號以編排您自己的電視頻道。",
+        "statusPlanning": "正在規劃頻道",
+        "statusSearching": "正在搜尋 YouTube",
+        "statusTuning": "正在調頻",
+        "submit": "建立頻道",
+        "title": "新頻道",
+        "toastSuccess": "正在收聽 {{name}}"
+      },
+      "delete": {
+        "description": "要從您的電視移除「{{name}}」頻道嗎？",
+        "title": "刪除頻道"
+      },
+      "description": "在 YouTube 上轉台",
+      "drawer": {
+        "close": "隱藏影片",
+        "empty": "此頻道尚無影片。",
+        "removeVideo": "從頻道中移除",
+        "title": "排程"
+      },
+      "help": {
+        "aiChannels": {
+          "description": "使用「頻道 ▸ 建立」來提示 AI 產生自訂主題播放清單",
+          "title": "AI 製作頻道"
+        },
+        "channels": {
+          "description": "像週六早晨看電視一樣，在精選的 YouTube 頻道之間切換",
+          "title": "轉台瀏覽"
+        },
+        "fullscreen": {
+          "description": "從「控制 ▸ 全螢幕」進入全螢幕模式，享受真正的沙發體驗",
+          "title": "全螢幕模式"
+        },
+        "mtvChannel": {
+          "description": "MTV 頻道會同步您的 iPod 資料庫，並顯示同步歌詞疊加層",
+          "title": "MTV 頻道"
+        },
+        "numbers": {
+          "description": "輸入 1–6（或多位數）直接跳轉至頻道，或使用 CH+/CH−",
+          "title": "頻道號碼"
+        },
+        "playback": {
+          "description": "新頻道會以隨機進度加入已在播放的內容，營造直播感",
+          "title": "節目中途切入"
+        }
+      },
+      "menu": {
+        "about": "關於電視",
+        "channelDown": "頻道遞減",
+        "channelUp": "頻道遞增",
+        "channels": "頻道",
+        "closedCaptions": "隱藏式字幕",
+        "controls": "控制",
+        "deleteChannel": "刪除頻道",
+        "exportChannels": "匯出頻道⋯",
+        "fullScreen": "全螢幕",
+        "importChannels": "匯入頻道⋯",
+        "lcdFilter": "LCD 濾鏡",
+        "newChannel": "新增頻道⋯",
+        "next": "下一個",
+        "pause": "暫停",
+        "play": "播放",
+        "previous": "上一個",
+        "resetChannels": "重設頻道⋯",
+        "showVideos": "顯示影片",
+        "tvHelp": "電視輔助說明"
+      },
+      "name": "電視",
+      "nowPlaying": "頻道 {{channel}} · {{title}}",
+      "reset": {
+        "description": "移除所有自訂頻道並切換回預設頻道組合?",
+        "title": "重設頻道"
+      },
+      "status": {
+        "add": "加入",
+        "channel": "頻道",
+        "channelDown": "頻道−",
+        "channelUp": "頻道+",
+        "network": "網路",
+        "next": "下一個",
+        "noSignal": "無訊號",
+        "now": "現在",
+        "time": "時間長度",
+        "title": "標題",
+        "video": "視訊"
+      },
+      "title": "電視",
+      "toasts": {
+        "exportFailed": "無法匯出頻道",
+        "exportSuccess": "頻道已匯出",
+        "importEmpty": "該檔案中找不到有效的頻道",
+        "importFailed": "無法匯入頻道 — 檔案可能無效",
+        "importSuccess_one": "已匯入 {{count}} 個頻道 (已跳過 {{skipped}} 個)",
+        "importSuccess_other": "已匯入 {{count}} 個頻道 (已跳過 {{skipped}} 個)",
+        "resetSuccess": "頻道已重設為預設值"
+      },
+      "youtubePaste": {
+        "added": "已將「{{title}}」加入此頻道",
+        "alreadyInChannel": "該影片已在此頻道中",
+        "alreadyInLibrary": "該影片已在您的媒體庫中",
+        "fetchFailed": "無法載入該 YouTube 影片",
+        "needsEditableChannel": "請切換到 Ryo TV、MTV 或自訂頻道，才能透過連結新增影片"
+      }
+    },
+    "videos": {
+      "description": "觀看影片",
+      "dialogs": {
+        "addVideoDescription": "輸入 YouTube、Vimeo 或影片網址",
+        "addVideoTitle": "加入影片",
+        "clearPlaylistDescription": "您確定要清除整個播放清單嗎？此動作無法復原。",
+        "clearPlaylistTitle": "清除播放清單",
+        "failedToLoadSharedVideo": "無法載入分享的影片",
+        "openedSharedVideo": "已開啟分享的影片。按下",
+        "resetPlaylistDescription": "您確定要將播放清單重設為預設影片嗎？這將會取代您目前的播放清單。",
+        "resetPlaylistTitle": "重設播放清單",
+        "toStartPlaying": "即可開始播放。",
+        "videoId": "影片 ID：{{videoId}}",
+        "videoItemType": "影片"
+      },
+      "help": {
+        "addVideo": {
+          "description": "貼上任何 YouTube 網址，ryOS 就會將中繼資料抓取到您的播放清單中",
+          "title": "從 YouTube 新增"
+        },
+        "loop": {
+          "description": "循環播放單個影片或整個播放清單，實現無間斷的背景播放",
+          "title": "循環模式"
+        },
+        "playback": {
+          "description": "透過厚實的控制列進行播放、暫停、跳過、拖曳進度及調整音量",
+          "title": "經典播放"
+        },
+        "powersTv": {
+          "description": "您的播放清單也會提供給 TV 應用程式的精選頻道陣容",
+          "title": "驅動 Ryo TV"
+        },
+        "shareDeepLinks": {
+          "description": "產生分享網址，以便直接在「影片」中重新開啟相同的片段",
+          "title": "分享深層連結"
+        },
+        "shuffle": {
+          "description": "切換隨機播放以打亂播放清單順序，且不會遺失您的隊列",
+          "title": "隨機播放順序"
+        }
+      },
+      "menu": {
+        "aboutVideos": "關於影片",
+        "addToLibrary": "加入資料庫⋯",
+        "allVideos": "所有影片",
+        "clearLibrary": "清除資料庫⋯",
+        "controls": "控制",
+        "fullScreen": "全螢幕",
+        "library": "資料庫",
+        "next": "下一個",
+        "openVideo": "開啟影片⋯",
+        "pause": "暫停",
+        "play": "播放",
+        "previous": "上一個",
+        "repeatAll": "全部重複",
+        "repeatOne": "重複播放一首",
+        "resetLibrary": "重設資料庫⋯",
+        "shareVideo": "分享影片⋯",
+        "shuffle": "隨機播放",
+        "unknownArtist": "未知的藝人",
+        "videosHelp": "影片輔助說明"
+      },
+      "name": "影片",
+      "status": {
+        "add": "加入",
+        "addVideos": "加入影片",
+        "errorAdding": "加入錯誤：{{error}}",
+        "failedToAddVideo": "無法加入影片",
+        "failedToProcessVideo": "無法處理影片：{{videoId}}",
+        "fullscreen": "全螢幕",
+        "next": "下一首 ⏭",
+        "paused": "已暫停 ⏸",
+        "play": "播放 ▶",
+        "playing": "▶ 正在播放 {{title}}",
+        "playlistReset": "播放清單已重設",
+        "pressToPlay": "按 ⏯ 播放",
+        "prev": "上一首 ⏮",
+        "repeat": "重複",
+        "repeatingPlaylist": "正在重複播放清單",
+        "shuffle": "隨機播放",
+        "shuffleOff": "隨機播放關閉",
+        "shuffleOn": "隨機播放開啟",
+        "time": "時間",
+        "title": "標題",
+        "toGetStarted": "即可開始",
+        "track": "曲目",
+        "unknownError": "未知的錯誤",
+        "videoAdded": "影片已新增"
+      }
+    },
+    "winamp": {
+      "description": "經典 Winamp 媒體播放器",
+      "help": {
+        "controls": {
+          "description": "原汁原味的播放、暫停、停止、下一首和上一首按鈕，與 Winamp 2 完全一致",
+          "title": "經典播放控制"
+        },
+        "equalizer": {
+          "description": "開啟等化器視窗以調整頻率，並從經典的曲風預設中選擇",
+          "title": "10 段等化器"
+        },
+        "playMusic": {
+          "description": "將音訊檔案拖曳至 Winamp 任何位置，或透過播放清單編輯器加入",
+          "title": "播放音樂"
+        },
+        "playlist": {
+          "description": "管理您的隊列、重新排列曲目，並儲存 .m3u 播放清單供日後使用",
+          "title": "播放清單編輯器"
+        },
+        "shuffleRepeat": {
+          "description": "在主視窗切換隨機與重複播放，實現無間斷或隨機播放",
+          "title": "隨機與重複播放"
+        },
+        "skins": {
+          "description": "按右鍵開啟面板選擇器 — Webamp 內建原始 Winamp 經典外觀",
+          "title": "自訂面板"
+        }
+      },
+      "menu": {
+        "about": "關於 Winamp",
+        "controls": "控制",
+        "help": "Winamp 說明",
+        "next": "下一個",
+        "pause": "暫停",
+        "play": "播放",
+        "previous": "上一個",
+        "repeat": "重複",
+        "shuffle": "隨機播放",
+        "skins": "外觀",
+        "stop": "停止"
+      },
+      "name": "Winamp",
+      "skins": {
+        "default": "預設"
+      },
+      "status": {
+        "unknownArtist": "未知的藝人"
+      },
+      "title": "Winamp"
+    }
+  },
+  "common": {
+    "aboutThisMac": {
+      "builtInMemory": "內建記憶體",
+      "clickToToggle": "按一下以切換",
+      "description": "關於此電腦上的 ryOS 資訊",
+      "gb": "GB",
+      "largestUnusedBlock": "最大未用區塊",
+      "mb": "MB",
+      "privacyPolicy": "隱私權政策",
+      "system": "系統",
+      "termsOfService": "服務條款",
+      "title": "關於此電腦",
+      "viewChangelog": "更新日誌",
+      "virtualMemory": "虛擬記憶體",
+      "virtualMemoryOff": "關閉"
+    },
+    "activity": {
+      "adding": "正在加入",
+      "furigana": "振假名",
+      "soramimi": "空耳"
+    },
+    "appMenu": {
+      "aboutApp": "關於{{appName}}",
+      "appHelp": "{{appName}}輔助說明",
+      "fullScreen": "全螢幕",
+      "hideApp": "隱藏{{appName}}",
+      "hideOthers": "隱藏其他",
+      "quitApp": "結束{{appName}}",
+      "showAll": "全部顯示"
+    },
+    "appleMenu": {
+      "aboutThisComputer": "關於此電腦",
+      "appletStore": "小程式商店⋯",
+      "controlPanels": "控制台⋯",
+      "createAccount": "建立帳號⋯",
+      "enterFullScreen": "進入全螢幕",
+      "exitFullScreen": "離開全螢幕",
+      "logOut": "登出 {{username}}⋯",
+      "login": "登入⋯",
+      "moreApps": "更多 App⋯",
+      "moreDocuments": "更多文件⋯",
+      "noRecentApps": "沒有最近使用的 App",
+      "noRecentDocuments": "沒有最近使用過的文件",
+      "recentItems": "最近使用過的項目",
+      "softwareUpdate": "軟體更新⋯",
+      "systemPreferences": "系統偏好設定⋯"
+    },
+    "assistant": {
+      "characters": {
+        "clippy": "大眼迴紋針",
+        "f1": "微軟一號",
+        "genie": "Genie",
+        "genius": "天才老爹",
+        "links": "戲鼠貓",
+        "merlin": "梅林",
+        "monkeyking": "孫悟空",
+        "officelogo": "Office 拼圖",
+        "peedy": "Peedy",
+        "rocky": "Rocky",
+        "rover": "Rover",
+        "saeko": "Office 小姐"
+      },
+      "contextMenu": {
+        "character": "角色",
+        "newConversation": "新對話",
+        "quit": "結束小幫手",
+        "settings": "小幫手設定…",
+        "speech": "語音"
+      },
+      "emptyBubble": "嗨！需要協助時隨時點一下我。",
+      "genericError": "哎呀，我遇到了一點問題。請稍後再試！📎",
+      "greetings": {
+        "hello": "嗨！我是 {{name}}，你的桌面助理。有任何需要請點一下我！👋",
+        "help": "看起來你正在使用 ryOS！需要幫忙嗎？我是 {{name}}，很樂意為你提供協助。📎",
+        "looksLike": "哈囉！我是 {{name}} — 我可以打開 App、播放音樂或回答問題。儘管問我吧！✨",
+        "tip": "嘿！我是 {{name}}。提示：你可以將我拖移到任何地方，我會貼齊你的視窗和 Dock。🪄"
+      },
+      "inputPlaceholder": "隨便問我吧⋯",
+      "label": "桌面助理 {{name}}",
+      "rateLimited": "呼，我需要休息一下！請稍後再試 — 或登入以進行更多對話。😴",
+      "send": "傳送",
+      "thinking": "思考中⋯"
+    },
+    "auth": {
+      "changePassword": {
+        "confirmPassword": "確認新密碼",
+        "currentPassword": "目前密碼",
+        "currentPasswordRequired": "必須填寫目前密碼",
+        "description": "請輸入目前密碼並選擇新密碼。",
+        "genericError": "密碼變更失敗",
+        "mismatch": "新密碼不符",
+        "newPassword": "新密碼",
+        "sameAsCurrent": "新密碼必須與目前密碼不同",
+        "saving": "正在儲存⋯",
+        "submit": "更改密碼",
+        "title": "更改密碼",
+        "toastChangedDescription": "您的密碼已更新",
+        "toastChangedTitle": "密碼已變更",
+        "toastSetDescription": "您現在可以使用密碼來復原帳號",
+        "toastSetTitle": "密碼已設定",
+        "tooShort": "密碼長度至少須為 8 個字元"
+      },
+      "createAccount": "建立帳號",
+      "creatingAccount": "正在建立⋯",
+      "dialogTitle": "ryOS 登入",
+      "forgotPassword": "忘記密碼？",
+      "logIn": "登入",
+      "logOut": "登出",
+      "logOutDescription": "您確定要登出嗎？您將會從您的帳號登出。",
+      "loggingIn": "正在登入⋯",
+      "loginDescription": "登入您的帳號",
+      "password": "密碼",
+      "recovery": {
+        "back": "返回",
+        "code": "重設代碼",
+        "codeRequired": "輸入重設代碼",
+        "codeSent": "若帳號相符，重設代碼已發送。",
+        "confirmPassword": "確認新密碼",
+        "description": "將重設代碼發送至可用的救援方式，然後選擇新密碼。",
+        "genericError": "無法重設密碼。請檢查代碼並重試。",
+        "identifier": "使用者名稱或電子郵件",
+        "identifierRequired": "輸入您的使用者名稱或電子郵件",
+        "mismatch": "密碼不符",
+        "newPassword": "新密碼",
+        "resetting": "正在重設⋯",
+        "sendCode": "發送代碼",
+        "sending": "傳送中⋯",
+        "submit": "重置密碼",
+        "successDescription": "您現在已使用新密碼登入。",
+        "successTitle": "密碼重設",
+        "title": "重置密碼",
+        "tooShort": "密碼長度必須至少為 8 個字元"
+      },
+      "recoveryEmailOptional": "備援電子郵件 (選填)",
+      "setPasswordRequired": "需要設定密碼",
+      "setPasswordRequiredDescription": "您需要在登出前設定密碼，以確保您可以復原您的帳號。您現在要設定密碼嗎？",
+      "signupDescription": "建立帳號以存取聊天室並儲存您的設定",
+      "username": "使用者名稱",
+      "verifyEmailDescription": "請輸入我們寄給您的驗證碼，以完成帳號安全設定。",
+      "verifyEmailTitle": "驗證您的電子郵件"
+    },
+    "auto": "自動",
+    "colors": {
+      "blue": "藍色",
+      "green": "綠色",
+      "orange": "橙色",
+      "pink": "粉色",
+      "purple": "紫色",
+      "yellow": "黃色"
+    },
+    "desktop": {
+      "myComputer": "我的電腦",
+      "setWallpaper": "設定背景圖片⋯"
+    },
+    "dialog": {
+      "about": "關於",
+      "aboutApp": "關於{{appName}}",
+      "adding": "新增中⋯",
+      "cancel": "取消",
+      "close": "關閉",
+      "confirm": "確認",
+      "delete": "刪除",
+      "discardChanges": "捨棄所作更動",
+      "discardChangesDesc": "您確定要捨棄變更並建立新檔案嗎？",
+      "done": "完成",
+      "emoji": {
+        "chooseEmoji": "選擇表情符號",
+        "description": "為此音效槽選擇表情符號",
+        "setEmoji": "設定表情符號"
+      },
+      "enterFileName": "輸入檔案名稱",
+      "enterFilenameToSave": "輸入要儲存的檔案名稱，或在關閉前刪除。",
+      "help": "輔助說明",
+      "informationAboutApp": "應用程式資訊",
+      "keepNewDocument": "保留新檔案",
+      "madeBy": "製作：",
+      "openInGitHub": "在 GitHub 開啟",
+      "save": "儲存",
+      "saveBeforeClosing": "在關閉前儲存您的變更。",
+      "saveChanges": "儲存所作更動",
+      "saveFile": "儲存檔案",
+      "share": {
+        "by": "由",
+        "copyLink": "拷貝連結",
+        "couldNotCopyToClipboard": "無法複製到剪貼簿。請嘗試手動選取並複製。",
+        "failedToCopyLink": "複製連結失敗",
+        "failedToGenerateShareLink": "無法產生{{itemType}}的分享連結",
+        "from": "來自",
+        "generating": "正在產生⋯",
+        "itemTypes": {
+          "app": "App",
+          "applet": "小程式",
+          "item": "項目",
+          "page": "頁面",
+          "shelf": "層架",
+          "song": "歌曲",
+          "stuff": "Stuff"
+        },
+        "linkCopied": "已拷貝連結",
+        "linkCopiedToClipboard": "{{itemType}}連結已複製到剪貼簿",
+        "pleaseTryAgainLater": "請稍後再試",
+        "qrCode": "QR 碼",
+        "shareItem": "分享{{itemType}}",
+        "shareItemViaLinkOrQrCode": "透過連結或QR碼分享此{{itemType}}",
+        "shareLinkFor": "分享{{itemType}}的連結",
+        "shareLinkOrScanToOpen": "分享連結或掃描以開啟此{{itemType}}"
+      },
+      "version": "版本",
+      "viewChangelog": "更新日誌",
+      "viewDocs": "查看文檔",
+      "welcomeTo": "歡迎使用{{appName}}",
+      "where": "位置："
+    },
+    "dock": {
+      "addToDock": "加入Dock中",
+      "appletStore": "小程式商店",
+      "applications": "應用程式",
+      "folderContents": "檔案夾內容",
+      "hide": "隱藏",
+      "minimized": "(已最小化)",
+      "newWindow": "新增視窗",
+      "open": "打開",
+      "quit": "結束",
+      "removeFromDock": "從Dock中移除",
+      "showAllWindows": "顯示所有視窗",
+      "trash": "垃圾桶",
+      "turnHidingOff": "關閉隱藏",
+      "turnHidingOn": "開啟隱藏",
+      "turnMagnificationOff": "關閉放大",
+      "turnMagnificationOn": "開啟放大"
+    },
+    "errorBoundaries": {
+      "appDescription": "重新啟動以開啟新視窗，或結束此已當機的視窗。其他已開啟的應用程式將會繼續執行。",
+      "appHeading": "「{{appName}}」意外結束",
+      "desktopDescription": "重新載入 ryOS 以回復 Dock、桌面和選單列。",
+      "desktopHeading": "桌面意外結束",
+      "relaunch": "重新啟動",
+      "reloadDesktop": "重新載入桌面"
+    },
+    "errors": {
+      "failedToAccessCamera": "無法存取相機",
+      "failedToFetchFurigana": "無法取得假名",
+      "failedToFetchSoramimi": "無法取得空耳"
+    },
+    "expose": {
+      "noWindows": "沒有開啟的視窗"
+    },
+    "htmlPreview": {
+      "bannerFallbackTitle": "未命名 Applet",
+      "codePreviewTitle": "ryOS 程式碼預覽",
+      "codePreviewTitleFullscreen": "ryOS 程式碼預覽全螢幕",
+      "copyHtml": "複製 HTML 程式碼",
+      "downloadHtml": "下載 HTML",
+      "exitFullscreen": "結束全螢幕",
+      "full": "完整",
+      "maximizePreview": "最大化預覽",
+      "minimizePreview": "最小化預覽",
+      "saveApplet": "另存為 Applet",
+      "saveAppletDescription": "輸入 Applet 名稱，現有的 Applet 將會被覆寫：",
+      "split": "分割",
+      "toastOpenAction": "打開",
+      "toastSaveFailed": "儲存 Applet 失敗",
+      "toastSaveFailedDescription": "儲存 Applet 時發生錯誤。",
+      "toastSaved": "Applet 儲存成功",
+      "toggleCode": "切換程式碼",
+      "toggleSplitView": "切換分割視圖"
+    },
+    "keys": {
+      "enter": "確定",
+      "escape": "離開"
+    },
+    "loading": {
+      "default": "載入中⋯",
+      "openingAppletStore": "正在開啟小程式商店⋯",
+      "openingSharedApplet": "正在開啟共享小程式⋯",
+      "openingSharedIELink": "正在開啟共享 Internet Explorer 連結⋯",
+      "openingSharedIpodTrack": "正在開啟共享 iPod 曲目⋯",
+      "openingSharedKaraokeTrack": "正在開啟共享卡拉OK曲目⋯",
+      "openingSharedVideo": "正在開啟共享影片⋯"
+    },
+    "menu": {
+      "applications": "應用程式",
+      "clear": "清除",
+      "close": "關閉",
+      "copy": "拷貝",
+      "cut": "剪下",
+      "documents": "文件",
+      "edit": "編輯",
+      "file": "檔案",
+      "go": "前往",
+      "help": "輔助說明",
+      "images": "影像",
+      "music": "音樂",
+      "paste": "貼上",
+      "redo": "重做",
+      "selectAll": "全選",
+      "settings": "設定",
+      "shareApp": "分享App⋯",
+      "sites": "網站",
+      "trash": "垃圾桶",
+      "undo": "還原",
+      "videos": "影片",
+      "view": "檢視"
+    },
+    "menuBar": {
+      "missionControl": "任務控制 (F3)",
+      "offline": "您目前離線",
+      "showAllWindows": "按一下來顯示所有視窗 (F3)",
+      "volume": "音量"
+    },
+    "noResults": "沒有結果",
+    "offline": {
+      "appRequiresInternet": "{{appName}} 需要網際網路連線。",
+      "title": "你已離線"
+    },
+    "startMenu": {
+      "aboutThisComputer": "關於這部電腦",
+      "run": "執行⋯",
+      "ryos98": "98",
+      "ryosProfessional": "專業版",
+      "start": "開始"
+    },
+    "swipeInstructions": {
+      "description": "向左或向右滑動以在開啟的視窗之間導覽",
+      "next": "下一個",
+      "previous": "上一個",
+      "title": "滑動以切換視窗"
+    },
+    "system": {
+      "debugBootScreenTest": "偵錯開機畫面測試⋯",
+      "formatFileSystem": "格式化檔案系統",
+      "formatFileSystemDesc": "您確定要格式化檔案系統嗎？這將永久刪除所有檔案（範例檔案除外）、圖片和自訂桌布。格式化後 ryOS 將重新啟動。",
+      "formattingFileSystem": "格式化檔案系統⋯",
+      "rebooting": "重新開機中⋯",
+      "resetAllSettings": "重設所有設定",
+      "resetAllSettingsDesc": "您確定要重設所有設定嗎？這將清除所有已儲存的設定並還原為預設狀態。重設後 ryOS 將重新啟動。",
+      "resettingSystem": "重設系統中⋯",
+      "restoringSystem": "還原系統中⋯",
+      "systemRestoring": "系統還原中⋯",
+      "updatingToRyOS": "更新至 Kebron OS⋯",
+      "updatingToRyOSWithBuild": "更新至 Kebron OS ({{buildNumber}})⋯"
+    },
+    "toast": {
+      "alreadyLatestVersion": "已經是最新版本",
+      "alreadyLatestVersionDetail": "Kebron OS ({{buildNumber}})",
+      "couldNotCheckUpdates": "無法檢查更新",
+      "failedToCacheAssets": "快取資產失敗",
+      "failedToLoadAssetManifest": "載入資產清單失敗",
+      "files": "檔案",
+      "noAssetsToCache": "無資產可快取",
+      "reboot": "重新啟動",
+      "total": "總計",
+      "updateReady": "Kebron OS ({{buildNumber}}) 的更新已就緒",
+      "updatingAssets": "正在更新資產",
+      "updatingIcons": "正在更新圖示",
+      "updatingSounds": "正在更新音效",
+      "updatingSystemFiles": "正在更新系統檔案"
+    },
+    "window": {
+      "close": "關閉",
+      "fullscreen": "全螢幕",
+      "maximize": "放到最大",
+      "maximizeDisabled": "最大化 (已停用)",
+      "minimize": "縮到最小",
+      "minimizeDisabled": "最小化 (已停用)"
+    }
+  },
+  "components": {
+    "linkPreview": {
+      "addToIpod": "加入iPod",
+      "openIpod": "開啟iPod",
+      "openKaraoke": "開啟卡拉OK",
+      "openYouTube": "開啟YouTube"
+    }
+  },
+  "debug": {
+    "clearLogs": "清除記錄",
+    "closeConsole": "關閉主控台",
+    "console": "記錄",
+    "copied": "已拷貝",
+    "copy": "拷貝",
+    "copyLogs": "複製記錄",
+    "errorCount": "{{count}} 個錯誤",
+    "filterAll": "全部記錄",
+    "filterByLogger": "依記錄來源篩選",
+    "filterOther": "其他",
+    "fix": "修正",
+    "fixLogs": "將記錄傳送給 Cursor 代理",
+    "hideConsole": "隱藏主控台",
+    "idb": {
+      "backToStores": "返回存放區",
+      "copy": "拷貝 IndexedDB 傾印",
+      "emptyDatabase": "找不到物件存放區。",
+      "emptyStore": "此存放區中沒有紀錄。",
+      "error": "無法讀取 IndexedDB。",
+      "loadMore_one": "再載入 {{count}} 筆紀錄",
+      "loadMore_other": "再載入 {{count}} 筆紀錄",
+      "loading": "正在讀取 IndexedDB…",
+      "recordCount_one": "{{count}} 筆紀錄",
+      "recordCount_other": "{{count}} 筆紀錄",
+      "refresh": "重新整理 IndexedDB 檢視"
+    },
+    "live": {
+      "appVersion": "App",
+      "average": "平均",
+      "bufferedLogs": "{{count}} 已緩衝",
+      "cloudSync": "雲端同步",
+      "copySnapshot": "拷貝環境快照",
+      "current": "目前",
+      "darkMode": "深色",
+      "dashboardLabel": "即時環境快照",
+      "domNodes": "DOM 節點",
+      "environment": "環境",
+      "errors": "錯誤",
+      "fps": "渲染頻率",
+      "fpsChartAria": "渲染頻率歷程記錄，目前為 {{value}}",
+      "fpsUnit": "fps",
+      "frameTime": "{{value}} 毫秒/幀",
+      "frameTimeLabel": "幀時間",
+      "historySummary": "歷程記錄摘要",
+      "historyWindow": "最近 {{count}} 秒",
+      "jsHeap": "JS 堆積",
+      "lightMode": "淺色",
+      "loading": "載入中⋯",
+      "locale": "地區設定",
+      "logHealth": "記錄健康狀況",
+      "logHealthValue": "{{errors}} 個錯誤 · {{warnings}} 個警告",
+      "logRate": "記錄活動",
+      "logRateChartAria": "記錄活動歷程記錄，目前每秒 {{count}} 則記錄",
+      "logging": "記錄",
+      "logsPerSecond": "{{count}}/秒",
+      "maximum": "最大值",
+      "metric": "指標",
+      "minimum": "最小值",
+      "network": "網路",
+      "offline": "離線",
+      "online": "連線",
+      "performance": "效能",
+      "realtime": "即時",
+      "realtimeReport": "{{state}} · {{provider}} · {{count}} 個頻道",
+      "realtimeState": {
+        "connected": "已連線",
+        "connecting": "連線中",
+        "disconnected": "已斷線"
+      },
+      "realtimeValue": "{{state}} · {{count}} ch",
+      "reportTitle": "即時環境快照",
+      "runtime": {
+        "browser": "瀏覽器",
+        "electron": "Electron",
+        "pwa": "PWA"
+      },
+      "runtimeLabel": "執行環境",
+      "sampling": "每秒取樣",
+      "samplingPaused": "取樣已暫停",
+      "services": "服務",
+      "session": "工作階段",
+      "sessionAdmin": "{{username}} (管理者)",
+      "sessionGuest": "訪客",
+      "sessionSignedOut": "{{username}} (已登出)",
+      "storage": "儲存空間",
+      "syncAuto": "自動",
+      "syncError": "錯誤",
+      "syncOff": "關閉",
+      "syncReport": "{{status}} · 上次檢查於 {{checkedAt}}",
+      "syncSyncing": "同步中…",
+      "theme": "主題",
+      "themeValue": "{{theme}} · {{mode}}",
+      "totalLogs": "記錄總數",
+      "unavailable": "無法使用",
+      "value": "值",
+      "viewport": "檢視區",
+      "viewportValue": "{{width}}×{{height}} @ {{dpr}}x",
+      "warnings": "警告"
+    },
+    "network": {
+      "clear": "清除請求",
+      "copy": "拷貝請求",
+      "empty": "尚未擷取到任何請求。",
+      "emptyForFilter": "沒有符合此過濾條件的要求。",
+      "failedCount": "{{count}} 個失敗",
+      "filterAll": "所有要求",
+      "filterRequests": "過濾要求",
+      "filters": {
+        "error": "失敗",
+        "ok": "成功",
+        "pending": "擱置中",
+        "warn": "警告"
+      },
+      "pending": "···",
+      "title": "要求"
+    },
+    "noLogsForFilter": "沒有符合此篩選條件的記錄。",
+    "noLogsYet": "尚未擷取到任何記錄。",
+    "scrollToBottom": "捲動到底部",
+    "showConsole": "顯示主控台",
+    "tabs": {
+      "idb": "IndexedDB",
+      "label": "偵錯面板檢視",
+      "live": "即時",
+      "logs": "記錄",
+      "network": "網路"
+    },
+    "toggleLabel": "除錯",
+    "warnCount": "{{count}} 個警告"
+  },
+  "settings": {
+    "language": {
+      "chineseSimplified": "简体中文",
+      "chineseTraditional": "繁體中文",
+      "description": "選擇您的 ryOS 介面偏好語言",
+      "english": "英文",
+      "french": "Français",
+      "german": "Deutsch",
+      "italian": "Italiano",
+      "japanese": "日本語",
+      "korean": "한국어",
+      "portuguese": "Português (Brasil)",
+      "russian": "Русский",
+      "spanish": "Español",
+      "title": "語言"
+    }
+  },
+  "spotlight": {
+    "ariaLabels": {
+      "clearSearch": "清除搜尋",
+      "spotlightSearch": "Spotlight 搜尋 (⌘+Space)"
+    },
+    "askRyo": "詢問 Ryo",
+    "hintClose": "關閉",
+    "hintNavigate": "導覽",
+    "hintOpen": "打開",
+    "noResults": "找不到結果",
+    "placeholder": "搜尋 ryOS",
+    "sections": {
+      "applets": "小工具",
+      "apps": "應用程式",
+      "calendar": "行事曆",
+      "commands": "指令",
+      "contacts": "聯絡人",
+      "documents": "文件",
+      "music": "音樂",
+      "settings": "設定",
+      "sites": "網站",
+      "videos": "影片"
+    },
+    "settings": {
+      "language": "語言",
+      "screenSaver": "螢幕保護程式",
+      "sounds": "聲音與音量",
+      "theme": "主題",
+      "wallpaper": "背景圖片"
+    },
+    "title": "Spotlight",
+    "topHits": "最佳搜尋結果"
+  },
+  "updates": {
+    "desktopAppOffer": "ryOS 已提供 {{platform}} 應用程式版本",
+    "desktopAvailable": "適用於 {{platform}} 的 ryOS {{version}} 已推出",
+    "download": "下載"
+  }
+}

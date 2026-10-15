@@ -1,0 +1,497 @@
+/**
+ * Romanization utilities for CJK (Chinese, Japanese, Korean) text
+ * Provides shared rendering functions for ruby annotations
+ */
+import * as hangulRomanization from "hangul-romanization";
+const romanizeKorean = (hangulRomanization as { convert: (text: string) => string }).convert;
+import { pinyin } from "pinyin-pro";
+import { toRomaji } from "wanakana";
+import type { ChinesePhoneticSystem } from "@/types/lyrics";
+import { hasKoreanText, isChineseText } from "./languageDetection";
+import { getDisplayReading } from "./furigana";
+import { hanziToZhuyin, hanziToZhuyinReadings } from "./zhuyin";
+
+// Re-export detection utilities for convenience
+export { hasKoreanText, isChineseText, isJapaneseText, hasKanaText } from "./languageDetection";
+
+/**
+ * Type for furigana segments from API
+ */
+export interface FuriganaSegment {
+  text: string;
+  reading?: string;
+}
+
+/**
+ * Options for romanization rendering
+ */
+export interface RomanizationOptions {
+  koreanRomanization?: boolean;
+  japaneseRomaji?: boolean;
+  chinesePinyin?: boolean;
+  chineseZhuyin?: boolean;
+}
+
+function resolveChinesePhonetic(
+  options: RomanizationOptions
+): ChinesePhoneticSystem | null {
+  if (options.chineseZhuyin) return "zhuyin";
+  if (options.chinesePinyin) return "pinyin";
+  return null;
+}
+
+// ============================================================================
+// Regex Patterns (consolidated from multiple files)
+// ============================================================================
+
+/** Korean character range (Hangul Jamo + Syllables) */
+export const KOREAN_REGEX = /[\u3131-\u314e\u314f-\u3163\uac00-\ud7a3]+/g;
+
+/** Japanese kana (Hiragana + Katakana + Katakana Phonetic Extensions) */
+export const KANA_REGEX = /[\u3040-\u309f\u30a0-\u30ff\u31f0-\u31ff]+/g;
+
+/** Chinese characters (CJK Unified Ideographs + Extensions) */
+export const CHINESE_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u2f800-\u2fa1f]+/g;
+
+// ============================================================================
+// Local Detection Helpers (using local regex for global matching)
+// ============================================================================
+
+/**
+ * Check if text contains any Japanese kana (using local regex)
+ * Note: This uses a local regex instance to avoid global state issues
+ */
+export function hasKanaTextLocal(text: string): boolean {
+  KANA_REGEX.lastIndex = 0;
+  return KANA_REGEX.test(text);
+}
+
+/**
+ * Check if text contains any Chinese characters (using local regex)
+ */
+export function hasChineseTextLocal(text: string): boolean {
+  CHINESE_REGEX.lastIndex = 0;
+  return CHINESE_REGEX.test(text);
+}
+
+// ============================================================================
+// Ruby Rendering Functions
+// ============================================================================
+
+/**
+ * Render text with Korean romanization as ruby annotation
+ */
+export function renderKoreanWithRomanization(text: string, keyPrefix: string = "kr"): React.ReactNode {
+  const segments: { text: string; isKorean: boolean; start: number }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  
+  KOREAN_REGEX.lastIndex = 0;
+  while ((match = KOREAN_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        text: text.slice(lastIndex, match.index),
+        isKorean: false,
+        start: lastIndex,
+      });
+    }
+    segments.push({ text: match[0], isKorean: true, start: match.index });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex), isKorean: false, start: lastIndex });
+  }
+  
+  if (segments.length === 0) {
+    return text;
+  }
+  
+  return (
+    <>
+      {segments.map((seg) => {
+        const segmentKey = `${keyPrefix}-${seg.start}-${seg.text}`;
+        if (seg.isKorean) {
+          const romanized = romanizeKorean(seg.text);
+          return (
+            <ruby key={segmentKey} className="lyrics-furigana lyrics-korean-ruby">
+              {seg.text}
+              <rp>(</rp>
+              <rt className="lyrics-furigana-rt lyrics-korean-rt">{romanized}</rt>
+              <rp>)</rp>
+            </ruby>
+          );
+        }
+        return <span key={segmentKey}>{seg.text}</span>;
+      })}
+    </>
+  );
+}
+
+/**
+ * Render text with Chinese pinyin or Zhuyin as ruby annotation.
+ * Note: pinyin-pro may give less accurate readings for some Traditional Chinese characters.
+ * Zhuyin uses `traditional: true` so zh-TW lyrics keep Traditional-friendly 注音.
+ */
+export function renderChineseWithPhonetics(
+  text: string,
+  keyPrefix: string = "cn",
+  system: ChinesePhoneticSystem = "pinyin"
+): React.ReactNode {
+  const readings =
+    system === "zhuyin"
+      ? hanziToZhuyinReadings(text)
+      : pinyin(text, { type: "array", toneType: "none" });
+  const chars = [...text];
+  const rubyClass =
+    system === "zhuyin" ? "lyrics-zhuyin-ruby" : "lyrics-pinyin-ruby";
+  const rtClass = system === "zhuyin" ? "lyrics-zhuyin-rt" : "lyrics-pinyin-rt";
+  const charEntries = chars.map((char, position) => ({
+    char,
+    position,
+    reading: readings[position] || "",
+  }));
+
+  if (chars.length === 0) {
+    return text;
+  }
+
+  return (
+    <>
+      {charEntries.map(({ char, position, reading }) => {
+        CHINESE_REGEX.lastIndex = 0;
+        if (CHINESE_REGEX.test(char)) {
+          return (
+            <ruby
+              key={`${keyPrefix}-${position}-${char}`}
+              className={`lyrics-furigana ${rubyClass}`}
+            >
+              {char}
+              <rp>(</rp>
+              <rt className={`lyrics-furigana-rt ${rtClass}`}>{reading}</rt>
+              <rp>)</rp>
+            </ruby>
+          );
+        }
+        return <span key={`${keyPrefix}-sp-${position}-${char}`}>{char}</span>;
+      })}
+    </>
+  );
+}
+
+export function renderChineseWithPinyin(
+  text: string,
+  keyPrefix: string = "cn"
+): React.ReactNode {
+  return renderChineseWithPhonetics(text, keyPrefix, "pinyin");
+}
+
+export function renderChineseWithZhuyin(
+  text: string,
+  keyPrefix: string = "cn"
+): React.ReactNode {
+  return renderChineseWithPhonetics(text, keyPrefix, "zhuyin");
+}
+
+/**
+ * Render Japanese kana with romaji as ruby annotation
+ * Converts hiragana/katakana to Latin letters
+ */
+export function renderKanaWithRomaji(text: string, keyPrefix: string = "jp"): React.ReactNode {
+  const segments: { text: string; isKana: boolean; start: number }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  
+  KANA_REGEX.lastIndex = 0;
+  while ((match = KANA_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        text: text.slice(lastIndex, match.index),
+        isKana: false,
+        start: lastIndex,
+      });
+    }
+    segments.push({ text: match[0], isKana: true, start: match.index });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex), isKana: false, start: lastIndex });
+  }
+  
+  if (segments.length === 0) {
+    return text;
+  }
+  
+  return (
+    <>
+      {segments.map((seg) => {
+        const segmentKey = `${keyPrefix}-${seg.start}-${seg.text}`;
+        if (seg.isKana) {
+          const romaji = toRomaji(seg.text);
+          return (
+            <ruby key={segmentKey} className="lyrics-furigana lyrics-romaji-ruby">
+              {seg.text}
+              <rp>(</rp>
+              <rt className="lyrics-furigana-rt lyrics-romaji-rt">{romaji}</rt>
+              <rp>)</rp>
+            </ruby>
+          );
+        }
+        return <span key={`${keyPrefix}-sp-${seg.start}-${seg.text}`}>{seg.text}</span>;
+      })}
+    </>
+  );
+}
+
+/**
+ * Render furigana segments with all romanization types
+ * Handles: Japanese furigana (with optional romaji), Korean, Chinese pinyin, standalone kana
+ */
+export function renderFuriganaSegments(
+  segments: FuriganaSegment[],
+  options: RomanizationOptions = {}
+): React.ReactNode {
+  const { koreanRomanization = false, japaneseRomaji = false } = options;
+  const chinesePhonetic = resolveChinesePhonetic(options);
+  
+  return (
+    <>
+      {(() => {
+        let segmentOffset = 0;
+        return segments.map((segment) => {
+          const segmentKey = `seg-${segmentOffset}-${segment.text}-${segment.reading ?? ""}`;
+          segmentOffset += Math.max(segment.text.length, 1);
+        // Handle Japanese furigana (hiragana reading over kanji)
+        const displayReadingSource = getDisplayReading(segment);
+        if (displayReadingSource) {
+          // If japaneseRomaji is enabled, convert the reading to romaji
+          const displayReading = japaneseRomaji 
+            ? toRomaji(displayReadingSource)
+            : displayReadingSource;
+          return (
+            <ruby key={segmentKey} className="lyrics-furigana">
+              {segment.text}
+              <rp>(</rp>
+              <rt className="lyrics-furigana-rt">{displayReading}</rt>
+              <rp>)</rp>
+            </ruby>
+          );
+        }
+        
+        // Check for Korean text when romanization is enabled
+        if (koreanRomanization && hasKoreanText(segment.text)) {
+          return <span key={`${segmentKey}-kr`}>{renderKoreanWithRomanization(segment.text, segmentKey)}</span>;
+        }
+        
+        if (chinesePhonetic && isChineseText(segment.text)) {
+          return <span key={`${segmentKey}-cn`}>{renderChineseWithPhonetics(segment.text, segmentKey, chinesePhonetic)}</span>;
+        }
+        
+        // Check for standalone kana when romaji is enabled
+        if (japaneseRomaji && hasKanaTextLocal(segment.text)) {
+          return <span key={`${segmentKey}-jp`}>{renderKanaWithRomaji(segment.text, segmentKey)}</span>;
+        }
+        
+          return <span key={segmentKey}>{segment.text}</span>;
+        });
+      })()}
+    </>
+  );
+}
+
+/**
+ * Render text with applicable romanization based on detected language
+ * Returns plain text if no romanization matches
+ */
+export function renderTextWithRomanization(
+  text: string,
+  options: RomanizationOptions,
+  keyPrefix: string = "rom"
+): React.ReactNode {
+  const { koreanRomanization = false, japaneseRomaji = false } = options;
+  const chinesePhonetic = resolveChinesePhonetic(options);
+  
+  if (chinesePhonetic && isChineseText(text)) {
+    return renderChineseWithPhonetics(text, keyPrefix, chinesePhonetic);
+  }
+  
+  // Check for Korean text and render with romanization if enabled
+  if (koreanRomanization && hasKoreanText(text)) {
+    return renderKoreanWithRomanization(text, keyPrefix);
+  }
+  
+  // Check for Japanese kana and render with romaji if enabled
+  if (japaneseRomaji && hasKanaTextLocal(text)) {
+    return renderKanaWithRomaji(text, keyPrefix);
+  }
+  
+  return text;
+}
+
+// ============================================================================
+// Pronunciation-Only Rendering Functions
+// These return only the phonetic content, replacing the original text
+// ============================================================================
+
+/**
+ * Get pronunciation-only text for Korean (romanized form)
+ */
+export function getKoreanPronunciationOnly(text: string): string {
+  let result = "";
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  
+  KOREAN_REGEX.lastIndex = 0;
+  while ((match = KOREAN_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result += text.slice(lastIndex, match.index);
+    }
+    result += romanizeKorean(match[0]);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    result += text.slice(lastIndex);
+  }
+  
+  return result || text;
+}
+
+/**
+ * Get pronunciation-only text for Chinese (pinyin or Zhuyin).
+ * No spaces within word - spaces are added at segment level in getFuriganaSegmentsPronunciationOnly
+ * Note: pinyin-pro may give less accurate readings for some Traditional Chinese characters
+ */
+export function getChinesePronunciationOnly(
+  text: string,
+  system: ChinesePhoneticSystem = "pinyin"
+): string {
+  if (system === "zhuyin") {
+    return hanziToZhuyin(text);
+  }
+
+  const pinyinResult = pinyin(text, { type: "array", toneType: "none" });
+  const chars = [...text];
+
+  let result = "";
+  for (let idx = 0; idx < chars.length; idx++) {
+    const char = chars[idx];
+    CHINESE_REGEX.lastIndex = 0;
+    if (CHINESE_REGEX.test(char)) {
+      result += pinyinResult[idx] || char;
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Get pronunciation-only text for Japanese kana (romaji)
+ */
+export function getKanaPronunciationOnly(text: string): string {
+  let result = "";
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  
+  KANA_REGEX.lastIndex = 0;
+  while ((match = KANA_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result += text.slice(lastIndex, match.index);
+    }
+    result += toRomaji(match[0]);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    result += text.slice(lastIndex);
+  }
+  
+  return result || text;
+}
+
+/**
+ * Get pronunciation-only text from furigana segments.
+ * Preserve source whitespace exactly as authored; scripts without spaces
+ * (for example Japanese) stay concatenated.
+ */
+export function getFuriganaSegmentsPronunciationOnly(
+  segments: FuriganaSegment[],
+  options: RomanizationOptions = {}
+): string {
+  const { koreanRomanization = false, japaneseRomaji = false } = options;
+  const chinesePhonetic = resolveChinesePhonetic(options);
+  const parts: string[] = [];
+  
+  for (const segment of segments) {
+    // If segment has a reading (furigana), use that
+    const displayReading = getDisplayReading(segment);
+    if (displayReading) {
+      const output = japaneseRomaji ? toRomaji(displayReading) : displayReading;
+      parts.push(output);
+      continue;
+    }
+    
+    // Check for Korean text - only romanize if setting is on
+    if (koreanRomanization && hasKoreanText(segment.text)) {
+      const output = getKoreanPronunciationOnly(segment.text);
+      parts.push(output);
+      continue;
+    }
+    
+    if (chinesePhonetic && isChineseText(segment.text)) {
+      const output = getChinesePronunciationOnly(segment.text, chinesePhonetic);
+      parts.push(output);
+      continue;
+    }
+    
+    // Check for standalone kana - only romanize if setting is on
+    if (japaneseRomaji && hasKanaTextLocal(segment.text)) {
+      const output = getKanaPronunciationOnly(segment.text);
+      parts.push(output);
+      continue;
+    }
+    
+    // Otherwise, keep the original text exactly as authored (including spaces)
+    parts.push(segment.text);
+  }
+  
+  return parts.join("");
+}
+
+/**
+ * Render furigana segments as pronunciation-only (plain text replacement)
+ * Returns only the phonetic content without ruby annotations
+ */
+export function renderFuriganaSegmentsPronunciationOnly(
+  segments: FuriganaSegment[],
+  options: RomanizationOptions = {},
+  keyPrefix: string = "pron"
+): React.ReactNode {
+  return <span key={keyPrefix}>{getFuriganaSegmentsPronunciationOnly(segments, options)}</span>;
+}
+
+/**
+ * Get pronunciation-only text based on detected language
+ */
+export function getPronunciationOnlyText(
+  text: string,
+  options: RomanizationOptions
+): string {
+  const { koreanRomanization = false, japaneseRomaji = false } = options;
+  const chinesePhonetic = resolveChinesePhonetic(options);
+  
+  if (chinesePhonetic && isChineseText(text)) {
+    return getChinesePronunciationOnly(text, chinesePhonetic);
+  }
+  
+  // Check for Korean text and get romanization
+  if (koreanRomanization && hasKoreanText(text)) {
+    return getKoreanPronunciationOnly(text);
+  }
+  
+  // Check for Japanese kana and get romaji
+  if (japaneseRomaji && hasKanaTextLocal(text)) {
+    return getKanaPronunciationOnly(text);
+  }
+  
+  return text;
+}

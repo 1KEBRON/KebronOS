@@ -1,0 +1,287 @@
+import { useEffect, useReducer, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { useCreateTvChannel } from "../hooks/useCreateTvChannel";
+import { AnimatedEllipsis } from "@/apps/terminal/components/AnimatedEllipsis";
+
+interface CreateChannelDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Called with the new channel id once it's been added; usually tunes-in. */
+  onChannelCreated?: (channelId: string) => void;
+  /** Optional initial value (e.g. text typed into the inline prompt). */
+  initialDescription?: string;
+}
+
+type DialogStage = "idle" | "loading" | "error";
+
+interface CreateChannelDialogState {
+  description: string;
+  stage: DialogStage;
+  error: string | null;
+  statusText: string;
+}
+
+const initialState: CreateChannelDialogState = {
+  description: "",
+  stage: "idle",
+  error: null,
+  statusText: "",
+};
+
+type CreateChannelDialogAction =
+  | { type: "patch"; payload: Partial<CreateChannelDialogState> }
+  | { type: "resetForOpen"; initialDescription: string };
+
+function reducer(
+  state: CreateChannelDialogState,
+  action: CreateChannelDialogAction
+): CreateChannelDialogState {
+  switch (action.type) {
+    case "patch":
+      return { ...state, ...action.payload };
+    case "resetForOpen":
+      return {
+        ...initialState,
+        description: action.initialDescription,
+      };
+    default:
+      return state;
+  }
+}
+
+const SUGGESTIONS = [
+  "Skateboarding tricks and parks",
+  "80s synthwave music",
+  "Classic standup comedy specials",
+  "Cute cat compilations",
+  "Cooking street food",
+  "Lofi study beats",
+];
+
+export function CreateChannelDialog({
+  isOpen,
+  onOpenChange,
+  onChannelCreated,
+  initialDescription = "",
+}: CreateChannelDialogProps) {
+  const { t } = useTranslation();
+  const {
+    isWindowsTheme,
+    isMacOSTheme: isMacTheme,
+    isSystem7Theme,
+  } = useThemeFlags();
+
+  const { create } = useCreateTvChannel();
+
+  const [state, dispatch] = useReducer(reducer, {
+    ...initialState,
+    description: initialDescription,
+  });
+  const { description, stage, error, statusText } = state;
+
+  // Cycle status messages so the loading state feels alive during the
+  // ~5-15s round-trip (AI plan + 2-4 YouTube searches).
+  const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (stage !== "loading") {
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
+        statusIntervalRef.current = null;
+      }
+      return;
+    }
+    const messages = [
+      t("apps.tv.create.statusPlanning"),
+      t("apps.tv.create.statusSearching"),
+      t("apps.tv.create.statusTuning"),
+    ];
+    let i = 0;
+    dispatch({ type: "patch", payload: { statusText: messages[0] } });
+    statusIntervalRef.current = setInterval(() => {
+      i = (i + 1) % messages.length;
+      dispatch({ type: "patch", payload: { statusText: messages[i] } });
+    }, 1800);
+    return () => {
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
+        statusIntervalRef.current = null;
+      }
+    };
+  }, [stage, t]);
+
+  useEffect(() => {
+    if (isOpen) {
+      dispatch({ type: "resetForOpen", initialDescription });
+    }
+  }, [isOpen, initialDescription]);
+
+  const isLoading = stage === "loading";
+
+  const handleSubmit = async () => {
+    dispatch({ type: "patch", payload: { error: null, stage: "loading" } });
+
+    try {
+      const { channel } = await create(description);
+      dispatch({ type: "patch", payload: { description: "" } });
+      onOpenChange(false);
+      onChannelCreated?.(channel.id);
+    } catch (err) {
+      console.error("Create channel failed:", err);
+      dispatch({
+        type: "patch",
+        payload: {
+          error:
+            err instanceof Error ? err.message : t("apps.tv.create.errorGeneric"),
+          stage: "error",
+        },
+      });
+    }
+  };
+
+  const fontStyle = isWindowsTheme
+    ? { fontFamily: '"Pixelated MS Sans Serif", "ArkPixel", Arial' as const, fontSize: "11px" }
+    : undefined;
+  const fontClass = isWindowsTheme
+    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+    : isSystem7Theme
+      ? "font-geneva-12 text-[12px]"
+      : "font-os-ui text-[12px]";
+
+  const dialogContent = (
+    <div className={cn(isWindowsTheme ? "p-2 px-4" : "p-4 px-6")}>
+      <p className={cn("text-neutral-500 mb-2", fontClass)} style={fontStyle}>
+        {t("apps.tv.create.description")}
+      </p>
+
+      <Input
+        autoFocus
+        value={description}
+        onChange={(e) =>
+          dispatch({ type: "patch", payload: { description: e.target.value } })
+        }
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter" && !isLoading) handleSubmit();
+        }}
+        placeholder={t("apps.tv.create.placeholder")}
+        disabled={isLoading}
+        className={cn("shadow-none", fontClass)}
+        style={fontStyle}
+      />
+
+      <div className={cn("mt-2 flex flex-wrap gap-1", fontClass)} style={fontStyle}>
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            disabled={isLoading}
+            onClick={() =>
+              dispatch({ type: "patch", payload: { description: s } })
+            }
+            className={cn(
+              "px-2 py-0.5 rounded-full border text-neutral-700",
+              "border-neutral-300 hover:bg-neutral-100 disabled:opacity-50"
+            )}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && (
+        <p
+          className={cn("mt-3 shimmer-gray", fontClass)}
+          style={fontStyle}
+          aria-live="polite"
+        >
+          {statusText}
+          <AnimatedEllipsis />
+        </p>
+      )}
+      {error && stage !== "loading" && (
+        <p className="text-red-600 text-sm mt-3">{error}</p>
+      )}
+
+      <DialogFooter className="mt-4 gap-1.5 sm:justify-end">
+        <Button
+          variant={isMacTheme ? "secondary" : "retro"}
+          onClick={() => onOpenChange(false)}
+          disabled={isLoading}
+          className={cn("w-full sm:w-auto", !isMacTheme && "h-7", fontClass)}
+          style={fontStyle}
+        >
+          {t("common.dialog.cancel")}
+        </Button>
+        <Button
+          variant={isMacTheme ? "default" : "retro"}
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className={cn("w-full sm:w-auto", !isMacTheme && "h-7", fontClass)}
+          style={fontStyle}
+        >
+          {isLoading
+            ? t("apps.tv.create.creating")
+            : t("apps.tv.create.submit")}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={isLoading ? undefined : onOpenChange}>
+      <DialogContent
+        className={cn("max-w-[500px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.tv.create.title")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.tv.create.description")}
+            </DialogDescription>
+            <DialogHeader>{t("apps.tv.create.title")}</DialogHeader>
+            <div className="window-body">{dialogContent}</div>
+          </>
+        ) : isMacTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.tv.create.title")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.tv.create.description")}
+            </DialogDescription>
+            <DialogHeader>{t("apps.tv.create.title")}</DialogHeader>
+            {dialogContent}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {t("apps.tv.create.title")}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("apps.tv.create.description")}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogContent}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

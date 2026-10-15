@@ -1,0 +1,5 @@
+16c552b1eda48249b23d633617d67127fe7755c1 Sun Oct 4 00:14:39 2026 +0900
+Local modification: photo-sky.js loads the sky images from /ocean/ instead of ./ (asset path only).
+Local modification: photo-sky.js tints the horizon haze with the blurred sky light a few degrees above the horizon (was a flat grey band).
+Local modification: photo-sky.js loadPhotoSky() accepts a `urls` option, so phones can load 2048×1024 copies of the sky images (sky-base-2048.jpg, sky-gain-2048.jpg; resized with sips, JPEG q88). Defaults unchanged.
+Asset note: public/ocean/sky-radiance.bin.gz is a gzip of the unchanged sky-radiance.bin (sea.js inflates it with DecompressionStream); foam-pattern.webp is a lossless WebP of foam-pattern.png (R and G channels bit-identical; B was already empty).

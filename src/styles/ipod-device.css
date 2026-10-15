@@ -1,0 +1,498 @@
+/* ============================================================================
+ * iPod hardware (src/apps/ipod/components/ipod-app/IpodDeviceBody.tsx)
+ *
+ * A real object rendered in CSS: polished front face with a soft studio
+ * specular, a thin stainless rim, a screen recessed under a glass lens, and a
+ * matte, slightly concave click wheel with a convex centre button.
+ *
+ * Finishes follow the iPod's Device Theme setting (`data-finish`):
+ *   classic -> "pearl"    white gloss (default)
+ *   black   -> "graphite" smoked anodized
+ *   u2      -> "u2"       graphite body, red wheel
+ *
+ * The 250x400 box is the design size; IpodDeviceBody scales it with a
+ * transform. No backdrop blur anywhere on the device itself (cheap on phones,
+ * nothing to drop for prefers-reduced-transparency). Only the hover close
+ * button uses a light blur, which reduced transparency turns off.
+ * ============================================================================ */
+
+.ipod-device {
+  /* Finish tokens (Pearl). */
+  --ipod-face: linear-gradient(180deg, #fefefd 0%, #f2f2f0 40%, #e5e5e2 100%);
+  --ipod-glow: radial-gradient(
+    150% 75% at 18% -12%,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.55) 35%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  /* Softbox reflection: a broad diagonal band across the polished face. */
+  --ipod-sheen: linear-gradient(
+    116deg,
+    rgba(255, 255, 255, 0) 38%,
+    rgba(255, 255, 255, 0.7) 47%,
+    rgba(255, 255, 255, 0.25) 53%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  --ipod-shade: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 70%,
+    rgba(40, 45, 55, 0.07) 100%
+  );
+  /* Edge roll-off: the face curves into the rim at the sides. */
+  --ipod-curve: linear-gradient(
+    90deg,
+    rgba(40, 45, 55, 0.07) 0%,
+    rgba(40, 45, 55, 0) 7%,
+    rgba(40, 45, 55, 0) 93%,
+    rgba(40, 45, 55, 0.09) 100%
+  );
+  --ipod-rim: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #c4c8ce 14%,
+    #f6f7f8 34%,
+    #a3a8b0 62%,
+    #e4e6e9 84%,
+    #b4b8be 100%
+  );
+  --ipod-edge-hi: rgba(255, 255, 255, 0.95);
+  --ipod-edge-lo: rgba(70, 75, 85, 0.1);
+  --ipod-outline: rgba(30, 35, 45, 0.38);
+  --ipod-lip: rgba(255, 255, 255, 0.9);
+
+  --wheel-face: radial-gradient(
+    circle at 50% 50%,
+    #e6e6e3 0%,
+    #ebebe8 38%,
+    #f0f0ee 68%,
+    #e9e9e6 100%
+  );
+  --wheel-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.22'/></svg>");
+  --wheel-concave-top: rgba(40, 45, 55, 0.16);
+  --wheel-concave-bottom: rgba(255, 255, 255, 0.95);
+  --wheel-ring: rgba(40, 45, 55, 0.13);
+  --wheel-ink: #6d727a;
+  --wheel-ink-emboss: 0 1px 0 rgba(255, 255, 255, 0.85);
+  --wheel-press: rgba(40, 45, 55, 0.12);
+  --wheel-groove: #d9d9d6;
+
+  --center-face: radial-gradient(
+    circle at 50% 22%,
+    #ffffff 0%,
+    #fbfbfa 38%,
+    #ededeb 78%,
+    #e4e4e1 100%
+  );
+  --center-face-pressed: radial-gradient(
+    circle at 50% 40%,
+    #f1f1ef 0%,
+    #e7e7e4 70%,
+    #dcdcd9 100%
+  );
+  --center-edge: rgba(30, 35, 45, 0.2);
+  --center-hi: rgba(255, 255, 255, 1);
+
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 250px;
+  height: 400px;
+  min-width: 250px;
+  min-height: 400px;
+  max-width: 250px;
+  max-height: 400px;
+  padding: 13px 10px 0;
+  border: 2px solid transparent;
+  border-radius: 30px;
+  background:
+    var(--ipod-sheen) padding-box,
+    var(--ipod-glow) padding-box,
+    var(--ipod-shade) padding-box,
+    var(--ipod-curve) padding-box,
+    var(--ipod-face) padding-box,
+    var(--ipod-rim) border-box;
+  box-shadow:
+    /* crisp edge highlight just inside the rim */
+    inset 0 1px 0 var(--ipod-edge-hi),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    inset 0 -3px 4px var(--ipod-edge-lo),
+    /* outline where the rim meets the desktop */
+    0 0 0 0.5px var(--ipod-outline),
+    /* contact shadow */
+    0 1px 1px rgba(0, 12, 28, 0.3),
+    0 3px 6px -1px rgba(0, 12, 28, 0.22),
+    /* ambient shadow on the sea */
+    0 10px 18px -6px rgba(0, 18, 40, 0.34),
+    0 22px 40px -10px rgba(0, 18, 40, 0.42),
+    0 46px 70px -24px rgba(0, 18, 40, 0.5);
+  contain: layout style;
+  backface-visibility: hidden;
+  transition: transform 0.2s ease;
+}
+
+/* Frameless: the device is the only hit target inside its window box. */
+.ipod-device[data-frameless] {
+  pointer-events: auto;
+}
+
+/* --- Graphite: smoked anodized aluminium ---------------------------------- */
+.ipod-device[data-finish="graphite"],
+.ipod-device[data-finish="u2"] {
+  --ipod-face: linear-gradient(180deg, #4b4f56 0%, #2e3136 40%, #1c1e22 100%);
+  --ipod-glow: radial-gradient(
+    150% 75% at 18% -12%,
+    rgba(255, 255, 255, 0.26) 0%,
+    rgba(255, 255, 255, 0.08) 38%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  --ipod-sheen: linear-gradient(
+    116deg,
+    rgba(255, 255, 255, 0) 38%,
+    rgba(255, 255, 255, 0.11) 47%,
+    rgba(255, 255, 255, 0.04) 53%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  --ipod-shade: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 65%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+  --ipod-curve: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0) 6%,
+    rgba(0, 0, 0, 0) 92%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  --ipod-rim: linear-gradient(
+    180deg,
+    #c9cdd3 0%,
+    #50555c 16%,
+    #9aa0a8 36%,
+    #2a2d32 66%,
+    #6d727a 86%,
+    #3a3e44 100%
+  );
+  --ipod-edge-hi: rgba(255, 255, 255, 0.3);
+  --ipod-edge-lo: rgba(0, 0, 0, 0.35);
+  --ipod-outline: rgba(0, 0, 0, 0.55);
+  --ipod-lip: rgba(255, 255, 255, 0.14);
+
+  --wheel-face: radial-gradient(
+    circle at 50% 50%,
+    #26282c 0%,
+    #2b2d31 40%,
+    #313338 70%,
+    #26282b 100%
+  );
+  --wheel-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.1'/></svg>");
+  --wheel-concave-top: rgba(0, 0, 0, 0.55);
+  --wheel-concave-bottom: rgba(255, 255, 255, 0.1);
+  --wheel-ring: rgba(0, 0, 0, 0.5);
+  --wheel-ink: #d5d8dd;
+  --wheel-ink-emboss: 0 -1px 0 rgba(0, 0, 0, 0.6);
+  --wheel-press: rgba(0, 0, 0, 0.3);
+  --wheel-groove: #16171a;
+
+  --center-face: radial-gradient(
+    circle at 50% 22%,
+    #5a5e65 0%,
+    #3c3f45 40%,
+    #2a2c30 80%,
+    #222427 100%
+  );
+  --center-face-pressed: radial-gradient(
+    circle at 50% 40%,
+    #393c41 0%,
+    #2a2c30 70%,
+    #1f2124 100%
+  );
+  --center-edge: rgba(0, 0, 0, 0.6);
+  --center-hi: rgba(255, 255, 255, 0.22);
+}
+
+/* U2: red wheel, black centre (the 2004 special edition). */
+.ipod-device[data-finish="u2"] {
+  --wheel-face: radial-gradient(
+    circle at 50% 50%,
+    #a3141c 0%,
+    #b5161f 45%,
+    #c21b24 72%,
+    #a8141c 100%
+  );
+  --wheel-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.18'/></svg>");
+  --wheel-concave-top: rgba(40, 0, 0, 0.45);
+  --wheel-concave-bottom: rgba(255, 200, 200, 0.18);
+  --wheel-ink: #1d0406;
+  --wheel-ink-emboss: 0 1px 0 rgba(255, 120, 120, 0.3);
+  --wheel-press: rgba(40, 0, 0, 0.25);
+  --wheel-groove: #4a070b;
+}
+
+/* --- Hover close button (Dashboard-widget style) -------------------------- */
+.ipod-device__close {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: radial-gradient(
+    circle at 50% 28%,
+    rgba(86, 90, 98, 0.92) 0%,
+    rgba(30, 32, 37, 0.92) 70%
+  );
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  cursor: default;
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+  pointer-events: auto;
+}
+
+.ipod-device:hover .ipod-device__close,
+.ipod-device:has(:focus-visible) .ipod-device__close,
+.ipod-device__close:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ipod-device__close:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 0 0 4px color-mix(in srgb, var(--os-accent-color, #4a9cf5) 70%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.ipod-device__close:active {
+  transform: scale(0.92);
+  background: radial-gradient(circle at 50% 40%, #2a2c31 0%, #141518 80%);
+}
+
+@media (hover: none) {
+  .ipod-device__close {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Screen: recessed under the glass lens -------------------------------- */
+.ipod-device__well {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #0c0d0f 0%, #050506 100%);
+  box-shadow:
+    /* the cutout in the front face */
+    0 0 0 0.5px rgba(0, 0, 0, 0.35),
+    0 -1px 1px rgba(0, 0, 0, 0.06),
+    0 1px 0 var(--ipod-lip),
+    inset 0 1px 2px rgba(0, 0, 0, 0.9);
+  flex-shrink: 0;
+}
+
+.ipod-device__glass {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  border-radius: 8px;
+  pointer-events: none;
+  background:
+    /* diagonal lens reflection, hard-edged like a real cover glass */
+    linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.05) 36%,
+      rgba(255, 255, 255, 0) 36.3%
+    ),
+    /* warm backlight */
+    linear-gradient(180deg, rgba(255, 240, 214, 0.05), rgba(255, 228, 190, 0.035));
+  box-shadow:
+    /* recess: the LCD sits below the glass, edges in shadow */
+    inset 0 2px 5px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+}
+
+/* --- Click wheel ----------------------------------------------------------- */
+.ipod-wheel {
+  width: 180px;
+  height: 180px;
+  margin: auto 0;
+  border-radius: 50%;
+  background: var(--wheel-grain), var(--wheel-face);
+  box-shadow:
+    /* slightly concave: shaded inner top, lit inner bottom */
+    inset 0 2px 4px var(--wheel-concave-top),
+    inset 0 -2px 3px var(--wheel-concave-bottom),
+    inset 0 0 0 0.5px var(--wheel-ring),
+    /* the wheel's cutout lip in the face */
+    0 1px 0 var(--ipod-lip),
+    0 -0.5px 0 rgba(0, 0, 0, 0.08);
+  transform: perspective(520px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.09s ease-out;
+}
+
+.ipod-wheel[data-pressed="top"] {
+  transform: perspective(520px) rotateX(2.2deg);
+}
+.ipod-wheel[data-pressed="bottom"] {
+  transform: perspective(520px) rotateX(-2.2deg);
+}
+.ipod-wheel[data-pressed="right"] {
+  transform: perspective(520px) rotateY(2.2deg);
+}
+.ipod-wheel[data-pressed="left"] {
+  transform: perspective(520px) rotateY(-2.2deg);
+}
+
+/* Shade on the held quadrant. */
+.ipod-wheel__press {
+  --press-from: -45deg;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--press-from),
+    var(--wheel-press) 0deg 90deg,
+    transparent 90deg 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 0 35px, #000 40px);
+  mask: radial-gradient(circle, transparent 0 35px, #000 40px);
+  filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.09s ease-out;
+}
+.ipod-wheel[data-pressed="right"] .ipod-wheel__press {
+  --press-from: 45deg;
+}
+.ipod-wheel[data-pressed="bottom"] .ipod-wheel__press {
+  --press-from: 135deg;
+}
+.ipod-wheel[data-pressed="left"] .ipod-wheel__press {
+  --press-from: 225deg;
+}
+.ipod-wheel[data-pressed="top"] .ipod-wheel__press,
+.ipod-wheel[data-pressed="right"] .ipod-wheel__press,
+.ipod-wheel[data-pressed="bottom"] .ipod-wheel__press,
+.ipod-wheel[data-pressed="left"] .ipod-wheel__press {
+  opacity: 1;
+}
+
+/* Groove the centre button sits in. */
+.ipod-wheel__groove {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 70px;
+  height: 70px;
+  margin: -35px 0 0 -35px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: var(--wheel-groove);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.28),
+    0 1px 0 var(--wheel-concave-bottom);
+}
+
+.ipod-wheel__center {
+  background: var(--center-face);
+  box-shadow:
+    0 0 0 0.5px var(--center-edge),
+    0 1px 1.5px rgba(0, 0, 0, 0.22),
+    0 2px 5px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 var(--center-hi),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.08s ease-out,
+    box-shadow 0.08s ease-out;
+}
+
+.ipod-wheel__center:active,
+.ipod-wheel[data-pressed="center"] .ipod-wheel__center {
+  background: var(--center-face-pressed);
+  transform: translateY(0.5px) scale(0.975);
+  box-shadow:
+    0 0 0 0.5px var(--center-edge),
+    0 0.5px 0.5px rgba(0, 0, 0, 0.18),
+    inset 0 1px 3px rgba(0, 0, 0, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.ipod-wheel__center:focus-visible {
+  box-shadow:
+    0 0 0 0.5px var(--center-edge),
+    0 0 0 3px color-mix(in srgb, var(--os-accent-color, #4a9cf5) 65%, transparent),
+    inset 0 1px 0 var(--center-hi);
+}
+
+.ipod-wheel__label {
+  color: var(--wheel-ink);
+  line-height: 1;
+  filter: drop-shadow(var(--wheel-ink-emboss));
+}
+
+.ipod-force-font .ipod-wheel__label--menu {
+  top: 12px;
+  font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  /* Text uses text-shadow so the glyphs stay sharp. */
+  filter: none;
+  text-shadow: var(--wheel-ink-emboss);
+}
+
+.ipod-wheel__label--play {
+  bottom: 13px;
+  display: flex;
+}
+.ipod-wheel__label--next {
+  right: 13px;
+  display: flex;
+}
+.ipod-wheel__label--prev {
+  left: 13px;
+  display: flex;
+}
+
+/* --- Accessibility / cost ------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  .ipod-device__close {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: #26282c;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ipod-device,
+  .ipod-device__close,
+  .ipod-wheel,
+  .ipod-wheel__press,
+  .ipod-wheel__center {
+    transition: none;
+  }
+  .ipod-wheel[data-pressed] {
+    transform: none;
+  }
+}

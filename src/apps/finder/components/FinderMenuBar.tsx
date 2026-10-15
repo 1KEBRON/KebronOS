@@ -1,0 +1,418 @@
+import {
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+  MenubarSeparator,
+  MenubarCheckboxItem,
+} from "@/components/ui/menubar";
+import { AppMenuBarShell } from "@/components/shared/menubar/AppMenuBarShell";
+import { ShortcutHint } from "@/components/shared/menubar/ShortcutHint";
+import { MENUBAR_SEPARATOR_CLASS } from "@/components/shared/menubar/menubarStyles";
+import { useAppMenuBarChrome } from "@/hooks/useAppMenuBarChrome";
+import { FileItem } from "./FileList";
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { getTranslatedFolderName } from "@/utils/i18n";
+import { useTranslation } from "react-i18next";
+import { useInstanceUndoRedo } from "@/hooks/useUndoRedo";
+import { isProtectedSystemPath } from "@/services/vfs/pathPolicy";
+
+/** "map" is only offered for folders whose documents link to each other (see useFolderHasMap). */
+export type ViewType = "small" | "large" | "list" | "map";
+export type SortType = "name" | "date" | "size" | "kind";
+
+export interface FinderMenuBarProps {
+  onClose: () => void;
+  onShowHelp: () => void;
+  onShowAbout: () => void;
+  viewType: ViewType;
+  onViewTypeChange: (viewType: ViewType) => void;
+  /** The folder's documents link to each other, so Map is offered. */
+  canShowMap?: boolean;
+  sortType: SortType;
+  onSortTypeChange: (sortType: SortType) => void;
+  selectedFile?: FileItem;
+  onMoveToTrash: (file: FileItem) => void;
+  onEmptyTrash: () => void;
+  onRestore: () => void;
+  isTrashEmpty: boolean;
+  isInTrash: boolean;
+  onNavigateBack?: () => void;
+  onNavigateForward?: () => void;
+  canNavigateBack?: boolean;
+  canNavigateForward?: boolean;
+  onNavigateToPath?: (path: string) => void;
+  onImportFile?: () => void;
+  onRename?: () => void;
+  onDuplicate?: () => void;
+  onNewFolder?: () => void;
+  canCreateFolder?: boolean;
+  rootFolders?: FileItem[];
+  onNewWindow?: () => void;
+  instanceId?: string;
+  showSidebar?: boolean;
+  onToggleSidebar?: () => void;
+  onNavigateToAirDrop?: () => void;
+}
+
+export function FinderMenuBar({
+  onClose,
+  onShowHelp,
+  onShowAbout,
+  viewType,
+  onViewTypeChange,
+  canShowMap = false,
+  sortType,
+  onSortTypeChange,
+  selectedFile,
+  onMoveToTrash,
+  onEmptyTrash,
+  onRestore,
+  isTrashEmpty,
+  isInTrash,
+  onNavigateBack,
+  onNavigateForward,
+  canNavigateBack = false,
+  canNavigateForward = false,
+  onNavigateToPath,
+  onImportFile,
+  onRename,
+  onDuplicate,
+  onNewFolder,
+  canCreateFolder = false,
+  rootFolders,
+  onNewWindow,
+  instanceId,
+  showSidebar,
+  onToggleSidebar,
+  onNavigateToAirDrop,
+}: FinderMenuBarProps) {
+  const { t } = useTranslation();
+  const {
+    isShareDialogOpen,
+    setIsShareDialogOpen,
+    isWindowsTheme,
+    isMacOSTheme,
+    appId,
+    appName,
+  } = useAppMenuBarChrome("finder");
+  const { canUndo, canRedo, undo, redo } = useInstanceUndoRedo(instanceId || "");
+
+  const canMoveToTrash =
+    selectedFile &&
+    selectedFile.path !== "/Trash" &&
+    !selectedFile.path.startsWith("/Trash/") &&
+    // Prevent system-managed root folders from being moved to trash
+    // (user-created root folders remain trashable)
+    !isProtectedSystemPath(selectedFile.path) &&
+    // Prevent virtual items (apps, songs, sites) from being moved to trash
+    !selectedFile.type?.includes("virtual") &&
+    // Prevent applications from being moved to trash
+    !selectedFile.path.startsWith("/Applications/");
+
+  const canRename = selectedFile && onRename && canMoveToTrash;
+  const canDuplicate = selectedFile && onDuplicate && !selectedFile.isDirectory;
+
+  return (
+    <AppMenuBarShell
+      isWindowsTheme={isWindowsTheme}
+      isMacOSTheme={isMacOSTheme}
+      appId={appId}
+      appName={appName}
+      isShareDialogOpen={isShareDialogOpen}
+      setIsShareDialogOpen={setIsShareDialogOpen}
+      helpItemLabel={t("apps.finder.menu.finderHelp")}
+      aboutItemLabel={t("apps.finder.menu.aboutFinder")}
+      onShowHelp={onShowHelp}
+      onShowAbout={onShowAbout}
+    >
+      {/* File Menu */}
+      <MenubarMenu>
+        <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+          {t("common.menu.file")}
+        </MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          <MenubarItem
+            onClick={onNewWindow}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.newFinderWindow")}
+            <ShortcutHint id="newWindow" />
+          </MenubarItem>
+          <MenubarItem
+            onClick={onNewFolder}
+            disabled={!canCreateFolder}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.newFolder")}
+            <ShortcutHint id="newFolder" />
+          </MenubarItem>
+          <MenubarItem
+            onClick={onImportFile}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.importFromDevice")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarItem
+            onClick={onRename}
+            disabled={!canRename}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.rename")}
+          </MenubarItem>
+          <MenubarItem
+            onClick={onDuplicate}
+            disabled={!canDuplicate}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.duplicate")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          {isInTrash ? (
+            <MenubarItem
+              onClick={onRestore}
+              className="text-md h-6 px-3"
+            >
+              {t("apps.finder.menu.putBack")}
+            </MenubarItem>
+          ) : (
+            <MenubarItem
+              onClick={() => canMoveToTrash && onMoveToTrash(selectedFile!)}
+              disabled={!canMoveToTrash}
+              className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("apps.finder.menu.moveToTrash")}
+            </MenubarItem>
+          )}
+          <MenubarItem
+            onClick={onEmptyTrash}
+            disabled={isTrashEmpty}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.emptyTrash")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarItem
+            onClick={onClose}
+            className="text-md h-6 px-3"
+          >
+            {t("common.menu.close")}
+            <ShortcutHint id="close" />
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+
+      {/* Edit Menu */}
+      <MenubarMenu>
+        <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+          {t("common.menu.edit")}
+        </MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          <MenubarItem
+            onClick={undo}
+            disabled={!canUndo}
+            className={`text-md h-6 px-3 ${!canUndo ? "text-neutral-500" : ""}`}
+          >
+            {t("common.menu.undo")}
+            <ShortcutHint id="undo" />
+          </MenubarItem>
+          <MenubarItem
+            onClick={redo}
+            disabled={!canRedo}
+            className={`text-md h-6 px-3 ${!canRedo ? "text-neutral-500" : ""}`}
+          >
+            {t("common.menu.redo")}
+            <ShortcutHint id="redo" />
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarItem className="text-md h-6 px-3">
+            {t("common.menu.cut")}
+            <ShortcutHint id="cut" />
+          </MenubarItem>
+          <MenubarItem className="text-md h-6 px-3">
+            {t("common.menu.copy")}
+            <ShortcutHint id="copy" />
+          </MenubarItem>
+          <MenubarItem className="text-md h-6 px-3">
+            {t("common.menu.paste")}
+            <ShortcutHint id="paste" />
+          </MenubarItem>
+          <MenubarItem className="text-md h-6 px-3">
+            {t("common.menu.clear")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarItem className="text-md h-6 px-3">
+            {t("common.menu.selectAll")}
+            <ShortcutHint id="selectAll" />
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+
+      {/* View Menu */}
+      <MenubarMenu>
+        <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+          {t("common.menu.view")}
+        </MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          {isMacOSTheme && onToggleSidebar && (
+            <>
+              <MenubarCheckboxItem
+                checked={showSidebar}
+                onCheckedChange={() => onToggleSidebar()}
+                className="text-md h-6 px-3"
+              >
+                {t("apps.finder.menu.sidebar")}
+              </MenubarCheckboxItem>
+              <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+            </>
+          )}
+          <MenubarCheckboxItem
+            checked={viewType === "small"}
+            onCheckedChange={(checked) => {
+              if (checked) onViewTypeChange("small");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.bySmallIcon")}
+          </MenubarCheckboxItem>
+          <MenubarCheckboxItem
+            checked={viewType === "large"}
+            onCheckedChange={(checked) => {
+              if (checked) onViewTypeChange("large");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.byIcon")}
+          </MenubarCheckboxItem>
+          <MenubarCheckboxItem
+            checked={viewType === "list"}
+            onCheckedChange={(checked) => {
+              if (checked) onViewTypeChange("list");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.byList")}
+          </MenubarCheckboxItem>
+          {canShowMap && (
+          <MenubarCheckboxItem
+            checked={viewType === "map"}
+            onCheckedChange={(checked) => {
+              if (checked) onViewTypeChange("map");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.view.map")}
+          </MenubarCheckboxItem>
+          )}
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarCheckboxItem
+            checked={sortType === "name"}
+            onCheckedChange={(checked) => {
+              if (checked) onSortTypeChange("name");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.byName")}
+          </MenubarCheckboxItem>
+          <MenubarCheckboxItem
+            checked={sortType === "date"}
+            onCheckedChange={(checked) => {
+              if (checked) onSortTypeChange("date");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.byDate")}
+          </MenubarCheckboxItem>
+          <MenubarCheckboxItem
+            checked={sortType === "size"}
+            onCheckedChange={(checked) => {
+              if (checked) onSortTypeChange("size");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.bySize")}
+          </MenubarCheckboxItem>
+          <MenubarCheckboxItem
+            checked={sortType === "kind"}
+            onCheckedChange={(checked) => {
+              if (checked) onSortTypeChange("kind");
+            }}
+            className="text-md h-6 px-3"
+          >
+            {t("apps.finder.menu.byKind")}
+          </MenubarCheckboxItem>
+        </MenubarContent>
+      </MenubarMenu>
+
+      {/* Go Menu */}
+      <MenubarMenu>
+        <MenubarTrigger className="text-md px-2 py-1 border-none focus-visible:ring-0">
+          {t("common.menu.go")}
+        </MenubarTrigger>
+        <MenubarContent align="start" sideOffset={1} className="px-0">
+          <MenubarItem
+            onClick={onNavigateBack}
+            disabled={!canNavigateBack}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.back")}
+          </MenubarItem>
+          <MenubarItem
+            onClick={onNavigateForward}
+            disabled={!canNavigateForward}
+            className="text-md h-6 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("apps.finder.menu.forward")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+          <MenubarItem
+            onClick={onNavigateToAirDrop}
+            className="text-md h-6 px-3 flex items-center gap-2"
+          >
+            <ThemedIcon
+              name="/icons/default/airdrop.png"
+              alt=""
+              className="size-4 [image-rendering:pixelated]"
+            />
+            {t("apps.finder.airdrop.title")}
+          </MenubarItem>
+          <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+
+          {/* Root directory folders */}
+          {rootFolders?.map((folder) => (
+            <MenubarItem
+              key={folder.path}
+              onClick={() => onNavigateToPath?.(folder.path)}
+              className="text-md h-6 px-3 flex items-center gap-2"
+            >
+              <ThemedIcon
+                name={folder.icon || "/icons/directory.png"}
+                alt=""
+                className="size-4 [image-rendering:pixelated]"
+              />
+              {getTranslatedFolderName(folder.path)}
+            </MenubarItem>
+          ))}
+
+          {/* Always show Trash at the end */}
+          <MenubarItem
+            onClick={() => onNavigateToPath?.("/Trash")}
+            className="text-md h-6 px-3 flex items-center gap-2"
+          >
+            <ThemedIcon
+              name={
+                isTrashEmpty
+                  ? "/icons/trash-empty.png"
+                  : "/icons/trash-full.png"
+              }
+              alt=""
+              className="size-4 [image-rendering:pixelated]"
+            />
+            {t("common.menu.trash")}
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+    </AppMenuBarShell>
+  );
+}

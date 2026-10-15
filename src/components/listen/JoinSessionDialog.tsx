@@ -1,0 +1,451 @@
+import { useReducer, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { useListenSessionStore } from "@/stores/useListenSessionStore";
+import type { ListenSessionSummary } from "@/shared/contracts/listen";
+import { cn } from "@/lib/utils";
+
+interface JoinSessionDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onJoin: (sessionId: string) => void;
+}
+
+function extractSessionId(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const url = new URL(trimmed);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const listenIndex = segments.indexOf("listen");
+    if (listenIndex >= 0 && segments[listenIndex + 1]) {
+      return segments[listenIndex + 1].split("?")[0];
+    }
+  } catch {
+    // Not a URL, fall through
+  }
+
+  if (trimmed.includes("/listen/")) {
+    const parts = trimmed.split("/listen/");
+    const sessionPart = parts[1]?.split("/")[0] || "";
+    return sessionPart.split("?")[0] || trimmed;
+  }
+
+  return trimmed.split("?")[0];
+}
+
+export function JoinSessionDialog({
+  isOpen,
+  onClose,
+  onJoin,
+}: JoinSessionDialogProps) {
+  const { t } = useTranslation();
+  type JoinDialogState = {
+    value: string;
+    sessions: ListenSessionSummary[];
+    selectedIndex: number;
+    isLoading: boolean;
+    error: string | null;
+  };
+  type JoinDialogAction =
+    | { type: "resetOnOpen" }
+    | { type: "setValue"; value: string }
+    | { type: "setSelectedIndex"; index: number }
+    | { type: "loadStart" }
+    | { type: "loadSuccess"; sessions: ListenSessionSummary[] }
+    | { type: "loadError"; error: string }
+    | { type: "clearValue" };
+  const initialState: JoinDialogState = {
+    value: "",
+    sessions: [],
+    selectedIndex: -1,
+    isLoading: false,
+    error: null,
+  };
+  const reducer = (
+    state: JoinDialogState,
+    action: JoinDialogAction
+  ): JoinDialogState => {
+    switch (action.type) {
+      case "resetOnOpen":
+        return { ...state, value: "", selectedIndex: -1, error: null };
+      case "setValue":
+        return { ...state, value: action.value };
+      case "setSelectedIndex":
+        return { ...state, selectedIndex: action.index };
+      case "loadStart":
+        return { ...state, isLoading: true, error: null };
+      case "loadSuccess":
+        return { ...state, isLoading: false, sessions: action.sessions };
+      case "loadError":
+        return { ...state, isLoading: false, error: action.error, sessions: [] };
+      case "clearValue":
+        return { ...state, value: "" };
+      default:
+        return state;
+    }
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { value, sessions, selectedIndex, isLoading, error } = state;
+
+  const { isWindowsTheme, isMacOSTheme: isMacTheme } =
+    useThemeFlags();
+  const fetchSessions = useListenSessionStore((state) => state.fetchSessions);
+
+  const loadSessions = useCallback(async () => {
+    dispatch({ type: "loadStart" });
+    const result = await fetchSessions();
+    if (result.ok && result.sessions) {
+      dispatch({ type: "loadSuccess", sessions: result.sessions });
+    } else {
+      dispatch({
+        type: "loadError",
+        error: result.error || "Failed to load sessions",
+      });
+    }
+  }, [fetchSessions]);
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      dispatch({ type: "resetOnOpen" });
+      loadSessions();
+    }
+  }, [isOpen, loadSessions]);
+
+  const handleJoin = useCallback(
+    (sessionId?: string) => {
+      const id = sessionId || extractSessionId(value);
+      if (!id) return;
+      onJoin(id);
+      dispatch({ type: "clearValue" });
+      onClose();
+    },
+    [value, onJoin, onClose]
+  );
+
+  const handleJoinSelected = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < sessions.length) {
+      handleJoin(sessions[selectedIndex].id);
+    }
+  }, [selectedIndex, sessions, handleJoin]);
+
+  const handleSelectAndJoin = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < sessions.length) {
+        dispatch({ type: "setSelectedIndex", index });
+        handleJoin(sessions[index].id);
+      }
+    },
+    [sessions, handleJoin]
+  );
+
+  const handleDialogKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      e.stopPropagation();
+    },
+    []
+  );
+
+  const dialogContent = (
+    <div className={isWindowsTheme ? "p-2 px-4" : "p-4 px-6"}>
+      {/* Session List - Primary view */}
+      <div className="mb-3">
+        <ScrollArea className="h-[160px] border border-neutral-300 rounded-md overflow-hidden bg-white">
+          <div>
+            {isLoading ? (
+              <div
+                className={cn(
+                  "flex items-center justify-center h-[140px] text-neutral-500",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : "font-geneva-12 text-[12px]"
+                )}
+                style={{
+                  fontFamily: isWindowsTheme
+                    ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                    : undefined,
+                  fontSize: isWindowsTheme ? "11px" : undefined,
+                }}
+              >
+                {t("apps.karaoke.liveListen.loadingSessions")}
+              </div>
+            ) : error ? (
+              <div
+                className={cn(
+                  "flex items-center justify-center h-[140px] text-red-600",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : "font-geneva-12 text-[12px]"
+                )}
+                style={{
+                  fontFamily: isWindowsTheme
+                    ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                    : undefined,
+                  fontSize: isWindowsTheme ? "11px" : undefined,
+                }}
+              >
+                {error}
+              </div>
+            ) : sessions.length === 0 ? (
+              <div
+                className={cn(
+                  "flex items-center justify-center h-[140px] text-neutral-500",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : "font-geneva-12 text-[12px]"
+                )}
+                style={{
+                  fontFamily: isWindowsTheme
+                    ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                    : undefined,
+                  fontSize: isWindowsTheme ? "11px" : undefined,
+                }}
+              >
+                {t("apps.karaoke.liveListen.noActiveSessions")}
+              </div>
+            ) : (
+              sessions.map((session, index) => (
+                <div
+                  key={session.id}
+                  onClick={() => dispatch({ type: "setSelectedIndex", index })}
+                  onDoubleClick={() => handleSelectAndJoin(index)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectAndJoin(index);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  className={cn(
+                    "px-2 py-1.5 cursor-pointer",
+                    selectedIndex === index
+                      ? ""
+                      : index % 2 === 1
+                        ? "bg-neutral-100"
+                        : "bg-white",
+                    isWindowsTheme
+                      ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                      : "font-geneva-12 text-[12px]"
+                  )}
+                  data-selected={selectedIndex === index ? "true" : undefined}
+                  style={{
+                    fontFamily: isWindowsTheme
+                      ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                      : undefined,
+                    fontSize: isWindowsTheme ? "11px" : undefined,
+                  }}
+                >
+                  <div className="font-semibold">
+                    @{session.djUsername}
+                    <span
+                      className={cn(
+                        "font-normal ml-2",
+                        selectedIndex === index
+                          ? "opacity-70"
+                          : "text-neutral-500"
+                      )}
+                    >
+                      {session.listenerCount}{" "}
+                      {session.listenerCount === 1
+                        ? t("apps.karaoke.liveListen.listener")
+                        : t("apps.karaoke.liveListen.listenerPlural")}
+                    </span>
+                  </div>
+                  {session.currentTrackMeta && (
+                    <div
+                      className={cn(
+                        selectedIndex === index
+                          ? "opacity-80"
+                          : "text-neutral-600"
+                      )}
+                    >
+                      {session.currentTrackMeta.title}
+                      {session.currentTrackMeta.artist &&
+                        ` • ${session.currentTrackMeta.artist}`}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Manual Entry - Secondary option */}
+      <p
+        className={cn(
+          "text-neutral-500 mb-2",
+          isWindowsTheme
+            ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+            : "font-geneva-12 text-[12px]"
+        )}
+        style={{
+          fontFamily: isWindowsTheme
+            ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+            : undefined,
+          fontSize: isWindowsTheme ? "11px" : undefined,
+        }}
+      >
+        {t("apps.karaoke.liveListen.orEnterSessionId")}
+      </p>
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(e) =>
+            dispatch({ type: "setValue", value: e.target.value })
+          }
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && value.trim()) {
+              handleJoin();
+            }
+          }}
+          placeholder={t("apps.karaoke.liveListen.sessionLinkPlaceholder")}
+          className={cn(
+            "shadow-none flex-1",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+        />
+        <Button
+          variant={isMacTheme ? "secondary" : "retro"}
+          onClick={() => handleJoin()}
+          disabled={!value.trim()}
+          className={cn(
+            "flex-shrink-0",
+            !isMacTheme && "h-7",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+        >
+          {t("apps.karaoke.liveListen.joinButton")}
+        </Button>
+      </div>
+
+      {/* Footer with Cancel/Join when sessions available */}
+      {sessions.length > 0 && (
+        <DialogFooter className="mt-4 gap-1.5 sm:justify-end">
+          <div className="flex flex-col-reverse gap-2 w-full sm:w-auto sm:flex-row">
+            <Button
+              variant={isMacTheme ? "secondary" : "retro"}
+              onClick={onClose}
+              className={cn(
+                "w-full sm:w-auto",
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("apps.karaoke.liveListen.cancel")}
+            </Button>
+            <Button
+              variant={isMacTheme ? "default" : "retro"}
+              onClick={handleJoinSelected}
+              disabled={selectedIndex < 0}
+              className={cn(
+                "w-full sm:w-auto",
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("apps.karaoke.liveListen.joinButton")}
+            </Button>
+          </div>
+        </DialogFooter>
+      )}
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={cn("max-w-[420px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        onKeyDown={handleDialogKeyDown}
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.karaoke.liveListen.joinSession")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.karaoke.liveListen.pasteLinkOrId")}
+            </DialogDescription>
+            <DialogHeader>
+              {t("apps.karaoke.liveListen.joinSession")}
+            </DialogHeader>
+            <div className="window-body">{dialogContent}</div>
+          </>
+        ) : isMacTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.karaoke.liveListen.joinSession")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.karaoke.liveListen.pasteLinkOrId")}
+            </DialogDescription>
+            <DialogHeader>
+              {t("apps.karaoke.liveListen.joinSession")}
+            </DialogHeader>
+            {dialogContent}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {t("apps.karaoke.liveListen.joinSession")}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("apps.karaoke.liveListen.pasteLinkOrId")}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogContent}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

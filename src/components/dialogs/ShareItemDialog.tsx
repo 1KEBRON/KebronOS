@@ -1,0 +1,352 @@
+import React, { useReducer, useRef, useEffect, Suspense } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+
+// Lazy-load qrcode.react so it isn't bundled with always-mounted menus;
+// it's only fetched while the share dialog is actually open.
+const QRCodeSVG = React.lazy(() =>
+  import("qrcode.react").then((m) => ({ default: m.QRCodeSVG }))
+);
+
+interface ShareItemDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  itemType: string; // Display label, e.g., "Page", "Song", "Item"
+  itemTypeKey?: string; // Stable key for translations/behavior, e.g., "page"
+  itemIdentifier: string; // e.g., URL for IE, videoId for iPod
+  secondaryIdentifier?: string; // e.g., year for IE
+  title?: string; // e.g., Webpage title, Song title
+  details?: string; // e.g., Artist for Song
+  generateShareUrl: (identifier: string, secondary?: string) => string;
+  contentClassName?: string; // Additional className for DialogContent (e.g., for z-index overrides)
+  overlayClassName?: string; // Additional className for Dialog overlay (e.g., for z-index overrides)
+}
+
+export function ShareItemDialog({
+  isOpen,
+  onClose,
+  itemType,
+  itemTypeKey,
+  itemIdentifier,
+  secondaryIdentifier,
+  title,
+  details,
+  generateShareUrl,
+  contentClassName,
+  overlayClassName,
+}: ShareItemDialogProps) {
+  const { t } = useTranslation();
+  type ShareDialogState = {
+    isLoading: boolean;
+    shareUrl: string;
+  };
+  type ShareDialogAction =
+    | { type: "reset" }
+    | { type: "set"; payload: Partial<ShareDialogState> };
+  const initialState: ShareDialogState = { isLoading: false, shareUrl: "" };
+  const reducer = (
+    state: ShareDialogState,
+    action: ShareDialogAction
+  ): ShareDialogState => {
+    if (action.type === "reset") return initialState;
+    return { ...state, ...action.payload };
+  };
+
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { isLoading, shareUrl } = state;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const {
+    isWindowsTheme,
+    isMacOSTheme,
+    isWinXp,
+  } = useThemeFlags();
+
+  const itemTypeLookupKey = itemTypeKey ?? itemType.toLowerCase();
+  const translatedItemType = t(
+    `common.dialog.share.itemTypes.${itemTypeLookupKey}`,
+    { defaultValue: itemType }
+  );
+
+  // Generate the share link when the dialog opens or identifiers change
+  useEffect(() => {
+    if (isOpen && itemIdentifier) {
+      dispatch({ type: "set", payload: { isLoading: true, shareUrl: "" } });
+      try {
+        const generated = generateShareUrl(itemIdentifier, secondaryIdentifier);
+        dispatch({
+          type: "set",
+          payload: { shareUrl: generated, isLoading: false },
+        });
+      } catch (error) {
+        console.error("Error generating share link:", error);
+        toast.error(t("common.dialog.share.failedToGenerateShareLink", { itemType: translatedItemType }), {
+          description: t("common.dialog.share.pleaseTryAgainLater"),
+        });
+        dispatch({ type: "set", payload: { shareUrl: "", isLoading: false } });
+      }
+    }
+    return () => {
+      // Reset state when dialog closes
+      if (!isOpen) {
+        dispatch({ type: "reset" });
+      }
+    };
+    // Include all dependencies that affect URL generation
+  }, [
+    isOpen,
+    itemIdentifier,
+    secondaryIdentifier,
+    itemType,
+    itemTypeKey,
+    generateShareUrl,
+    t,
+    translatedItemType,
+  ]);
+
+  // Focus the input when the share URL is available
+  useEffect(() => {
+    if (shareUrl && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+      inputRef.current.scrollLeft = 0;
+    }
+  }, [shareUrl]);
+
+  const handleCopyToClipboard = async () => {
+    if (inputRef.current && shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(t("common.dialog.share.linkCopied"), {
+          description: t("common.dialog.share.linkCopiedToClipboard", { itemType: translatedItemType }),
+        });
+        onClose(); // Dismiss the dialog after copying
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+        toast.error(t("common.dialog.share.failedToCopyLink"), {
+          description: t("common.dialog.share.couldNotCopyToClipboard"),
+        });
+        // Fallback for older browsers or if permission denied, select the text
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }
+  };
+
+
+  // Construct the descriptive text
+  const descriptionText = () => {
+    let text = t("common.dialog.share.shareLinkOrScanToOpen", { itemType: translatedItemType.toLowerCase() }); // Start with basic type
+    if (title) {
+      text += `: ${title}`;
+    }
+    if (details) {
+      text += ` ${t("common.dialog.share.by")} ${details}`;
+    }
+    if (secondaryIdentifier) {
+      // Handle year specifically for page shares.
+      if (itemTypeLookupKey === "page" && secondaryIdentifier !== "current") {
+        text += ` ${t("common.dialog.share.from")} ${secondaryIdentifier}`;
+      }
+    }
+    return text;
+  };
+
+  const dialogContent = (
+    <div className="p-3 w-full">
+      <div className="flex flex-col items-center space-y-3 w-full">
+        {/* QR Code */}
+        {isLoading ? (
+          <div className="size-32 flex items-center justify-center bg-neutral-100 rounded">
+            <p
+              className={cn(
+                "text-neutral-500",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[10px]"
+                  : "font-geneva-12 text-[10px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "10px" : undefined,
+              }}
+            >
+              {t("common.dialog.share.generating")}
+            </p>
+          </div>
+        ) : shareUrl ? (
+          <div className="bg-white p-1.5 size-32 flex items-center justify-center">
+            <Suspense fallback={null}>
+              <QRCodeSVG
+                value={shareUrl}
+                size={112}
+                level="M"
+                includeMargin={false}
+                className="size-28"
+              />
+            </Suspense>
+          </div>
+        ) : (
+          <div className="size-32 flex items-center justify-center bg-neutral-100 rounded">
+            <p
+              className={cn(
+                "text-neutral-500",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[10px]"
+                  : "font-geneva-12 text-[10px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "10px" : undefined,
+              }}
+            >
+              {t("common.dialog.share.qrCode")}
+            </p>
+          </div>
+        )}
+        {/* Descriptive text below QR code */}
+        <p
+          className={cn(
+            "text-neutral-500 text-center mt-0 mb-4 break-words w-[80%]",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[10px]"
+              : "font-geneva-12 text-xs"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "10px" : undefined,
+          }}
+        >
+          {descriptionText()}
+        </p>
+
+        {/* URL Input */}
+        <Input
+          ref={inputRef}
+          value={shareUrl}
+          readOnly
+          className={cn(
+            "shadow-none h-8 w-full",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "text-sm"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+          placeholder={
+            isLoading
+              ? t("common.dialog.share.generating")
+              : t("common.dialog.share.shareLinkFor", { itemType: translatedItemType.toLowerCase() })
+          }
+        />
+      </div>
+
+      <DialogFooter className="mt-2 flex justify-end gap-1.5">
+        <Button
+          onClick={handleCopyToClipboard}
+          disabled={!shareUrl || isLoading}
+          variant="retro"
+          className={cn(
+            "w-full h-7",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+        >
+          {t("common.dialog.share.copyLink")}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
+  if (isWindowsTheme) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          className={cn(
+            "p-0 overflow-hidden max-w-xs border-0", // Remove border but keep box-shadow
+            isWinXp ? "window" : "window", // Use window class for both themes
+            contentClassName
+          )}
+          overlayClassName={overlayClassName}
+          style={{
+            fontSize: "11px",
+          }}
+          onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+        >
+          <div
+            className="title-bar"
+            style={isWinXp ? { minHeight: "30px" } : undefined}
+          >
+            <div className="title-bar-text">{t("common.dialog.share.shareItem", { itemType: translatedItemType })}</div>
+            <div className="title-bar-controls">
+              <button aria-label={t("common.menu.close")} data-action="close" onClick={onClose} />
+            </div>
+          </div>
+          <div className="window-body">{dialogContent}</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={cn(
+          "bg-os-window-bg border-[length:var(--os-metrics-border-width)] border-os-window rounded-os shadow-os-window max-w-xs",
+          contentClassName
+        )}
+        overlayClassName={overlayClassName}
+        onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+      >
+        {isMacOSTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("common.dialog.share.shareItem", { itemType: translatedItemType })}
+            </DialogTitle>
+            <DialogHeader>{t("common.dialog.share.shareItem", { itemType: translatedItemType })}</DialogHeader>
+            <DialogDescription className="sr-only">
+              {t("common.dialog.share.shareItemViaLinkOrQrCode", { itemType: translatedItemType.toLowerCase() })}
+            </DialogDescription>
+          </>
+        ) : (
+          <DialogHeader>
+            <DialogTitle className="font-normal text-[16px]">
+              {t("common.dialog.share.shareItem", { itemType: translatedItemType })}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("common.dialog.share.shareItemViaLinkOrQrCode", { itemType: translatedItemType.toLowerCase() })}
+            </DialogDescription>
+          </DialogHeader>
+        )}
+        {dialogContent}
+      </DialogContent>
+    </Dialog>
+  );
+}

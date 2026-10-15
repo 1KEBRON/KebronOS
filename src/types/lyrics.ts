@@ -1,0 +1,167 @@
+import type { ChineseLyricsLanguagePreference } from "@/shared/media/chineseLyrics";
+
+/**
+ * Word-level timing information from KRC format
+ */
+export interface LyricWord {
+  /** The text content of this word/syllable */
+  text: string;
+  /** Start time offset from the line start in milliseconds */
+  startTimeMs: number;
+  /** Duration of this word in milliseconds */
+  durationMs: number;
+}
+
+export interface LyricLine {
+  startTimeMs: string;
+  words: string;
+  /** Optional word-level timing data from KRC format */
+  wordTimings?: LyricWord[];
+}
+
+export enum LyricsFont {
+  SansSerif = "sans-serif",
+  Serif = "serif",
+  Rounded = "rounded",
+  SerifRed = "serif-red",      // Japanese classic: serif + red outline
+  GoldGlow = "gold-glow",      // Glow: rounded + album art primary color glow
+  Gradient = "gradient",       // Modern: gradient fill (blue → cyan)
+}
+
+/**
+ * Gets the CSS class name for a lyrics font setting.
+ * Pure function - no memoization needed.
+ */
+export function getLyricsFontClassName(font: LyricsFont): string {
+  switch (font) {
+    case LyricsFont.Serif:
+      return "font-lyrics-serif";
+    case LyricsFont.SansSerif:
+      return "font-lyrics-sans";
+    case LyricsFont.SerifRed:
+      return "font-lyrics-serif-red";
+    case LyricsFont.GoldGlow:
+      return "font-lyrics-gold-glow";
+    case LyricsFont.Gradient:
+      return "font-lyrics-gradient";
+    case LyricsFont.Rounded:
+    default:
+      return "font-lyrics-rounded";
+  }
+}
+
+export enum LyricsAlignment {
+  Alternating = "alternating",
+  FocusThree = "focusThree",
+  Center = "center",
+}
+
+/**
+ * Display mode for the visual background behind lyrics
+ * Controls what visual content is shown while music plays
+ */
+export enum DisplayMode {
+  /** Show the YouTube music video (default) */
+  Video = "video",
+  /** Show the album/cover art (what normally shows on pause) */
+  Cover = "cover",
+  /** Cycle through landscape video wallpapers */
+  Landscapes = "landscapes",
+  /** Show Kali-fold warp shader sampling cover art colors */
+  Shader = "shader",
+  /** Show mesh gradient shader backdrop */
+  Mesh = "mesh",
+  /** Show water/caustic shader over cover art */
+  Water = "water",
+}
+
+export enum KoreanDisplay {
+  Original = "original",
+  Romanized = "romanized",
+}
+
+export enum JapaneseFurigana {
+  Off = "off",
+  On = "on",
+}
+
+/**
+ * Romanization settings for lyrics display
+ * Controls ruby annotations for various languages
+ */
+export interface RomanizationSettings {
+  /** Master toggle - when false, no romanization is shown */
+  enabled: boolean;
+  /** Japanese furigana - hiragana readings over kanji (e.g., 日本 → にほん) */
+  japaneseFurigana: boolean;
+  /** Japanese romaji - Latin pronunciation over all Japanese (e.g., 日本 → nihon) */
+  japaneseRomaji: boolean;
+  /** Korean romanization - Latin over hangul (e.g., 한국 → hanguk) */
+  korean: boolean;
+  /** Chinese pinyin - Latin over hanzi (e.g., 中国 → zhongguo) */
+  chinese: boolean;
+  /** Chinese Zhuyin (Bopomofo / 注音) over hanzi (e.g., 中國 → ㄓㄨㄥ ㄍㄨㄛˊ) */
+  chineseZhuyin: boolean;
+  /** Preferred Han script for KuGou lyrics; auto follows a Chinese ryOS locale. */
+  chineseLyricsLanguage: ChineseLyricsLanguagePreference;
+  /** Soramimi (空耳) - misheard lyrics that phonetically approximate the original */
+  soramimi: boolean;
+  /** Target language for soramimi: "zh-TW" for Chinese (搜哩搜哩), "en" for English (meet sue mate a tie) */
+  soramamiTargetLanguage: "zh-TW" | "en";
+  /** Only pronunciation - replace original text with phonetic content (e.g., 日本 → にほん, 한국 → hanguk) */
+  pronunciationOnly?: boolean;
+}
+
+export type ChinesePhoneticSystem = "pinyin" | "zhuyin";
+
+/**
+ * Menu order for per-language pronunciation checkboxes.
+ * Chinese (Zhuyin) must sit immediately after Chinese (Pinyin).
+ */
+export const LYRICS_PRONUNCIATION_LANGUAGE_OPTIONS = [
+  { id: "japaneseFurigana", labelKey: "apps.ipod.menu.japaneseFurigana" },
+  { id: "japaneseRomaji", labelKey: "apps.ipod.menu.japaneseRomaji" },
+  { id: "korean", labelKey: "apps.ipod.menu.koreanRomanization" },
+  { id: "chinesePinyin", labelKey: "apps.ipod.menu.chinesePinyin" },
+  { id: "chineseZhuyin", labelKey: "apps.ipod.menu.chineseZhuyin" },
+] as const;
+
+export function getChinesePhoneticSystem(
+  romanization: Pick<RomanizationSettings, "chinese" | "chineseZhuyin">
+): ChinesePhoneticSystem | null {
+  if (romanization.chineseZhuyin) return "zhuyin";
+  if (romanization.chinese) return "pinyin";
+  return null;
+}
+
+export function chinesePhoneticPatch(
+  system: ChinesePhoneticSystem,
+  enabled: boolean
+): Partial<RomanizationSettings> {
+  if (system === "zhuyin") {
+    return enabled
+      ? { chineseZhuyin: true, chinese: false }
+      : { chineseZhuyin: false };
+  }
+  return enabled
+    ? { chinese: true, chineseZhuyin: false }
+    : { chinese: false };
+}
+
+export function areRomanizationSettingsEqual(
+  a: RomanizationSettings,
+  b: RomanizationSettings
+): boolean {
+  return (
+    a.enabled === b.enabled &&
+    a.japaneseFurigana === b.japaneseFurigana &&
+    a.japaneseRomaji === b.japaneseRomaji &&
+    a.korean === b.korean &&
+    a.chinese === b.chinese &&
+    Boolean(a.chineseZhuyin) === Boolean(b.chineseZhuyin) &&
+    a.chineseLyricsLanguage === b.chineseLyricsLanguage &&
+    a.soramimi === b.soramimi &&
+    a.soramamiTargetLanguage === b.soramamiTargetLanguage &&
+    Boolean(a.pronunciationOnly) === Boolean(b.pronunciationOnly)
+  );
+}

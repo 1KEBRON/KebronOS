@@ -1,0 +1,322 @@
+/**
+ * Canonical Redis key registry — the runtime reads and writes only these key shapes.
+ *
+ * Legacy key patterns for the migration CLI live in `./redisLegacyPatterns.ts`.
+ */
+
+import type { AIConversationChannel } from "./contracts/aiConversation";
+
+export {
+  LEGACY_REDIS_SCAN_PATTERNS,
+  type LegacyRedisScanPattern,
+} from "./redisLegacyPatterns";
+
+export const REDIS_KEY_SEPARATOR = ":";
+
+export const CANONICAL_REDIS_PREFIXES = [
+  "agent",
+  "analytics",
+  "auth",
+  "cache",
+  "chat",
+  "integration",
+  "media",
+  "memory",
+  "presence",
+  "rate",
+  "realtime",
+  "session",
+  "sync",
+  "system",
+] as const;
+
+export type CanonicalRedisPrefix = (typeof CANONICAL_REDIS_PREFIXES)[number];
+
+export function normalizeRedisSegment(segment: string | number): string {
+  return encodeURIComponent(String(segment).trim().toLowerCase());
+}
+
+export function normalizeCaseSensitiveRedisSegment(
+  segment: string | number,
+): string {
+  return encodeURIComponent(String(segment).trim());
+}
+
+export function redisKey(
+  ...segments: Array<string | number | null | undefined>
+): string {
+  return segments
+    .filter(
+      (segment): segment is string | number =>
+        segment !== null &&
+        segment !== undefined &&
+        String(segment).trim() !== "",
+    )
+    .map(normalizeRedisSegment)
+    .join(REDIS_KEY_SEPARATOR);
+}
+
+export function redisKeyCaseSensitive(
+  ...segments: Array<string | number | null | undefined>
+): string {
+  return segments
+    .filter(
+      (segment): segment is string | number =>
+        segment !== null &&
+        segment !== undefined &&
+        String(segment).trim() !== "",
+    )
+    .map(normalizeCaseSensitiveRedisSegment)
+    .join(REDIS_KEY_SEPARATOR);
+}
+
+function songKey(songId: string, facet: "meta" | "content"): string {
+  if (songId.startsWith("am:")) {
+    return redisKeyCaseSensitive("media", "song", "am", songId.slice(3), facet);
+  }
+  return redisKeyCaseSensitive("media", "song", songId, facet);
+}
+
+export async function sha256RedisIdentifier(value: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
+export function redisKeysForHashedIdentifiers() {
+  return {
+    token: sha256RedisIdentifier,
+    ip: sha256RedisIdentifier,
+    url: sha256RedisIdentifier,
+  };
+}
+
+export const redisKeys = {
+  auth: {
+    userProfile: (username: string) =>
+      redisKey("auth", "user", username, "profile"),
+    userPassword: (username: string) =>
+      redisKey("auth", "user", username, "password"),
+    userSessions: (username: string) =>
+      redisKey("auth", "user", username, "sessions"),
+    session: (tokenHash: string) => redisKey("auth", "session", tokenHash),
+    lastSession: (username: string) =>
+      redisKey("auth", "user", username, "last-session"),
+    /** Reverse index: hashed email address -> username (for recovery lookups). */
+    emailIndex: (emailHash: string) => redisKey("auth", "email", emailHash),
+    /** Pending email-verification code (hashed) + meta for a user. */
+    emailVerify: (username: string) =>
+      redisKey("auth", "user", username, "email-verify"),
+    /** Pending password-reset code (hashed) + meta for a user. */
+    passwordReset: (username: string) =>
+      redisKey("auth", "user", username, "password-reset"),
+  },
+  chat: {
+    roomIds: () => redisKey("chat", "rooms", "ids"),
+    roomMeta: (roomId: string) =>
+      redisKeyCaseSensitive("chat", "rooms", roomId, "meta"),
+    roomMessages: (roomId: string) =>
+      redisKeyCaseSensitive("chat", "rooms", roomId, "messages"),
+    roomPresence: (roomId: string) =>
+      redisKeyCaseSensitive("chat", "rooms", roomId, "presence"),
+    aiConversation: (username: string, channel: AIConversationChannel) =>
+      redisKey("chat", "ai", "user", username, channel, "conversation"),
+    aiConversationLock: (username: string, channel: AIConversationChannel) =>
+      redisKey("chat", "ai", "user", username, channel, "lock"),
+    aiConversationResetMemory: (
+      username: string,
+      channel: AIConversationChannel,
+    ) => redisKey("chat", "ai", "user", username, channel, "reset-memory"),
+    aiConversationResetMemoryLock: (
+      username: string,
+      channel: AIConversationChannel,
+    ) =>
+      redisKey("chat", "ai", "user", username, channel, "reset-memory", "lock"),
+    aiConversationTombstone: (username: string) =>
+      redisKey("chat", "ai", "user", username, "deleted"),
+    aiAttachments: (username: string) =>
+      redisKey("chat", "ai", "user", username, "attachments"),
+    aiAttachmentsLock: (username: string) =>
+      redisKey("chat", "ai", "user", username, "attachments", "lock"),
+    legacyAIAttachmentMetadata: (username: string, attachmentId: string) =>
+      redisKeyCaseSensitive(
+        "chat",
+        "ai",
+        "user",
+        username.toLowerCase(),
+        "attachment",
+        attachmentId.toLowerCase(),
+      ),
+    legacyAIAttachmentIds: (username: string) =>
+      redisKey("chat", "ai", "user", username, "attachment-ids"),
+    legacyAIAttachmentBytes: (username: string) =>
+      redisKey("chat", "ai", "user", username, "attachment-bytes"),
+  },
+  sync: {
+    v2Seq: (username: string) =>
+      redisKey("sync", "v2", "user", username, "seq"),
+    v2Kv: (username: string) => redisKey("sync", "v2", "user", username, "kv"),
+    v2Journal: (username: string) =>
+      redisKey("sync", "v2", "user", username, "journal"),
+    v2Blobs: (username: string) =>
+      redisKey("sync", "v2", "user", username, "blobs"),
+    v2Lock: (username: string) =>
+      redisKey("sync", "v2", "user", username, "lock"),
+    v2TtlTouched: (username: string) =>
+      redisKey("sync", "v2", "user", username, "ttl-touched"),
+    maintenanceCursor: () => redisKey("sync", "maintenance", "cursor"),
+    autoSyncPreference: (username: string) =>
+      redisKey("sync", "preference", "user", username, "auto-sync"),
+  },
+  rate: {
+    counter: (
+      feature: string,
+      window: string,
+      scope: string,
+      identifierHash: string,
+    ) => redisKey("rate", feature, window, scope, identifierHash),
+    block: (feature: string, scope: string, identifierHash: string) =>
+      redisKey("rate", "block", feature, scope, identifierHash),
+  },
+  media: {
+    appletShare: (shareId: string) =>
+      redisKeyCaseSensitive("media", "applet", "share", shareId),
+    appletShareIndex: () => redisKey("media", "applet", "share-index"),
+    stuffShare: (shareId: string) =>
+      redisKeyCaseSensitive("media", "stuff", "share", shareId),
+    stuffShareLock: (shareId: string) =>
+      redisKeyCaseSensitive("media", "stuff", "share", shareId, "lock"),
+    songIds: () => redisKey("media", "song", "ids"),
+    songMeta: (songId: string) => songKey(songId, "meta"),
+    songContent: (songId: string) => songKey(songId, "content"),
+    /** Catalog version stamp (max updatedAt) for O(1) poll probes. */
+    songsVersion: () => redisKey("media", "song", "version"),
+    /**
+     * Short-lived speakable draft for a Ryo assistant message (streaming or
+     * persisted). `ownerHash` is SHA-256 of `user:<username>` or `anon:<ip>`.
+     */
+    speechDraft: (ownerHash: string, messageId: string) =>
+      redisKeyCaseSensitive("media", "speech", "draft", ownerHash, messageId),
+    /** Opaque single-message speech permit. Server holds the bound text. */
+    speechPermit: (permitId: string) =>
+      redisKeyCaseSensitive("media", "speech", "permit", permitId),
+  },
+  cache: {
+    appleArtwork: (catalogId: string) =>
+      redisKey("cache", "apple-music", "artwork", catalogId),
+    geoip: (ipHash: string) => redisKey("cache", "geoip", ipHash),
+    ieVersions: (urlHash: string, year: string | number) =>
+      redisKey("cache", "ie", urlHash, year, "versions"),
+    wayback: (urlHash: string, year: string | number) =>
+      redisKey("cache", "wayback", urlHash, year),
+  },
+  analytics: {
+    apiMetric: (metric: string, date: string) =>
+      redisKey("analytics", "api", metric, date),
+    productMetric: (metric: string, date: string) =>
+      redisKey("analytics", "product", metric, date),
+  },
+  memory: {
+    index: (username: string) => redisKey("memory", "user", username, "index"),
+    detail: (username: string, key: string) =>
+      redisKey("memory", "user", username, "detail", key),
+    daily: (username: string, date: string) =>
+      redisKey("memory", "user", username, "daily", date),
+    dailyDates: (username: string) =>
+      redisKey("memory", "user", username, "daily", "dates"),
+    mutationLock: (username: string) =>
+      redisKey("memory", "user", username, "mutation-lock"),
+    processingLock: (username: string) =>
+      redisKey("memory", "user", username, "processing-lock"),
+  },
+  integration: {
+    ircServer: (serverId: string) =>
+      redisKeyCaseSensitive("integration", "irc", "server", serverId),
+    ircServerIds: () => redisKey("integration", "irc", "servers"),
+    telegramLinkCode: (code: string) =>
+      redisKeyCaseSensitive("integration", "telegram", "link", "code", code),
+    telegramPendingLink: (username: string) =>
+      redisKey("integration", "telegram", "link", "user", username),
+    telegramAccountByTelegramUser: (telegramUserId: string) =>
+      redisKey(
+        "integration",
+        "telegram",
+        "account",
+        "telegram-user",
+        telegramUserId,
+      ),
+    telegramAccountByUsername: (username: string) =>
+      redisKey("integration", "telegram", "account", "user", username),
+    telegramHistory: (chatId: string) =>
+      redisKey("integration", "telegram", "history", chatId),
+    telegramUpdate: (updateId: string | number) =>
+      redisKey("integration", "telegram", "update", updateId),
+    telegramHeartbeat: (username: string, slot: string) =>
+      redisKey("integration", "telegram", "heartbeat", username, slot),
+    telegramHeartbeatSettings: (username: string) =>
+      redisKey("integration", "telegram", "heartbeat", "settings", username),
+    /** KOReader Progress Sync (kosync) MD5 auth key for a ryOS username. */
+    kosyncUserKey: (username: string) =>
+      redisKey("integration", "kosync", "user", username, "key"),
+    /** Per-document reading progress hash (KOReader protocol fields). */
+    kosyncDocument: (username: string, documentId: string) =>
+      redisKeyCaseSensitive(
+        "integration",
+        "kosync",
+        "user",
+        username,
+        "document",
+        documentId,
+      ),
+    /** documentId → /Books/… path mapping for Books app bridging. */
+    kosyncDocPaths: (username: string) =>
+      redisKey("integration", "kosync", "user", username, "docpaths"),
+  },
+  realtime: {
+    ticket: (ticketHash: string) => redisKey("realtime", "ticket", ticketHash),
+    pubsubChannel: () => redisKey("realtime", "pubsub"),
+  },
+  presence: {
+    globalOnline: () => redisKey("presence", "global", "online"),
+    airdropLobby: () => redisKey("presence", "airdrop", "lobby"),
+  },
+  session: {
+    listenIds: () => redisKey("session", "listen", "ids"),
+    listen: (sessionId: string) =>
+      redisKeyCaseSensitive("session", "listen", sessionId),
+    airdropTransfer: (transferId: string) =>
+      redisKeyCaseSensitive("session", "airdrop", "transfer", transferId),
+  },
+  agent: {
+    cursorRunEvents: (runId: string) =>
+      redisKeyCaseSensitive("agent", "cursor", "run", runId, "events"),
+    cursorRunMeta: (runId: string) =>
+      redisKeyCaseSensitive("agent", "cursor", "run", runId, "meta"),
+    cursorLatestRun: (agentId: string) =>
+      redisKeyCaseSensitive("agent", "cursor", "agent", agentId, "latest-run"),
+  },
+  system: {
+    userHeartbeats: (username: string, date: string) =>
+      redisKey("system", "user", username, "heartbeats", date),
+    migrationRun: (runId: string) =>
+      redisKeyCaseSensitive("system", "migration", "redis-key-scheme", runId),
+    /**
+     * Idempotency marker recording that a legacy key's additive backfill
+     * (HLL pfmerge / hash hincrby / zset rebuild) already ran. Keyed by the raw
+     * legacy key name so a retried batch can skip keys it already copied and
+     * never double-counts. Not part of `LEGACY_REDIS_SCAN_PATTERNS`, so it is
+     * never itself scanned, migrated, or deleted by the migration tooling.
+     */
+    migrationCopied: (legacyKey: string) =>
+      redisKeyCaseSensitive("system", "migration", "copied", legacyKey),
+    /**
+     * Append-only audit log of admin (`ryo`) actions. A single bounded global
+     * LIST (newest first) recording state-changing admin operations.
+     */
+    adminAuditLog: () => redisKey("system", "admin", "audit-log"),
+  },
+} as const;

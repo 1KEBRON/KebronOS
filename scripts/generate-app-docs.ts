@@ -1,0 +1,771 @@
+#!/usr/bin/env bun
+
+/**
+ * Generate documentation pages for each app using AI subagents.
+ * Reads app metadata and source code, then uses Gemini to generate comprehensive doc pages.
+ * 
+ * Usage:
+ *   bun run scripts/generate-app-docs.ts                    # Generate all app docs (skip existing)
+ *   bun run scripts/generate-app-docs.ts --app ipod         # Generate docs for specific app
+ *   bun run scripts/generate-app-docs.ts --dry-run          # Preview without generating
+ *   bun run scripts/generate-app-docs.ts --force            # Regenerate all docs even if they exist
+ */
+
+import { readFile, readdir, stat, writeFile } from "fs/promises";
+import { join } from "path";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+
+const DOCS_DIR = "docs";
+const APPS_DIR = "src/apps";
+const OUTPUT_DIR = DOCS_DIR;
+
+// App IDs with their section numbers (under section 2 - Apps)
+const APP_CONFIGS: Record<string, { sectionNum: string; docName: string }> = {
+  "chats": { sectionNum: "2.1", docName: "chats" },
+  "internet-explorer": { sectionNum: "2.2", docName: "internet-explorer" },
+  "ipod": { sectionNum: "2.3", docName: "ipod" },
+  "karaoke": { sectionNum: "2.4", docName: "karaoke" },
+  "textedit": { sectionNum: "2.5", docName: "textedit" },
+  "finder": { sectionNum: "2.6", docName: "finder" },
+  "paint": { sectionNum: "2.7", docName: "paint" },
+  "photo-booth": { sectionNum: "2.8", docName: "photo-booth" },
+  "terminal": { sectionNum: "2.9", docName: "terminal" },
+  "control-panels": { sectionNum: "2.10", docName: "control-panels" },
+  "soundboard": { sectionNum: "2.11", docName: "soundboard" },
+  "synth": { sectionNum: "2.12", docName: "synth" },
+  "videos": { sectionNum: "2.13", docName: "videos" },
+  "minesweeper": { sectionNum: "2.14", docName: "minesweeper" },
+  "pc": { sectionNum: "2.15", docName: "virtual-pc" },
+  "admin": { sectionNum: "2.16", docName: "admin" },
+  "applet-viewer": { sectionNum: "2.17", docName: "applet-store" },
+  "stickies": { sectionNum: "2.18", docName: "stickies" },
+  "infinite-mac": { sectionNum: "2.19", docName: "infinite-mac" },
+  "winamp": { sectionNum: "2.20", docName: "winamp" },
+  "calendar": { sectionNum: "2.21", docName: "calendar" },
+  "dashboard": { sectionNum: "2.22", docName: "dashboard" },
+  "contacts": { sectionNum: "2.23", docName: "contacts" },
+  "books": { sectionNum: "2.24", docName: "books" },
+  "tv": { sectionNum: "2.25", docName: "tv" },
+  "maps": { sectionNum: "2.26", docName: "maps" },
+  "calculator": { sectionNum: "2.27", docName: "calculator" },
+  "preview": { sectionNum: "2.28", docName: "preview" },
+  "stuff": { sectionNum: "2.29", docName: "stuff" },
+};
+
+const APP_IDS = Object.keys(APP_CONFIGS) as (keyof typeof APP_CONFIGS)[];
+const APP_ID_SET = new Set<string>(APP_IDS);
+const APP_SOURCE_DIRS: Partial<Record<string, string>> = {
+  pc: "infinite-pc",
+};
+
+interface AppMetadata {
+  name: string;
+  version: string;
+  creator: {
+    name: string;
+    url: string;
+  };
+  github: string;
+  icon: string;
+}
+
+interface HelpItem {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+interface AppInfo {
+  id: string;
+  name: string;
+  description: string;
+  metadata: AppMetadata;
+  helpItems: HelpItem[];
+  windowConfig: {
+    defaultSize: { width: number; height: number };
+    minSize?: { width: number; height: number };
+    maxSize?: { width: number; height: number };
+    mobileDefaultSize?: { width: number; height: number };
+    mobileSquare?: boolean;
+  };
+  componentFiles: string[];
+  hookFiles: string[];
+  utilityFiles: string[];
+}
+
+function getAppSourceId(appId: string): string {
+  return APP_SOURCE_DIRS[appId] ?? appId;
+}
+
+/**
+ * Check if API key is available
+ */
+function checkApiKey(): boolean {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Check if all doc files already exist
+ */
+async function allDocsExist(): Promise<boolean> {
+  for (const appId of APP_IDS) {
+    const config = APP_CONFIGS[appId];
+    const docFileName = `${config.sectionNum}-${config.docName}.md`;
+    const docFilePath = join(OUTPUT_DIR, docFileName);
+    try {
+      await stat(docFilePath);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Read app index file to extract metadata and help items
+ */
+async function readAppIndex(appId: string): Promise<{
+  metadata: AppMetadata | null;
+  helpItems: HelpItem[];
+}> {
+  const sourceId = getAppSourceId(appId);
+  const indexPath = join(APPS_DIR, sourceId, "index.tsx");
+  const indexPathAlt = join(APPS_DIR, sourceId, "index.ts");
+  const metadataPath = join(APPS_DIR, sourceId, "metadata.ts");
+  
+  let content = "";
+  try {
+    content = await readFile(indexPath, "utf-8");
+  } catch {
+    try {
+      content = await readFile(indexPathAlt, "utf-8");
+    } catch {
+      console.warn(`⚠️  No index file found for ${appId}`);
+      return { metadata: null, helpItems: [] };
+    }
+  }
+
+  // If index re-exports from metadata, read metadata.ts for appMetadata/helpItems
+  if (content.includes('from "./metadata"') || content.includes("from './metadata'")) {
+    try {
+      content = await readFile(metadataPath, "utf-8");
+    } catch {
+      // metadata.ts not found, continue with index content
+    }
+  }
+
+  // Extract appMetadata export - handle multiline objects
+  const metadataMatch = content.match(/export const appMetadata\s*=\s*(\{[\s\S]*?\});/s);
+  let metadata: AppMetadata | null = null;
+  if (metadataMatch) {
+    try {
+      const metadataCode = metadataMatch[1];
+      // Simple extraction - look for name, version, etc. - handle escaped quotes and newlines
+      const nameMatch = metadataCode.match(/name:\s*["']([^"']+)["']/);
+      const versionMatch = metadataCode.match(/version:\s*["']([^"']+)["']/);
+      const iconMatch = metadataCode.match(/icon:\s*["']([^"']+)["']/);
+      
+      if (nameMatch) {
+        metadata = {
+          name: nameMatch[1],
+          version: versionMatch ? versionMatch[1] : "1.0",
+          creator: {
+            name: "Ryo Lu",
+            url: "https://ryo.lu",
+          },
+          github: "https://github.com/ryokun6/ryos",
+          icon: iconMatch ? iconMatch[1] : "/icons/default/question.png",
+        };
+      }
+    } catch (e) {
+      console.warn(`⚠️  Could not parse metadata for ${appId}:`, e);
+    }
+  }
+
+  // Extract helpItems export - handle multiline content with dotall flag
+  const helpItemsMatch = content.match(/export const helpItems\s*=\s*(\[[\s\S]*?\]);/s);
+  const helpItems: HelpItem[] = [];
+  if (helpItemsMatch) {
+    try {
+      // Use a simple pattern that matches icon, title, description fields - works reliably
+      const itemPattern = /icon:\s*["']([^"']+)["'],\s*title:\s*["']([^"']+)["'],\s*description:\s*["']([^"']+)["']/g;
+      const itemMatches = content.matchAll(itemPattern);
+      for (const match of itemMatches) {
+        helpItems.push({
+          icon: match[1],
+          title: match[2],
+          description: match[3],
+        });
+      }
+    } catch (e) {
+      console.warn(`⚠️  Could not parse helpItems for ${appId}:`, e);
+    }
+  }
+
+  return { metadata, helpItems };
+}
+
+/**
+ * Get window config from app registry type info or defaults
+ */
+function getWindowConfig(appId: string): AppInfo["windowConfig"] {
+  // Default window configs - these match appRegistry.tsx
+  const configs: Record<string, AppInfo["windowConfig"]> = {
+    finder: {
+      defaultSize: { width: 680, height: 400 },
+      minSize: { width: 300, height: 200 },
+    },
+    soundboard: {
+      defaultSize: { width: 650, height: 475 },
+      minSize: { width: 550, height: 375 },
+    },
+    "internet-explorer": {
+      defaultSize: { width: 730, height: 600 },
+      minSize: { width: 400, height: 300 },
+    },
+    chats: {
+      defaultSize: { width: 560, height: 360 },
+      minSize: { width: 300, height: 320 },
+    },
+    textedit: {
+      defaultSize: { width: 430, height: 475 },
+      minSize: { width: 430, height: 200 },
+    },
+    preview: {
+      defaultSize: { width: 760, height: 560 },
+      minSize: { width: 420, height: 320 },
+    },
+    paint: {
+      defaultSize: { width: 713, height: 480 },
+      minSize: { width: 400, height: 400 },
+      maxSize: { width: 713, height: 535 },
+    },
+    "photo-booth": {
+      defaultSize: { width: 644, height: 510 },
+      minSize: { width: 644, height: 510 },
+      maxSize: { width: 644, height: 510 },
+    },
+    minesweeper: {
+      defaultSize: { width: 305, height: 400 },
+      minSize: { width: 305, height: 400 },
+      maxSize: { width: 305, height: 400 },
+    },
+    videos: {
+      defaultSize: { width: 400, height: 420 },
+      minSize: { width: 400, height: 340 },
+    },
+    ipod: {
+      defaultSize: { width: 300, height: 480 },
+      minSize: { width: 300, height: 480 },
+    },
+    karaoke: {
+      defaultSize: { width: 560, height: 560 },
+      minSize: { width: 400, height: 300 },
+      mobileSquare: true,
+    },
+    synth: {
+      defaultSize: { width: 720, height: 400 },
+      minSize: { width: 720, height: 290 },
+    },
+    pc: {
+      defaultSize: { width: 645, height: 511 },
+      minSize: { width: 640, height: 400 },
+      maxSize: { width: 1280, height: 1024 },
+    },
+    terminal: {
+      defaultSize: { width: 600, height: 400 },
+      minSize: { width: 400, height: 300 },
+    },
+    "applet-viewer": {
+      defaultSize: { width: 320, height: 450 },
+      minSize: { width: 300, height: 200 },
+    },
+    "control-panels": {
+      defaultSize: { width: 400, height: 415 },
+      minSize: { width: 400, height: 415 },
+      maxSize: { width: 560, height: 600 },
+    },
+    admin: {
+      defaultSize: { width: 800, height: 500 },
+      minSize: { width: 600, height: 400 },
+    },
+    stickies: {
+      defaultSize: { width: 500, height: 400 },
+      minSize: { width: 300, height: 250 },
+    },
+    winamp: {
+      defaultSize: { width: 275, height: 116 },
+      minSize: { width: 275, height: 116 },
+    },
+    calendar: {
+      defaultSize: { width: 700, height: 520 },
+      minSize: { width: 300, height: 380 },
+    },
+    dashboard: {
+      defaultSize: { width: 500, height: 400 },
+      minSize: { width: 300, height: 250 },
+    },
+    contacts: {
+      defaultSize: { width: 820, height: 560 },
+      minSize: { width: 360, height: 420 },
+    },
+    books: {
+      defaultSize: { width: 720, height: 560 },
+      minSize: { width: 420, height: 360 },
+    },
+    maps: {
+      defaultSize: { width: 560, height: 560 },
+      minSize: { width: 400, height: 300 },
+    },
+    tv: {
+      defaultSize: { width: 480, height: 520 },
+      minSize: { width: 320, height: 360 },
+    },
+    calculator: {
+      defaultSize: { width: 240, height: 360 },
+      minSize: { width: 240, height: 360 },
+      maxSize: { width: 320, height: 520 },
+    },
+    stuff: {
+      defaultSize: { width: 920, height: 580 },
+      minSize: { width: 560, height: 400 },
+    },
+  };
+
+  return configs[appId] || {
+    defaultSize: { width: 730, height: 475 },
+    minSize: { width: 300, height: 200 },
+  };
+}
+
+/**
+ * Scan app directory for component, hook, and utility files
+ * Returns full paths like src/apps/{appId}/components/...
+ */
+async function scanAppFiles(appId: string): Promise<{
+  componentFiles: string[];
+  hookFiles: string[];
+  utilityFiles: string[];
+}> {
+  const sourceId = getAppSourceId(appId);
+  const appDir = join(APPS_DIR, sourceId);
+  const appPrefix = `src/apps/${sourceId}/`;
+  
+  try {
+    await stat(appDir);
+  } catch {
+    return { componentFiles: [], hookFiles: [], utilityFiles: [] };
+  }
+
+  const componentFiles: string[] = [];
+  const hookFiles: string[] = [];
+  const utilityFiles: string[] = [];
+
+  async function scanDir(dir: string, baseDir: string = appDir) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      // Normalize path separators to forward slashes for consistent matching
+      const relativePath = fullPath.replace(baseDir + "/", "").replace(/\\/g, "/");
+      // Create full path with src/apps/{appId}/ prefix
+      const fullRelativePath = appPrefix + relativePath;
+      
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules" && entry.name !== ".git") {
+          await scanDir(fullPath, baseDir);
+        }
+      } else if (entry.isFile()) {
+        if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) {
+          if (relativePath.includes("components/")) {
+            componentFiles.push(fullRelativePath);
+          } else if (relativePath.includes("hooks/")) {
+            hookFiles.push(fullRelativePath);
+          } else if (relativePath.includes("utils/") || relativePath.includes("commands/")) {
+            utilityFiles.push(fullRelativePath);
+          }
+        }
+      }
+    }
+  }
+
+  await scanDir(appDir);
+  
+  return { componentFiles, hookFiles, utilityFiles };
+}
+
+/**
+ * Read key component file to understand app functionality
+ */
+async function readComponentFile(appId: string): Promise<string> {
+  const sourceId = getAppSourceId(appId);
+  const sourceComponentName = sourceId.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("");
+  const appComponentPath = join(APPS_DIR, sourceId, "components", `${sourceComponentName}AppComponent.tsx`);
+  const altPaths = [
+    join(APPS_DIR, sourceId, "components", "PhotoBoothComponent.tsx"), // photo-booth special case
+    join(APPS_DIR, sourceId, "components", "AppletViewerAppComponent.tsx"), // applet-viewer special case
+  ];
+
+  let content = "";
+  try {
+    content = await readFile(appComponentPath, "utf-8");
+  } catch {
+    for (const altPath of altPaths) {
+      try {
+        content = await readFile(altPath, "utf-8");
+        break;
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  if (!content) {
+    // Try to find any component file
+    const { componentFiles } = await scanAppFiles(appId);
+    if (componentFiles.length > 0) {
+      const firstComponent = join(APPS_DIR, sourceId, "components", componentFiles[0].split("/").pop() || "");
+      try {
+        content = await readFile(firstComponent, "utf-8");
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Limit content size to avoid token limits - take first 3000 chars
+  return content.slice(0, 3000);
+}
+
+/**
+ * Generate doc content for an app using AI
+ */
+async function generateAppDoc(appInfo: AppInfo, componentContent: string): Promise<string> {
+  const { metadata, helpItems, windowConfig, componentFiles, hookFiles, utilityFiles } = appInfo;
+
+  const prompt = `You are a technical documentation writer for ryOS, a web-based desktop environment. Generate a comprehensive markdown documentation page for the "${metadata.name}" app.
+
+App Information:
+- Name: ${metadata.name}
+- Version: ${metadata.version}
+- Description: ${appInfo.description}
+- Window Size: ${windowConfig.defaultSize.width}x${windowConfig.defaultSize.height} (default), ${windowConfig.minSize ? `${windowConfig.minSize.width}x${windowConfig.minSize.height} minimum` : "no minimum"}
+${windowConfig.maxSize ? `- Max Size: ${windowConfig.maxSize.width}x${windowConfig.maxSize.height}` : ""}
+${windowConfig.mobileSquare ? "- Mobile: Square aspect ratio" : ""}
+
+Key Features (from help items):
+${helpItems.map(item => `- ${item.icon} **${item.title}**: ${item.description}`).join("\n")}
+
+Component Files: ${componentFiles.length > 0 ? componentFiles.join(", ") : "None"}
+Hook Files: ${hookFiles.length > 0 ? hookFiles.join(", ") : "None"}
+Utility Files: ${utilityFiles.length > 0 ? utilityFiles.join(", ") : "None"}
+
+Component Code Preview:
+\`\`\`typescript
+${componentContent.slice(0, 2000)}
+\`\`\`
+
+Generate a markdown document with the following structure:
+
+# ${metadata.name}
+
+Brief overview (2-3 sentences) of what this app does and its purpose in ryOS.
+
+## Overview
+
+Describe the app's main functionality, target use cases, and key capabilities. Keep it concise but informative (2-3 paragraphs).
+
+## Features
+
+Create a bulleted list of main features based on the help items above. Group related features together. Include:
+- Core functionality
+- User interface highlights
+- Technical capabilities
+- Integration with other ryOS features
+
+## User Guide
+
+### Getting Started
+Brief instructions on how to launch and use the app (2-3 sentences).
+
+### Key Actions
+List the main user actions with brief descriptions. Use the help items as reference but write naturally flowing prose, not just copying descriptions.
+
+### Tips & Shortcuts
+Include any notable UI patterns, keyboard shortcuts, or workflow tips that would help users.
+
+## Technical Details
+
+### Window Configuration
+- Default size: ${windowConfig.defaultSize.width}×${windowConfig.defaultSize.height}px
+${windowConfig.minSize ? `- Minimum size: ${windowConfig.minSize.width}×${windowConfig.minSize.height}px` : ""}
+${windowConfig.maxSize ? `- Maximum size: ${windowConfig.maxSize.width}×${windowConfig.maxSize.height}px` : ""}
+${windowConfig.mobileSquare ? "- Mobile: Square aspect ratio (height = width)" : windowConfig.mobileDefaultSize ? `- Mobile default: ${windowConfig.mobileDefaultSize.width}×${windowConfig.mobileDefaultSize.height}px` : ""}
+
+### Component Architecture
+${componentFiles.length > 0 ? `The app consists of ${componentFiles.length} component file(s):\n\n${componentFiles.map(f => `- \`${f}\``).join("\n")}` : "No separate component files (single component app)."}
+
+### Hooks & Utilities
+${hookFiles.length > 0 ? `**Custom Hooks:**\n${hookFiles.map(f => `- \`${f}\``).join("\n")}\n\n` : ""}
+${utilityFiles.length > 0 ? `**Utilities:**\n${utilityFiles.map(f => `- \`${f}\``).join("\n")}` : "No custom hooks or utilities."}
+
+### State Management
+Briefly describe what state the app manages (if applicable). Mention if it uses Zustand stores, local state, or both.
+
+## Related Apps
+
+Mention 1-2 related apps that work well with this app or share similar functionality. Keep it brief (1 sentence per related app).
+
+---
+
+Write the documentation in a clear, professional tone. Use markdown formatting properly. Do not include a table of contents. Keep the total length reasonable (around 400-600 words for the main content sections).`;
+
+  try {
+    const { text } = await generateText({
+      model: google("gemini-3-flash-preview"),
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+    });
+
+    return text;
+  } catch (error) {
+    console.error(`❌ Error generating doc for ${appInfo.id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Generate documentation for a single app
+ */
+async function generateAppDocumentation(appId: string, dryRun: boolean = false, force: boolean = false): Promise<void> {
+  console.log(`\n📱 Processing app: ${appId}`);
+
+  // Read app metadata
+  const { metadata, helpItems } = await readAppIndex(appId);
+  
+  if (!metadata) {
+    console.warn(`⚠️  No metadata found for ${appId}, skipping...`);
+    return;
+  }
+
+  // Get window config
+  const windowConfig = getWindowConfig(appId);
+
+  // Scan app files
+  const { componentFiles, hookFiles, utilityFiles } = await scanAppFiles(appId);
+
+  // Read component content
+  const componentContent = await readComponentFile(appId);
+
+  // Build app info
+  const appInfo: AppInfo = {
+    id: appId,
+    name: metadata.name,
+    description: `App description for ${metadata.name}`, // We'll get this from registry or generate
+    metadata,
+    helpItems,
+    windowConfig,
+    componentFiles,
+    hookFiles,
+    utilityFiles,
+  };
+
+  // Get description from app registry or use a default
+  const descriptions: Record<string, string> = {
+    finder: "Browse and manage files in a virtual file system backed by IndexedDB",
+    soundboard: "Record and play sound effects with keyboard shortcuts and waveform visualization",
+    "internet-explorer": "Browse the web with AI-powered content generation and time machine view",
+    chats: "Chat with Ryo AI (tool calling, voice, applet generation) and join public chat rooms",
+    textedit: "Rich text editor with markdown support, slash commands, and speech-to-text integration",
+    preview: "View images, PDFs, text, markdown, and HTML documents with Finder file associations",
+    paint: "Draw and edit images with canvas-based tools, filters, and pattern support",
+    "photo-booth": "Take photos with your webcam and apply fun visual effects",
+    minesweeper: "Classic puzzle game where you find mines without triggering them",
+    videos: "Retro-style YouTube playlist player with loop, shuffle, and share links",
+    ipod: "1st generation iPod music player with YouTube, Apple Music, cover flow, and synced lyrics",
+    karaoke: "Karaoke player with synced lyrics, offset tuning, and host/join synced sessions",
+    synth: "Virtual synthesizer with 3D waveform visualization using Three.js and Tone.js",
+    pc: "x86 emulator (v86) with classic OS presets plus a DOS games library via js-dos",
+    terminal: "Command line interface with AI integration, file system navigation, and custom commands",
+    "applet-viewer": "Browse and run user-created HTML applets from the Applet Store",
+    "control-panels": "System settings for themes, wallpapers, screen savers, shader effects, audio, AI models, and cloud sync",
+    admin: "Admin-only panel for users, room moderation, song library, server health, and Cursor agent telemetry",
+    stickies: "Create and manage colorful sticky notes for quick reminders and note-taking",
+    "infinite-mac": "Classic Mac OS emulators (System 6–9) powered by Infinite Mac",
+    winamp: "Classic Winamp (Webamp) player with EQ, skins, and shared iPod/YouTube library",
+    calendar: "iCal-style calendar with month, week, and day views, todos, iCal import/export, and cloud sync",
+    dashboard: "Tiger-style widget overlay (F4) with clock, calendar, weather, stocks, iPod, translation, dictionary, sticky note, aquarium, and terrarium",
+    contacts: "Address book with vCard import, Smart Groups, and cloud sync",
+    books: "EPUB reader with a wooden bookshelf, page-turn reader, reading-progress sync, and Finder import",
+    tv: "Channel-surfing YouTube TV with CRT effects, MTV synced lyrics, and AI-generated channels",
+    maps: "Apple MapKit search and pins; national Taiwan YouBike overlay; in-map YouBike directions and spoken navigation; driving directions open in Apple Maps",
+    calculator: "Basic, scientific, and unit conversion calculator with theme-specific chrome and live currency rates",
+    stuff: "Wooden inventory shelf with barcodes, tags, locations, cutout covers, sharing, and print labels",
+  };
+
+  appInfo.description = descriptions[appId] || `A ${metadata.name} application for ryOS`;
+
+  // Check if doc file already exists
+  const config = APP_CONFIGS[appId];
+  const docFileName = `${config.sectionNum}-${config.docName}.md`;
+  const docFilePath = join(OUTPUT_DIR, docFileName);
+  
+  let docExists = false;
+  try {
+    await stat(docFilePath);
+    docExists = true;
+  } catch {
+    // File doesn't exist, will generate
+  }
+
+  if (dryRun) {
+    console.log(`🔍 Dry-run: Would generate doc for ${appId}`);
+    if (docExists) {
+      console.log(`   ℹ️  Doc file already exists: ${docFileName}`);
+    }
+    console.log(`   - Name: ${metadata.name}`);
+    console.log(`   - Help items: ${helpItems.length}`);
+    console.log(`   - Components: ${componentFiles.length}`);
+    console.log(`   - Hooks: ${hookFiles.length}`);
+    console.log(`   - Utilities: ${utilityFiles.length}`);
+    return;
+  }
+
+  // Skip generation if file exists and force is not set
+  if (docExists && !force) {
+    console.log(`   ⏭️  Skipping ${docFileName} (already exists, use --force to regenerate)`);
+    return;
+  }
+
+  // Generate doc content
+  if (docExists && force) {
+    console.log(`   🔄 Regenerating documentation...`);
+  } else {
+    console.log(`   Generating documentation...`);
+  }
+  
+  const docContent = await generateAppDoc(appInfo, componentContent);
+
+  // Write doc file
+  await writeFile(docFilePath, docContent + "\n", "utf-8");
+  
+  console.log(`   ✅ Generated: ${docFileName}`);
+}
+
+/**
+ * Main function
+ */
+async function main() {
+  const args = process.argv.slice(2);
+  const argSet = new Set(args);
+  const dryRun = argSet.has("--dry-run");
+  const force = argSet.has("--force");
+  const appArgFromEquals = args.find((arg) => arg.startsWith("--app="))?.split("=")[1];
+  const appFlagIndex = args.indexOf("--app");
+  const appArgFromFlag =
+    appFlagIndex >= 0 ? args[appFlagIndex + 1] : undefined;
+  const appArg = appArgFromEquals || appArgFromFlag || undefined;
+
+  if (argSet.has("--help") || argSet.has("-h")) {
+    console.log(`
+Usage: bun run scripts/generate-app-docs.ts [options]
+
+Options:
+  --app=<appId>         Generate docs for specific app only
+  --dry-run             Preview what would be generated without creating files
+  --force               Regenerate docs even if they already exist
+  --help, -h            Show this help message
+
+Examples:
+  bun run scripts/generate-app-docs.ts
+  bun run scripts/generate-app-docs.ts --app ipod
+  bun run scripts/generate-app-docs.ts --dry-run
+  bun run scripts/generate-app-docs.ts --force
+
+Environment:
+  GOOGLE_GENERATIVE_AI_API_KEY  Required: Your Google Gemini API key
+`);
+    process.exit(0);
+  }
+
+  const hasApiKey = checkApiKey();
+
+  // If no API key and not forcing regeneration, check if all docs exist
+  // If they do, we can skip gracefully (docs are already committed to git)
+  if (!dryRun && !hasApiKey) {
+    const docsExist = await allDocsExist();
+    if (docsExist && !force) {
+      console.log("ℹ️  All documentation files already exist, skipping generation");
+      console.log("   (Set GOOGLE_GENERATIVE_AI_API_KEY to regenerate docs)");
+      return;
+    } else if (force || !docsExist) {
+      console.error("❌ Error: GOOGLE_GENERATIVE_AI_API_KEY environment variable is not set");
+      console.error("\nPlease set it with:");
+      console.error("  export GOOGLE_GENERATIVE_AI_API_KEY=your_api_key");
+      console.error("\nOr add it to your .env file");
+      process.exit(1);
+    }
+  }
+
+  console.log("🤖 Generating App Documentation using Gemini 3 Flash");
+  console.log("═".repeat(60));
+
+  const appsToProcess = appArg ? [appArg] : APP_IDS;
+
+  if (dryRun) {
+    console.log("🔍 Dry-run mode: No documentation will be generated\n");
+  } else if (force) {
+    console.log("🔄 Force mode: Will regenerate all documentation files\n");
+  } else {
+    console.log("ℹ️  Skipping existing documentation files (use --force to regenerate)\n");
+  }
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const [index, appId] of appsToProcess.entries()) {
+    if (!APP_ID_SET.has(appId)) {
+      console.error(`❌ Invalid app ID: ${appId}`);
+      failCount++;
+      continue;
+    }
+
+    try {
+      await generateAppDocumentation(appId, dryRun, force);
+      successCount++;
+      
+      // Small delay to avoid rate limiting
+      if (!dryRun && index < appsToProcess.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error(`❌ Failed to generate docs for ${appId}:`, error);
+      failCount++;
+    }
+  }
+
+  console.log("\n" + "═".repeat(60));
+  console.log("                         SUMMARY");
+  console.log("═".repeat(60));
+  console.log(`\n✅ Successfully processed: ${successCount} app(s)`);
+  if (failCount > 0) {
+    console.log(`❌ Failed: ${failCount} app(s)`);
+  }
+  if (dryRun) {
+    console.log("\n💡 Run without --dry-run to generate documentation files");
+  }
+}
+
+main().catch((error) => {
+  console.error("❌ Fatal error:", error);
+  process.exit(1);
+});

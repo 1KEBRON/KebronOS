@@ -1,0 +1,515 @@
+import { useRef, useEffect, useCallback, useReducer } from "react";
+import { useLatestRef } from "@/hooks/useLatestRef";
+import {
+  startTtsDucking,
+  stopTtsDucking,
+  updateTtsDucking,
+  type TtsDuckingToken,
+} from "@/lib/audioDucking";
+import {
+  getAudioContext,
+  resumeAudioContext,
+  unlockAudioFromGesture,
+} from "@/lib/audioContext";
+import { getSpeechPlaybackVolume } from "@/apps/control-panels/components/control-panels-app/ttsVoiceOptions";
+import { useAudioSettingsStore } from "@/stores/useAudioSettingsStore";
+import { useIpodStore } from "@/stores/useIpodStore";
+import { useKaraokeStore } from "@/stores/useKaraokeStore";
+import { checkOfflineAndShowError } from "@/utils/offline";
+import { abortableFetch } from "@/utils/abortableFetch";
+import { createClientLogger } from "@/utils/logger";
+import { mintRyoSpeechPermit } from "@/utils/speechPermitClient";
+import {
+  buildSpeechApiRequestBody,
+  requestResolvesToRyoVoice,
+  type SpeechSource,
+} from "@/utils/speechPolicy";
+
+const log = createClientLogger("TTS");
+
+export type UseTtsQueueOptions = {
+  /**
+   * Speech intent sent to `/api/speech`. Ryo ElevenLabs voices (including
+   * Control Panels Default) are only accepted when this is `ryo-chat`.
+   */
+  source: SpeechSource;
+  endpoint?: string;
+};
+
+/**
+ * Hook that turns short text chunks into speech and queues them in the same
+ * `AudioContext` so that playback starts almost immediately and remains
+ * gap-free. Used only for in-OS Ryo chat AI output — other speak features
+ * use browser `speechSynthesis` so they cannot inherit Default ElevenLabs+Ryo.
+ */
+export function useTtsQueue({
+  source,
+  endpoint = "/api/speech",
+}: UseTtsQueueOptions) {
+  // Lazily instantiated AudioContext shared by this hook instance
+  const ctxRef = useRef<AudioContext | null>(null);
+  // Track last AudioContext to detect context changes
+  const lastCtxRef = useRef<AudioContext | null>(null);
+  // Absolute start-time for the *next* clip in the queue (in AudioContext time)
+  const nextStartRef = useRef(0);
+  // Keep track of in-flight requests so we can cancel them if needed
+  const controllersRef = useRef<Set<AbortController>>(new Set());
+  interface TtsQueueState {
+    isSpeaking: boolean;
+  }
+
+  const initialState: TtsQueueState = {
+    isSpeaking: false,
+  };
+
+  type TtsQueueAction = { type: "setIsSpeaking"; value: boolean };
+
+  const reducer = (state: TtsQueueState, action: TtsQueueAction): TtsQueueState => {
+    switch (action.type) {
+      case "setIsSpeaking":
+        return { ...state, isSpeaking: action.value };
+      default:
+        return state;
+    }
+  };
+
+  // Expose whether any TTS audio is currently playing
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { isSpeaking } = state;
+  // Track any sources currently playing so we can stop them
+  const playingSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  // Promise chain that guarantees *scheduling* order while still allowing
+  // individual fetches to run in parallel.
+  const scheduleChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Flag to signal stop across async boundaries
+  const isStoppedRef = useRef(false);
+  // Track the stop timeout to clear on unmount or multiple stop() calls
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Parallel request limiting
+  const MAX_PARALLEL_REQUESTS = 3;
+  const activeRequestsCountRef = useRef(0);
+  const pendingRequestsRef = useRef<
+    Array<{
+      text: string;
+      messageId?: string;
+      resolve: (result: ArrayBuffer | null) => void;
+      reject: (error: Error) => void;
+    }>
+  >([]);
+
+  // Gain node for global speech volume
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const speechVolume = useAudioSettingsStore((s) => s.speechVolume);
+  const masterVolume = useAudioSettingsStore((s) => s.masterVolume);
+  const speechVolumeRef = useLatestRef(speechVolume);
+  const masterVolumeRef = useLatestRef(masterVolume);
+
+  // Get TTS settings from audio settings store
+  const ttsModel = useAudioSettingsStore((s) => s.ttsModel);
+  const ttsVoice = useAudioSettingsStore((s) => s.ttsVoice);
+  const ttsModelRef = useLatestRef(ttsModel);
+  const ttsVoiceRef = useLatestRef(ttsVoice);
+  const sourceRef = useLatestRef(source);
+
+  const resolvePlaybackVolume = (
+    nextSpeechVolume = speechVolumeRef.current,
+    nextMasterVolume = masterVolumeRef.current
+  ) =>
+    getSpeechPlaybackVolume(
+      nextSpeechVolume,
+      nextMasterVolume,
+      ttsModelRef.current,
+      ttsVoiceRef.current
+    );
+
+  const duckingTokenRef = useRef<TtsDuckingToken | null>(null);
+
+  // Subscribe to iPod/Karaoke playing state so ducking reacts when playback starts/stops
+  const ipodIsPlaying = useIpodStore((s) => s.isPlaying);
+  const karaokeIsPlaying = useKaraokeStore((s) => s.isPlaying);
+  const musicIsPlaying = ipodIsPlaying || karaokeIsPlaying;
+
+  // Detect iOS (Safari) environment where programmatic volume control is restricted
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iP(hone|od|ad)/.test(navigator.userAgent);
+
+  const ensureContext = useCallback(() => {
+    // Always use the shared global context
+    ctxRef.current = getAudioContext();
+    // Detect context change and reset timeline
+    if (ctxRef.current !== lastCtxRef.current) {
+      log.debug("AudioContext changed; resetting timeline");
+      lastCtxRef.current = ctxRef.current;
+      nextStartRef.current = ctxRef.current.currentTime;
+    }
+    // (Re)create gain node if needed or context changed
+    if (
+      !gainNodeRef.current ||
+      gainNodeRef.current.context !== ctxRef.current
+    ) {
+      if (gainNodeRef.current) {
+        try {
+          gainNodeRef.current.disconnect();
+        } catch {
+          console.error("Error disconnecting gain node");
+        }
+      }
+      gainNodeRef.current = ctxRef.current.createGain();
+      gainNodeRef.current.gain.value = resolvePlaybackVolume();
+      gainNodeRef.current.connect(ctxRef.current.destination);
+    }
+    return ctxRef.current;
+  }, [masterVolumeRef, speechVolumeRef, ttsModelRef, ttsVoiceRef]);
+
+  /**
+   * Warm this queue's gain node inside a user gesture (Start / Then / Chat
+   * send). iOS Safari will not play later `/api/speech` buffers unless the
+   * shared context was resumed and a source started in that gesture.
+   */
+  const unlock = useCallback(() => {
+    isStoppedRef.current = false;
+    unlockAudioFromGesture();
+    const ctx = ensureContext();
+    try {
+      void ctx.resume();
+    } catch {
+      // ignore
+    }
+    if (gainNodeRef.current) {
+      const targetVolume = resolvePlaybackVolume();
+      gainNodeRef.current.gain.cancelScheduledValues(ctx.currentTime);
+      gainNodeRef.current.gain.setValueAtTime(targetVolume, ctx.currentTime);
+    }
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(gainNodeRef.current ?? ctx.destination);
+      source.start(0);
+    } catch {
+      // ignore
+    }
+  }, [ensureContext, masterVolumeRef, speechVolumeRef, ttsModelRef, ttsVoiceRef]);
+
+  /**
+   * Process pending requests up to the maximum parallel limit
+   */
+  const processPendingRequests = useCallback(() => {
+    while (
+      pendingRequestsRef.current.length > 0 &&
+      activeRequestsCountRef.current < MAX_PARALLEL_REQUESTS
+    ) {
+      const request = pendingRequestsRef.current.shift()!;
+      activeRequestsCountRef.current++;
+
+      const executeRequest = async () => {
+        const controller = new AbortController();
+        controllersRef.current.add(controller);
+        try {
+          let permitId: string | undefined;
+          let contentHash: string | undefined;
+          if (requestResolvesToRyoVoice(ttsModelRef.current, ttsVoiceRef.current)) {
+            if (!request.messageId) {
+              log.warn("Refusing Ryo voice without an assistant message id");
+              request.resolve(null);
+              return;
+            }
+            const permit = await mintRyoSpeechPermit({
+              messageId: request.messageId,
+              text: request.text,
+              signal: controller.signal,
+            });
+            if (!permit) {
+              log.warn("Speech permit mint failed", {
+                messageId: request.messageId,
+              });
+              request.resolve(null);
+              return;
+            }
+            permitId = permit.permitId;
+            contentHash = permit.contentHash;
+          }
+
+          const requestBody = buildSpeechApiRequestBody({
+            text: request.text,
+            source: sourceRef.current,
+            ttsModel: ttsModelRef.current,
+            ttsVoice: ttsVoiceRef.current,
+            permitId,
+            contentHash,
+          });
+          if ("error" in requestBody) {
+            log.warn("Refusing Ryo voice for non-chat TTS source", {
+              source: sourceRef.current,
+              model: ttsModelRef.current,
+              voice: ttsVoiceRef.current,
+            });
+            request.resolve(null);
+            return;
+          }
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+
+          const res = await abortableFetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+            timeout: 30000,
+            throwOnHttpError: false,
+            retry: { maxAttempts: 1, initialDelayMs: 250 },
+          });
+          controllersRef.current.delete(controller);
+          if (!res.ok) {
+            console.error("TTS request failed", await res.text());
+            request.resolve(null);
+            return;
+          }
+          const result = await res.arrayBuffer();
+          request.resolve(result);
+        } catch (err) {
+          controllersRef.current.delete(controller);
+          if ((err as DOMException)?.name !== "AbortError") {
+            console.error("TTS fetch error", err);
+          }
+          request.resolve(null);
+        } finally {
+          activeRequestsCountRef.current--;
+          processPendingRequests(); // Process next request
+        }
+      };
+
+      executeRequest();
+    }
+  }, [endpoint, sourceRef, ttsModelRef, ttsVoiceRef]);
+
+  /**
+   * Queue a fetch request with parallel limit enforcement
+   */
+  const queuedFetch = useCallback(
+    (text: string, messageId?: string): Promise<ArrayBuffer | null> => {
+      return new Promise((resolve, reject) => {
+        pendingRequestsRef.current.push({ text, messageId, resolve, reject });
+        processPendingRequests();
+      });
+    },
+    [processPendingRequests]
+  );
+
+  /**
+   * Speak a chunk of text by fetching the TTS audio and scheduling it directly
+   * after whatever is already queued.
+   */
+  const speak = useCallback(
+    (text: string, onEnd?: () => void, options?: { messageId?: string }) => {
+      if (!text || !text.trim()) {
+        onEnd?.();
+        return;
+      }
+
+      // Check if offline and show error
+      if (checkOfflineAndShowError("Text-to-speech requires an internet connection")) {
+        onEnd?.();
+        return;
+      }
+
+      // Signal that we are actively queueing again
+      isStoppedRef.current = false;
+
+      // Chat speaker / send call speak() inside the tap. Unlock here so the
+      // shared context + this queue's gain exist before `/api/speech` returns.
+      unlock();
+
+      // Use queued fetch to limit parallel requests
+      const fetchPromise = queuedFetch(text.trim(), options?.messageId);
+
+      // Chain purely the *scheduling* to maintain correct order.
+      scheduleChainRef.current = scheduleChainRef.current.then(async () => {
+        // Check if stop was called while this chunk was waiting in the queue
+        if (isStoppedRef.current) {
+          log.debug("Queue stopped; skipping scheduled chunk");
+          return;
+        }
+
+        try {
+          const arrayBuf = await fetchPromise;
+          if (!arrayBuf) {
+            onEnd?.();
+            return;
+          }
+          // Resume only — do not close/recreate. A replacement context
+          // created after the tap stays suspended on iOS Safari (Chat
+          // stays audible because its first speak() already unlocked).
+          await resumeAudioContext({ allowRecreate: false });
+          const ctx = ensureContext();
+          if (gainNodeRef.current) {
+            const targetVolume = resolvePlaybackVolume();
+            gainNodeRef.current.gain.cancelScheduledValues(ctx.currentTime);
+            gainNodeRef.current.gain.setValueAtTime(targetVolume, ctx.currentTime);
+          }
+
+          const audioBuf = await ctx.decodeAudioData(arrayBuf);
+
+          // Recalculate timing RIGHT before scheduling (after async decode)
+          const freshNow = ctx.currentTime;
+          const start = Math.max(freshNow, nextStartRef.current);
+
+          const src = ctx.createBufferSource();
+          src.buffer = audioBuf;
+          if (gainNodeRef.current) {
+            src.connect(gainNodeRef.current);
+          } else {
+            src.connect(ctx.destination);
+          }
+
+          // Keep track of active sources so we can stop them later
+          playingSourcesRef.current.add(src);
+          dispatch({ type: "setIsSpeaking", value: true });
+
+          src.onended = () => {
+            // Disconnect the source node to prevent memory leaks
+            try {
+              src.disconnect();
+            } catch {
+              // Ignore errors if already disconnected
+            }
+            playingSourcesRef.current.delete(src);
+            if (playingSourcesRef.current.size === 0) {
+              dispatch({ type: "setIsSpeaking", value: false });
+            }
+            if (onEnd) onEnd();
+          };
+
+          src.start(start);
+
+          nextStartRef.current = start + audioBuf.duration;
+        } catch (err) {
+          if ((err as DOMException)?.name !== "AbortError") {
+            console.error("Error during speak()", err);
+          }
+          onEnd?.();
+        }
+      });
+    },
+    [queuedFetch, ensureContext, speechVolumeRef, masterVolumeRef, ttsModelRef, ttsVoiceRef, unlock]
+  );
+
+  /** Cancel all in-flight requests and reset the queue so the next call starts immediately. */
+  const stop = useCallback(() => {
+    log.debug("Stopping TTS queue");
+    isStoppedRef.current = true; // Signal to pending operations to stop
+
+    controllersRef.current.forEach((c) => c.abort());
+    controllersRef.current.clear();
+    scheduleChainRef.current = Promise.resolve();
+
+    // Drain pending requests by resolving them with null so each speak()
+    // chain unblocks, sees no audio, and still invokes its `onEnd` callback.
+    // (Just emptying the array would leave callers' `onEnd` callbacks — and
+    // any state they reset, like a TTS highlight or a "speaking" indicator —
+    // hanging indefinitely.)
+    const pending = pendingRequestsRef.current;
+    pendingRequestsRef.current = [];
+    pending.forEach((p) => {
+      try {
+        p.resolve(null);
+      } catch {
+        /* ignore */
+      }
+    });
+    activeRequestsCountRef.current = 0;
+
+    // Micro-fade before stopping to avoid clicks
+    if (gainNodeRef.current && ctxRef.current) {
+      const ctx = ctxRef.current;
+      gainNodeRef.current.gain.setValueAtTime(gainNodeRef.current.gain.value, ctx.currentTime);
+      gainNodeRef.current.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.01);
+    }
+
+    // Clear any pending stop timeout
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current);
+    }
+
+    // Small delay before stopping sources to allow fade
+    stopTimeoutRef.current = setTimeout(() => {
+      // Stop and disconnect any sources that are currently playing
+      playingSourcesRef.current.forEach((src) => {
+        try {
+          src.stop();
+        } catch {
+          /* ignore */
+        }
+        try {
+          src.disconnect();
+        } catch {
+          /* ignore if already disconnected */
+        }
+      });
+      playingSourcesRef.current.clear();
+      dispatch({ type: "setIsSpeaking", value: false });
+      if (ctxRef.current) {
+        nextStartRef.current = ctxRef.current.currentTime;
+      }
+    }, 15);
+  }, []);
+
+  // Clean up when the component using the hook unmounts
+  useEffect(() => {
+    return () => {
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+      }
+      stop();
+      // preserve AudioContext across hot reloads instead of closing
+    };
+  }, [stop]);
+
+  // Update gain when speech/master volume or the active TTS voice changes
+  useEffect(() => {
+    if (gainNodeRef.current && ctxRef.current) {
+      const ctx = ctxRef.current;
+      const targetVolume = getSpeechPlaybackVolume(
+        speechVolume,
+        masterVolume,
+        ttsModel,
+        ttsVoice
+      );
+      gainNodeRef.current.gain.setValueAtTime(gainNodeRef.current.gain.value, ctx.currentTime);
+      gainNodeRef.current.gain.linearRampToValueAtTime(targetVolume, ctx.currentTime + 0.05);
+    }
+  }, [speechVolume, masterVolume, ttsModel, ttsVoice]);
+
+  /**
+   * Duck music and chat synth output while TTS is speaking.
+   * Ducking is coordinated globally so overlapping TTS queues do not overwrite
+   * or restore the user's saved volume sliders.
+   */
+  useEffect(() => {
+    if (!isSpeaking) {
+      stopTtsDucking(duckingTokenRef.current);
+      duckingTokenRef.current = null;
+      return;
+    }
+
+    const options = { duckMusic: musicIsPlaying && !isIOS };
+    if (duckingTokenRef.current) {
+      updateTtsDucking(duckingTokenRef.current, options);
+    } else {
+      duckingTokenRef.current = startTtsDucking(options);
+    }
+  }, [isSpeaking, musicIsPlaying, isIOS]);
+
+  useEffect(() => {
+    return () => {
+      stopTtsDucking(duckingTokenRef.current);
+      duckingTokenRef.current = null;
+    };
+  }, []);
+
+  return { speak, stop, unlock, isSpeaking };
+}

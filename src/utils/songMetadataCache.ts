@@ -1,0 +1,820 @@
+/**
+ * Song metadata cache utilities
+ * 
+ * Provides functions to save and retrieve song metadata from Redis cache.
+ * Used by iPod and Karaoke apps to share song metadata between users.
+ * 
+ * Uses the unified /api/songs endpoint.
+ */
+
+import { ApiRequestError } from "@/api/core";
+import {
+  deleteAllSongs,
+  deleteSongById,
+  getSongById,
+  importSongsBatch,
+  listSongs,
+  updateSongById,
+} from "@/api/songs";
+import { createClientLogger } from "@/utils/logger";
+
+const log = createClientLogger("SongMetadataCache");
+
+const BULK_IMPORT_BATCH_SIZE = 100;
+const BULK_IMPORT_MAX_PAYLOAD_BYTES = 3_500_000;
+const BULK_IMPORT_MAX_RATE_LIMIT_RETRIES = 4;
+const bulkImportTextEncoder = new TextEncoder();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Lyrics source stored in cache
+ */
+export interface CachedLyricsSource {
+  hash: string;
+  albumId: string | number;
+  title: string;
+  artist: string;
+  album?: string;
+}
+
+/**
+ * Song metadata structure
+ */
+export interface CachedSongMetadata {
+  /** YouTube video ID */
+  youtubeId: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  /** Cover image URL from Kugou */
+  cover?: string;
+  /** Cached boosted cover color for lyrics/title glow */
+  coverColor?: string;
+  lyricOffset?: number;
+  /** Lyrics source from Kugou (user-selected or auto-detected) */
+  lyricsSource?: CachedLyricsSource;
+  createdBy?: string;
+  createdAt: number;
+  updatedAt: number;
+  importOrder?: number;
+}
+
+/**
+ * Unified song document from /api/songs endpoint
+ */
+interface UnifiedSongDocument {
+  id: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  cover?: string;
+  coverColor?: string;
+  lyricOffset?: number;
+  lyricsSource?: CachedLyricsSource;
+  createdBy?: string;
+  createdAt: number;
+  updatedAt: number;
+  importOrder?: number;
+}
+
+/**
+ * Authentication credentials for saving metadata
+ */
+export interface SongMetadataAuthCredentials {
+  username: string;
+  isAuthenticated: boolean;
+}
+
+type BulkImportSong = {
+  id: string;
+  url?: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  cover?: string;
+  coverColor?: string;
+  lyricOffset?: number;
+  lyricsSource?: CachedLyricsSource;
+  // Content fields (may be compressed gzip:base64 strings or raw objects)
+  // Using unknown to allow flexible import from JSON files
+  lyrics?: unknown;
+  translations?: unknown;
+  furigana?: unknown;
+  soramimi?: unknown;
+  soramimiByLang?: unknown;
+  // Timestamps
+  createdBy?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  importOrder?: number;
+};
+
+export type BulkImportProgressStage =
+  | "starting"
+  | "batch-start"
+  | "batch-success"
+  | "rate-limited"
+  | "batch-split"
+  | "complete"
+  | "error";
+
+export interface BulkImportProgress {
+  stage: BulkImportProgressStage;
+  totalSongs: number;
+  processedSongs: number;
+  pendingSongs: number;
+  importedSongs: number;
+  updatedSongs: number;
+  batchIndex: number;
+  batchCount: number;
+  batchSize: number;
+  retryAttempt?: number;
+  retryAfterMs?: number;
+  statusCode?: number;
+  message?: string;
+}
+
+interface BulkImportOptions {
+  onProgress?: (progress: BulkImportProgress) => void;
+}
+
+function buildBulkImportRequestBody(songs: BulkImportSong[]): {
+  body: string;
+  byteLength: number;
+} {
+  const body = JSON.stringify({ action: "import", songs });
+  return {
+    body,
+    byteLength: bulkImportTextEncoder.encode(body).length,
+  };
+}
+
+function splitBulkImportBatch(
+  songs: BulkImportSong[]
+): [BulkImportSong[], BulkImportSong[]] {
+  const midpoint = Math.ceil(songs.length / 2);
+  return [songs.slice(0, midpoint), songs.slice(midpoint)];
+}
+
+function createBulkImportBatches(songs: BulkImportSong[]): BulkImportSong[][] {
+  const batches: BulkImportSong[][] = [];
+  let currentBatch: BulkImportSong[] = [];
+
+  for (const song of songs) {
+    const nextBatch = [...currentBatch, song];
+    const { byteLength } = buildBulkImportRequestBody(nextBatch);
+    const exceedsCountLimit = nextBatch.length > BULK_IMPORT_BATCH_SIZE;
+    const exceedsPayloadLimit = byteLength > BULK_IMPORT_MAX_PAYLOAD_BYTES;
+
+    if (currentBatch.length > 0 && (exceedsCountLimit || exceedsPayloadLimit)) {
+      batches.push(currentBatch);
+      currentBatch = [song];
+      continue;
+    }
+
+    currentBatch = nextBatch;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
+/**
+ * Convert unified song document to CachedSongMetadata format
+ */
+function unifiedToMetadata(doc: UnifiedSongDocument): CachedSongMetadata {
+  return {
+    youtubeId: doc.id,
+    title: doc.title,
+    artist: doc.artist,
+    album: doc.album,
+    cover: doc.cover,
+    coverColor: doc.coverColor,
+    lyricOffset: doc.lyricOffset,
+    lyricsSource: doc.lyricsSource,
+    createdBy: doc.createdBy,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    importOrder: doc.importOrder,
+  };
+}
+
+// In-memory layer in front of the HTTP "cache": dedupes concurrent lookups
+// for the same id and remembers hits for a short window so repeated
+// add-track / navigation flows don't refetch identical metadata.
+const METADATA_MEMO_TTL_MS = 5 * 60 * 1000;
+const metadataMemo = new Map<string, { at: number; data: CachedSongMetadata }>();
+const metadataInFlight = new Map<string, Promise<CachedSongMetadata | null>>();
+
+/** Drop the in-memory copy for one id (or all when omitted). */
+export function invalidateCachedSongMetadata(youtubeId?: string): void {
+  if (youtubeId === undefined) {
+    metadataMemo.clear();
+    return;
+  }
+  metadataMemo.delete(youtubeId);
+}
+
+/**
+ * Retrieve cached song metadata from Redis
+ * 
+ * @param youtubeId - YouTube video ID
+ * @returns Cached metadata if found, null otherwise
+ */
+export async function getCachedSongMetadata(
+  youtubeId: string
+): Promise<CachedSongMetadata | null> {
+  const memo = metadataMemo.get(youtubeId);
+  if (memo && Date.now() - memo.at < METADATA_MEMO_TTL_MS) {
+    log.debug("Using metadata from memory", {
+      youtubeId,
+      ageMs: Date.now() - memo.at,
+    });
+    return memo.data;
+  }
+
+  const inFlight = metadataInFlight.get(youtubeId);
+  if (inFlight) {
+    log.debug("Reusing active metadata request", { youtubeId });
+    return inFlight;
+  }
+
+  const requestPromise = (async (): Promise<CachedSongMetadata | null> => {
+    try {
+      log.debug("Fetching public song metadata", { youtubeId });
+      const data = await getSongById<UnifiedSongDocument>(youtubeId, {
+        include: "metadata",
+      });
+      log.debug("Public song metadata loaded", { youtubeId });
+      const metadata = unifiedToMetadata(data);
+      // Only memoize hits — a miss (song not imported yet) should be
+      // re-checked next time, e.g. right after an import completes.
+      metadataMemo.set(youtubeId, { at: Date.now(), data: metadata });
+      return metadata;
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 404) {
+        log.debug("No public song metadata found", { youtubeId });
+        return null;
+      }
+      log.error("Could not fetch public song metadata", {
+        error,
+        youtubeId,
+      });
+      return null;
+    } finally {
+      metadataInFlight.delete(youtubeId);
+    }
+  })();
+
+  metadataInFlight.set(youtubeId, requestPromise);
+  return requestPromise;
+}
+
+/**
+ * List all cached song metadata from Redis (for sync)
+ * 
+ * @param createdBy - Optional filter to only return songs created by a specific user
+ * @returns Array of all cached song metadata
+ */
+export async function listAllCachedSongMetadata(createdBy?: string): Promise<CachedSongMetadata[]> {
+  try {
+    log.debug("Listing public song metadata", { createdBy });
+    const data = await listSongs<UnifiedSongDocument>({
+      include: "metadata",
+      createdBy,
+    });
+    const songs = data.songs?.map(unifiedToMetadata) || [];
+    log.debug("Listed songs", { count: songs.length, createdBy });
+    return songs;
+  } catch (error) {
+    log.error("Could not list public song metadata", { error, createdBy });
+    return [];
+  }
+}
+
+/**
+ * Delete song metadata from Redis cache
+ * Requires admin authentication (user ryo only)
+ * 
+ * @param youtubeId - YouTube video ID to delete
+ * @param auth - Authentication credentials (username and token)
+ * @returns true if deleted successfully, false otherwise
+ */
+export async function deleteSongMetadata(
+  youtubeId: string,
+  auth: SongMetadataAuthCredentials
+): Promise<boolean> {
+  invalidateCachedSongMetadata(youtubeId);
+  try {
+    await deleteSongById(youtubeId, {
+      username: auth.username,
+      isAuthenticated: auth.isAuthenticated,
+    });
+    log.debug("Deleted metadata", { youtubeId });
+    return true;
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      if (error.status === 401) {
+        log.warn("Could not delete metadata because login is required", {
+          youtubeId,
+        });
+        return false;
+      }
+      if (error.status === 403) {
+        log.warn("Could not delete metadata because admin access is required", {
+          youtubeId,
+        });
+        return false;
+      }
+      if (error.status === 404) {
+        log.warn("Could not delete metadata because the song was not found", {
+          youtubeId,
+        });
+        return false;
+      }
+    }
+    log.error("Could not delete song metadata", { error, youtubeId });
+    return false;
+  }
+}
+
+/**
+ * Delete all song metadata from Redis cache
+ * Requires admin authentication (user ryo only)
+ * Uses bulk delete endpoint for efficiency
+ * 
+ * @param auth - Authentication credentials (username and token)
+ * @returns Object with deleted count
+ */
+export async function deleteAllSongMetadata(
+  auth: SongMetadataAuthCredentials
+): Promise<{ success: number; total: number }> {
+  try {
+    log.debug("Deleting all songs");
+    const data = await deleteAllSongs({
+      username: auth.username,
+      isAuthenticated: auth.isAuthenticated,
+    });
+    log.debug("Deleted all songs", { deleted: data.deleted });
+    return { success: data.deleted, total: data.deleted };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      if (error.status === 401) {
+        log.warn("Could not delete metadata because login is required");
+        return { success: 0, total: 0 };
+      }
+      if (error.status === 403) {
+        log.warn("Could not delete metadata because admin access is required");
+        return { success: 0, total: 0 };
+      }
+    }
+    log.error("Could not delete all song metadata", { error });
+    return { success: 0, total: 0 };
+  }
+}
+
+/**
+ * Save song metadata to Redis cache
+ * Requires authentication - will fail if not logged in
+ * 
+ * @param metadata - Song metadata to save
+ * @param auth - Authentication credentials (username and token)
+ * @param options - Additional options
+ * @param options.isShare - If true, this is a share action and will update createdBy
+ * @returns true if saved successfully, false otherwise
+ */
+export async function saveSongMetadata(
+  metadata: {
+    youtubeId: string;
+    title: string;
+    artist?: string;
+    album?: string;
+    cover?: string;
+    coverColor?: string;
+    lyricOffset?: number;
+    lyricsSource?: CachedLyricsSource;
+  },
+  auth: SongMetadataAuthCredentials,
+  options?: { isShare?: boolean }
+): Promise<boolean> {
+  invalidateCachedSongMetadata(metadata.youtubeId);
+  try {
+    const data = await updateSongById(
+      metadata.youtubeId,
+      {
+        title: metadata.title,
+        artist: metadata.artist,
+        album: metadata.album,
+        cover: metadata.cover,
+        coverColor: metadata.coverColor,
+        lyricOffset: metadata.lyricOffset,
+        lyricsSource: metadata.lyricsSource,
+        isShare: options?.isShare,
+      },
+      {
+        username: auth.username,
+        isAuthenticated: auth.isAuthenticated,
+      }
+    );
+    log.debug("Saved metadata", {
+      youtubeId: metadata.youtubeId,
+      isUpdate: data.isUpdate,
+      createdBy: data.createdBy || auth.username,
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 401) {
+      log.warn("Could not save metadata because login is required", {
+        youtubeId: metadata.youtubeId,
+      });
+      return false;
+    }
+    log.error("Could not save song metadata", {
+      error,
+      youtubeId: metadata.youtubeId,
+    });
+    return false;
+  }
+}
+
+/**
+ * Bulk import songs to Redis cache
+ * Requires admin authentication
+ * 
+ * @param songs - Array of songs to import
+ * @param auth - Authentication credentials (username and token)
+ * @returns Import result with counts
+ */
+export async function bulkImportSongMetadata(
+  songs: BulkImportSong[],
+  auth: SongMetadataAuthCredentials,
+  options?: BulkImportOptions
+): Promise<{ success: boolean; imported: number; updated: number; total: number; error?: string }> {
+  try {
+    if (songs.length === 0) {
+      return { success: true, imported: 0, updated: 0, total: 0 };
+    }
+
+    const batches = createBulkImportBatches(songs);
+    let imported = 0;
+    let updated = 0;
+    let total = 0;
+
+    const reportProgress = (
+      progress: Omit<
+        BulkImportProgress,
+        "totalSongs" | "processedSongs" | "pendingSongs" | "importedSongs" | "updatedSongs"
+      >
+    ) => {
+      options?.onProgress?.({
+        ...progress,
+        totalSongs: songs.length,
+        processedSongs: total,
+        pendingSongs: Math.max(songs.length - total, 0),
+        importedSongs: imported,
+        updatedSongs: updated,
+      });
+    };
+
+    reportProgress({
+      stage: "starting",
+      batchIndex: 0,
+      batchCount: batches.length,
+      batchSize: 0,
+      message: "Starting import",
+    });
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      let completedBatch = false;
+      let shouldSplitBatch = false;
+      let rateLimitRetries = 0;
+
+      while (!completedBatch) {
+        reportProgress({
+          stage: "batch-start",
+          batchIndex: i + 1,
+          batchCount: batches.length,
+          batchSize: batch.length,
+          message: "Uploading batch",
+        });
+
+        const { byteLength } = buildBulkImportRequestBody(batch);
+        if (byteLength > BULK_IMPORT_MAX_PAYLOAD_BYTES) {
+          if (batch.length <= 1) {
+            reportProgress({
+              stage: "error",
+              batchIndex: i + 1,
+              batchCount: batches.length,
+              batchSize: batch.length,
+              message:
+                "Payload too large: one song entry exceeds import request size limits",
+            });
+            return {
+              success: false,
+              imported,
+              updated,
+              total,
+              error:
+                "Payload too large: one song entry exceeds import request size limits",
+            };
+          }
+          reportProgress({
+            stage: "batch-split",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            message: "Splitting oversized batch before upload",
+          });
+          shouldSplitBatch = true;
+          break;
+        }
+
+        const response = await importSongsBatch({
+          songs: batch as Record<string, unknown>[],
+          auth: {
+            username: auth.username,
+            isAuthenticated: auth.isAuthenticated,
+          },
+          timeout: 30000,
+        });
+
+        if (response.status === 413) {
+          if (batch.length <= 1) {
+            reportProgress({
+              stage: "error",
+              batchIndex: i + 1,
+              batchCount: batches.length,
+              batchSize: batch.length,
+              statusCode: 413,
+              message:
+                "Payload too large: one song entry exceeds import request size limits",
+            });
+            return {
+              success: false,
+              imported,
+              updated,
+              total,
+              error:
+                "Payload too large: one song entry exceeds import request size limits",
+            };
+          }
+          log.warn("Splitting metadata import batch after payload rejection", {
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            status: 413,
+          });
+          reportProgress({
+            stage: "batch-split",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            statusCode: 413,
+            message: "Server returned 413, splitting batch and retrying",
+          });
+          shouldSplitBatch = true;
+          break;
+        }
+
+        if (response.status === 429) {
+          if (rateLimitRetries >= BULK_IMPORT_MAX_RATE_LIMIT_RETRIES) {
+            log.warn("Metadata import stopped after repeated rate limits", {
+              batchIndex: i + 1,
+              batchCount: batches.length,
+              retryCount: rateLimitRetries,
+            });
+            reportProgress({
+              stage: "error",
+              batchIndex: i + 1,
+              batchCount: batches.length,
+              batchSize: batch.length,
+              statusCode: 429,
+              message: "Rate limited while importing songs",
+            });
+            return {
+              success: false,
+              imported,
+              updated,
+              total,
+              error: "Rate limited while importing songs",
+            };
+          }
+
+          rateLimitRetries += 1;
+          const retryAfterSeconds = response.retryAfterSeconds ?? Number.NaN;
+          const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? retryAfterSeconds * 1000
+            : 4000 * Math.pow(2, rateLimitRetries - 1);
+
+          log.warn("Retrying metadata import after rate limit", {
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            retryAttempt: rateLimitRetries,
+            waitMs,
+          });
+          reportProgress({
+            stage: "rate-limited",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            retryAttempt: rateLimitRetries,
+            retryAfterMs: waitMs,
+            statusCode: 429,
+            message: `Rate limited. Retrying in ${Math.ceil(waitMs / 1000)}s`,
+          });
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (response.status === 401) {
+          log.warn("Could not import metadata because login is required");
+          reportProgress({
+            stage: "error",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            statusCode: 401,
+            message: "Unauthorized",
+          });
+          return { success: false, imported, updated, total, error: "Unauthorized" };
+        }
+
+        if (response.status === 403) {
+          log.warn("Could not import metadata because admin access is required");
+          reportProgress({
+            stage: "error",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            statusCode: 403,
+            message: "Forbidden - admin only",
+          });
+          return {
+            success: false,
+            imported,
+            updated,
+            total,
+            error: "Forbidden - admin only",
+          };
+        }
+
+        if (!response.ok) {
+          log.warn("Metadata import request failed", {
+            status: response.status,
+            batchIndex: i + 1,
+            batchCount: batches.length,
+          });
+          reportProgress({
+            stage: "error",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            statusCode: response.status,
+            message: `HTTP ${response.status}`,
+          });
+          return {
+            success: false,
+            imported,
+            updated,
+            total,
+            error: `HTTP ${response.status}`,
+          };
+        }
+
+        const data = response.data as
+          | {
+              success?: boolean;
+              imported?: number;
+              updated?: number;
+              total?: number;
+              error?: string;
+            }
+          | undefined;
+
+        if (!data?.success) {
+          log.warn("Metadata import was rejected", {
+            error: data?.error,
+            batchIndex: i + 1,
+            batchCount: batches.length,
+          });
+          reportProgress({
+            stage: "error",
+            batchIndex: i + 1,
+            batchCount: batches.length,
+            batchSize: batch.length,
+            message: data?.error || "Import failed",
+          });
+          return {
+            success: false,
+            imported,
+            updated,
+            total,
+            error: data?.error || "Import failed",
+          };
+        }
+
+        imported += Number(data.imported) || 0;
+        updated += Number(data.updated) || 0;
+        total += Number(data.total) || batch.length;
+        reportProgress({
+          stage: "batch-success",
+          batchIndex: i + 1,
+          batchCount: batches.length,
+          batchSize: batch.length,
+          message: "Batch uploaded",
+        });
+        completedBatch = true;
+      }
+
+      if (shouldSplitBatch) {
+        const [firstHalf, secondHalf] = splitBulkImportBatch(batch);
+        batches.splice(i, 1, firstHalf, secondHalf);
+        i -= 1;
+      }
+    }
+
+    log.debug("Imported metadata batch", { imported, updated, total });
+    reportProgress({
+      stage: "complete",
+      batchIndex: batches.length,
+      batchCount: batches.length,
+      batchSize: 0,
+      message: "Import complete",
+    });
+    return { success: true, imported, updated, total };
+  } catch (error) {
+    log.error("Could not import song metadata", { error });
+    options?.onProgress?.({
+      stage: "error",
+      totalSongs: songs.length,
+      processedSongs: 0,
+      pendingSongs: songs.length,
+      importedSongs: 0,
+      updatedSongs: 0,
+      batchIndex: 0,
+      batchCount: 0,
+      batchSize: 0,
+      message: String(error),
+    });
+    return { success: false, imported: 0, updated: 0, total: 0, error: String(error) };
+  }
+}
+
+/**
+ * Save song metadata from a Track object (convenience function)
+ * Requires authentication - will skip if not logged in
+ * 
+ * @param track - Track object from iPod store
+ * @param auth - Authentication credentials (username and token), or null to skip
+ * @param options - Additional options
+ * @param options.isShare - If true, this is a share action and will update createdBy
+ * @returns true if saved successfully, false otherwise (including when skipped due to no auth)
+ */
+export async function saveSongMetadataFromTrack(
+  track: {
+    id: string;
+    title: string;
+    artist?: string;
+    album?: string;
+    cover?: string;
+    coverColor?: string;
+    lyricOffset?: number;
+    lyricsSource?: {
+      hash: string;
+      albumId: string | number;
+      title: string;
+      artist: string;
+      album?: string;
+    };
+  },
+  auth: SongMetadataAuthCredentials | null,
+  options?: { isShare?: boolean }
+): Promise<boolean> {
+  // Skip if not authenticated
+  if (!auth || !auth.isAuthenticated) {
+    log.debug("Skipping save; user not logged in", { trackId: track.id });
+    return false;
+  }
+
+  return saveSongMetadata(
+    {
+      youtubeId: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      cover: track.cover,
+      coverColor: track.coverColor,
+      lyricOffset: track.lyricOffset,
+      lyricsSource: track.lyricsSource,
+    },
+    auth,
+    options
+  );
+}

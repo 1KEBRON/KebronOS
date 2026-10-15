@@ -1,0 +1,238 @@
+// Shared types for the iPod app
+
+import type { Track } from "@/shared/media/library";
+import type { LyricsAlignment, LyricsFont, RomanizationSettings, DisplayMode } from "@/types/lyrics";
+import type ReactPlayer from "react-player";
+import type { useLyrics } from "@/hooks/useLyrics";
+import type { FuriganaSegment } from "@/utils/romanization";
+import type { ActivityInfo } from "@/hooks/useActivityLabel";
+
+// Wheel interaction types
+export type WheelArea = "top" | "right" | "bottom" | "left" | "center";
+export type RotationDirection = "clockwise" | "counterclockwise";
+
+// Menu item type
+export interface MenuItem {
+  label: string;
+  action: () => void;
+  showChevron?: boolean;
+  value?: string;
+  /**
+   * Second line under `label` for modern **media** list layouts (square
+   * artwork + two-line rows). Ignored for classic rows and default
+   * single-line modern rows.
+   */
+  subtitle?: string | null;
+  /** When true, the row renders as a non-interactive loading placeholder. */
+  isLoading?: boolean;
+  /**
+   * Optional artwork URL associated with this row. When the modern UI
+   * is in split menu mode, the right-hand Ken Burns artwork panel
+   * cross-fades to this image as the row becomes selected — letting
+   * songs / albums / artists / playlists each preview their own
+   * cover. Rows that omit this field fall back to the now-playing
+   * track's cover (or stay on the previous selection's art if the
+   * now-playing track also has no cover).
+   */
+  coverUrl?: string | null;
+  /** Glyph for {@link IpodArtworkPlaceholder} when `coverUrl` is missing. */
+  emptyArtworkKind?: "album" | "playlist";
+}
+
+// Menu history entry
+export type IpodMenuKind =
+  | "root"
+  | "music"
+  | "settings"
+  | "extras"
+  | "artists"
+  | "albums"
+  | "songs"
+  | "playlists"
+  | "recentlyAdded"
+  | "favorites"
+  | "radio"
+  | "artist"
+  | "album"
+  | "artistAllSongs"
+  | "artistAlbum"
+  | "appleMusicPlaylist"
+  | "nowPlayingSong";
+
+export interface MenuHistoryEntry {
+  /** Stable identity used for rebuild/restore. `title` remains for legacy breadcrumbs. */
+  kind?: IpodMenuKind;
+  /** Stable menu instance id (artist key, album key, playlist id, etc.). */
+  id?: string;
+  title: string;
+  displayTitle?: string;
+  items: MenuItem[];
+  selectedIndex: number;
+  /**
+   * Modern UI only: taller rows with thumbnail + primary/subtitle text.
+   * Used for playlist and per-artist album browses.
+   */
+  modernMediaList?: boolean;
+  /**
+   * When true, this menu's items are sorted alphabetically by `label`
+   * and the iPod's classic "scroll by letter" affordance kicks in
+   * when the user spins the wheel quickly: rotation events jump to
+   * the next/previous letter group instead of one row at a time, and
+   * a large letter overlay is painted on top of the menu so the user
+   * can see which section they're rapidly skimming through.
+   */
+  alphabetic?: boolean;
+}
+
+// PIP Player props
+export interface PipPlayerProps {
+  currentTrack: Track | null;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onNextTrack: () => void;
+  onPreviousTrack: () => void;
+  onRestore: () => void;
+}
+
+// Fullscreen portal props
+export interface FullScreenPortalProps {
+  children:
+    | React.ReactNode
+    | ((ctx: {
+        controlsVisible: boolean;
+        isLangMenuOpen: boolean;
+        /** Skip surface clicks (e.g. album art tap) right after a long-press. */
+        consumeSurfaceLongPressClick?: () => boolean;
+      }) => React.ReactNode);
+  onClose: () => void;
+  togglePlay: () => void;
+  nextTrack: () => void;
+  previousTrack: () => void;
+  seekTime: (delta: number) => void;
+  showStatus: (message: string) => void;
+  showOfflineStatus: () => void;
+  registerActivity: () => void;
+  isPlaying: boolean;
+  statusMessage: string | null;
+  disableTapToPlayPause?: boolean;
+  // Fullscreen lyrics controls
+  currentTranslationCode: string | null;
+  onSelectTranslation: (code: string | null) => void;
+  currentAlignment: LyricsAlignment;
+  onCycleAlignment: () => void;
+  currentLyricsFont: LyricsFont;
+  onCycleLyricsFont: () => void;
+  // Romanization/Pronunciation settings
+  romanization?: RomanizationSettings;
+  onRomanizationChange?: (settings: Partial<RomanizationSettings>) => void;
+  // Sync mode (lyrics timing)
+  onSyncMode?: () => void;
+  isSyncModeOpen?: boolean;
+  syncModeContent?: React.ReactNode;
+  // Display mode (video, cover, mesh, water, etc.)
+  displayMode?: DisplayMode;
+  onDisplayModeSelect?: (mode: DisplayMode) => void;
+  displayModeOptions?: { value: DisplayMode; label: string }[];
+  // Player ref for mobile Safari handling
+  fullScreenPlayerRef: React.RefObject<ReactPlayer | null>;
+  /** Activity state for loading indicators (optional — karaoke supplies from lyrics subtree) */
+  activityState?: ActivityInfo;
+  /**
+   * Long-press on the main fullscreen surface (album art / background).
+   * Ignored on toolbar and lyrics. Scoped to fullscreen portal only.
+   */
+  onSurfaceLongPress?: () => void;
+  /** When false, surface long-press is disabled (e.g. no library tracks). */
+  surfaceLongPressEnabled?: boolean;
+  /** Hide bottom player toolbar (e.g. while Cover Flow is open). */
+  suppressToolbar?: boolean;
+}
+
+// IpodScreen props
+export interface IpodScreenProps {
+  currentTrack: Track | null;
+  isPlaying: boolean;
+  playbackRequested: boolean;
+  totalTime: number;
+  menuMode: boolean;
+  menuHistory: MenuHistoryEntry[];
+  selectedMenuItem: number;
+  onSelectMenuItem: (index: number) => void;
+  currentIndex: number;
+  tracksLength: number;
+  backlightOn: boolean;
+  menuDirection: "forward" | "backward";
+  onMenuItemAction: (action: () => void) => void;
+  showVideo: boolean;
+  displayMode: DisplayMode;
+  playerRef: React.RefObject<ReactPlayer | null>;
+  handleTrackEnd: () => void;
+  handleProgress: (state: { playedSeconds: number }) => void;
+  handleDuration: (duration: number) => void;
+  handlePlay: () => void;
+  handlePause: () => void;
+  handleReady: () => void;
+  handlePlaybackAttemptFailed: () => void;
+  loopCurrent: boolean;
+  loopAll: boolean;
+  isShuffled: boolean;
+  statusMessage: string | null;
+  onToggleVideo: () => void;
+  lcdFilterOn: boolean;
+  ipodVolume: number;
+  showStatusCallback: (message: string) => void;
+  showLyrics: boolean;
+  lyricsAlignment: LyricsAlignment;
+  lyricOffset: number;
+  adjustLyricOffset: (deltaMs: number) => void;
+  registerActivity: () => void;
+  isFullScreen: boolean;
+  lyricsControls: ReturnType<typeof useLyrics>;
+  onNextTrack?: () => void;
+  onPreviousTrack?: () => void;
+  /** Furigana map from parent (Map of startTimeMs -> FuriganaSegment[]) */
+  furiganaMap?: Map<string, FuriganaSegment[]>;
+  /** Soramimi map from parent (Map of startTimeMs -> FuriganaSegment[]) */
+  soramimiMap?: Map<string, FuriganaSegment[]>;
+  /** Activity state for loading indicators */
+  activityState: ActivityInfo;
+  /**
+   * Modern UI: show a titlebar spinner while an Apple Music submenu
+   * (playlist tracks, Recently Added, etc.) is loading or refreshing.
+   */
+  appleMusicMenuTitlebarLoading?: boolean;
+  /**
+   * Whether Cover Flow is open. In the modern iPod UI we render Cover
+   * Flow inline inside the menu panel so the menu↔nowplaying chrome
+   * width transition (50%↔100%) seamlessly carries the user into and
+   * out of Cover Flow. The parent passes the actual `<CoverFlow inline />`
+   * element through `coverFlowSlot`; this `IpodScreen` only swaps it
+   * into the existing menu/now-playing AnimatePresence as a third
+   * keyed state.
+   */
+  isCoverFlowOpen?: boolean;
+  /**
+   * Pre-rendered `<CoverFlow inline />` element supplied by the parent.
+   * Rendered as the third state in the menu panel's AnimatePresence
+   * when `isCoverFlowOpen` is true. Only used by the modern UI; the
+   * classic LCD / karaoke skins render their own full-bleed Cover Flow
+   * overlay outside `IpodScreen` and leave this slot undefined.
+   */
+  coverFlowSlot?: React.ReactNode;
+  /**
+   * When the user spins the wheel quickly through an alphabetic menu
+   * (Artists / Albums), the iPod enters "scroll by letter" mode and
+   * a large letter overlay is painted on the menu. The parent owns
+   * the timing + letter computation (see `useIpodLogic`); this
+   * `IpodScreen` just renders the overlay when this prop is set.
+   */
+  fastScrollLetter?: string | null;
+}
+
+// Battery manager interface for browsers that expose navigator.getBattery
+export interface BatteryManager {
+  charging: boolean;
+  level: number;
+  addEventListener(type: string, listener: () => void): void;
+  removeEventListener(type: string, listener: () => void): void;
+}

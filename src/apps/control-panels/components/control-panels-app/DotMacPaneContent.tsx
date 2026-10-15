@@ -1,0 +1,271 @@
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { requestCloudSyncCheck } from "@/utils/cloudSyncEvents";
+import type { TabStyleConfig } from "@/utils/tabStyles";
+import { AUTO_SYNC_ITEM_ICONS } from "./constants";
+import { SyncDomainRow } from "./SyncDomainRow";
+import { SyncSectionTitle } from "./SyncSectionTitle";
+import { formatRelativeTime, formatSyncStatus, type SyncAuditStatus } from "./syncUtils";
+
+export type DotMacPaneContentProps = {
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  tabStyles: TabStyleConfig;
+  username: string | null;
+  promptSetUsername: () => void;
+  autoSyncEnabled: boolean;
+  setAutoSyncEnabled: (enabled: boolean) => void;
+  isAutoSyncChecking: boolean;
+  autoSyncLastCheckedAt: string | null;
+  autoSyncLastError: string | null;
+  autoSyncDomainStatus: Record<string, SyncAuditStatus>;
+  syncFiles: boolean;
+  syncSettings: boolean;
+  syncCalendar: boolean;
+  syncContacts: boolean;
+  syncMaps: boolean;
+  syncSongs: boolean;
+  syncVideos: boolean;
+  syncTv: boolean;
+  syncStickies: boolean;
+  syncBooks: boolean;
+  syncStuff: boolean;
+  setSyncFiles: (enabled: boolean) => void;
+  setSyncSettings: (enabled: boolean) => void;
+  setSyncCalendar: (enabled: boolean) => void;
+  setSyncContacts: (enabled: boolean) => void;
+  setSyncMaps: (enabled: boolean) => void;
+  setSyncSongs: (enabled: boolean) => void;
+  setSyncVideos: (enabled: boolean) => void;
+  setSyncTv: (enabled: boolean) => void;
+  setSyncStickies: (enabled: boolean) => void;
+  setSyncBooks: (enabled: boolean) => void;
+  setSyncStuff: (enabled: boolean) => void;
+  isCloudForceSyncing: boolean;
+  isCloudForceUploading: boolean;
+  isCloudForceDownloading: boolean;
+  setIsConfirmForceUploadOpen: (open: boolean) => void;
+  setIsConfirmForceDownloadOpen: (open: boolean) => void;
+};
+
+export function DotMacPaneContent({
+  t,
+  tabStyles,
+  username,
+  promptSetUsername,
+  autoSyncEnabled,
+  setAutoSyncEnabled,
+  isAutoSyncChecking,
+  autoSyncLastCheckedAt,
+  autoSyncLastError,
+  autoSyncDomainStatus,
+  syncFiles,
+  syncSettings,
+  syncCalendar,
+  syncContacts,
+  syncMaps,
+  syncSongs,
+  syncVideos,
+  syncTv,
+  syncStickies,
+  syncBooks,
+  syncStuff,
+  setSyncFiles,
+  setSyncSettings,
+  setSyncCalendar,
+  setSyncContacts,
+  setSyncMaps,
+  setSyncSongs,
+  setSyncVideos,
+  setSyncTv,
+  setSyncStickies,
+  setSyncBooks,
+  setSyncStuff,
+  isCloudForceSyncing,
+  isCloudForceUploading,
+  isCloudForceDownloading,
+  setIsConfirmForceUploadOpen,
+  setIsConfirmForceDownloadOpen,
+}: DotMacPaneContentProps) {
+  return (
+    <div className="control-panels-pref-form space-y-0 h-full overflow-y-auto">
+      <div className="control-panels-pref-form-section">
+        {username ? (
+          <div className="flex items-center justify-between gap-4">
+            <SyncSectionTitle
+              title={t("apps.control-panels.autoSync.title")}
+              subtitle={
+                autoSyncEnabled
+                  ? isAutoSyncChecking
+                    ? t("apps.control-panels.autoSync.checking")
+                    : formatRelativeTime(autoSyncLastCheckedAt, t)
+                      ? t("apps.control-panels.autoSync.lastChecked", {
+                          date: formatRelativeTime(autoSyncLastCheckedAt, t),
+                        })
+                      : t("apps.control-panels.autoSync.waiting")
+                  : t("apps.control-panels.autoSync.description")
+              }
+            />
+            <Switch
+              checked={autoSyncEnabled}
+              onCheckedChange={setAutoSyncEnabled}
+              className="data-[state=checked]:bg-[#000000]"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <SyncSectionTitle
+              title={t("apps.control-panels.autoSync.title")}
+              subtitle={t("apps.control-panels.autoSync.description")}
+            />
+            <Button variant="default" onClick={promptSetUsername} className="h-7">
+              {t("apps.control-panels.login")}
+            </Button>
+          </div>
+        )}
+
+        {username && autoSyncEnabled && (
+          <>
+            <hr className="border-t" style={tabStyles.separatorStyle} />
+            <div className="space-y-3">
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.files}
+                label={t("apps.control-panels.autoSync.files")}
+                status={formatSyncStatus(autoSyncDomainStatus.files, t)}
+                checked={syncFiles}
+                onCheckedChange={setSyncFiles}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.settings}
+                label={t("apps.control-panels.autoSync.settings")}
+                status={formatSyncStatus(autoSyncDomainStatus.settings, t)}
+                checked={syncSettings}
+                onCheckedChange={setSyncSettings}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.calendar}
+                label={t("apps.control-panels.autoSync.calendar")}
+                status={formatSyncStatus(autoSyncDomainStatus.calendar, t)}
+                checked={syncCalendar}
+                onCheckedChange={setSyncCalendar}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.contacts}
+                label={t("apps.control-panels.autoSync.contacts")}
+                status={formatSyncStatus(autoSyncDomainStatus.contacts, t)}
+                checked={syncContacts}
+                onCheckedChange={setSyncContacts}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.books}
+                label={t("apps.control-panels.autoSync.books")}
+                status={formatSyncStatus(autoSyncDomainStatus.books, t)}
+                checked={syncBooks}
+                onCheckedChange={setSyncBooks}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.maps}
+                label={t("apps.control-panels.autoSync.maps")}
+                status={formatSyncStatus(autoSyncDomainStatus.maps, t)}
+                checked={syncMaps}
+                onCheckedChange={setSyncMaps}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.songs}
+                label={t("apps.control-panels.autoSync.songs")}
+                status={formatSyncStatus(autoSyncDomainStatus.songs, t)}
+                checked={syncSongs}
+                onCheckedChange={setSyncSongs}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.videos}
+                label={t("apps.control-panels.autoSync.videos")}
+                status={formatSyncStatus(autoSyncDomainStatus.videos, t)}
+                checked={syncVideos}
+                onCheckedChange={setSyncVideos}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.tv}
+                label={t("apps.control-panels.autoSync.tvChannels")}
+                status={formatSyncStatus(autoSyncDomainStatus.tv, t)}
+                checked={syncTv}
+                onCheckedChange={setSyncTv}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.stickies}
+                label={t("apps.control-panels.autoSync.stickies")}
+                status={formatSyncStatus(autoSyncDomainStatus.stickies, t)}
+                checked={syncStickies}
+                onCheckedChange={setSyncStickies}
+              />
+              <SyncDomainRow
+                appId={AUTO_SYNC_ITEM_ICONS.stuff}
+                label={t("apps.control-panels.autoSync.stuff")}
+                status={formatSyncStatus(autoSyncDomainStatus.stuff, t)}
+                checked={syncStuff}
+                onCheckedChange={setSyncStuff}
+              />
+            </div>
+
+            {autoSyncLastError && (
+              <div className="mt-3 flex items-start justify-between gap-3">
+                <p className="min-w-0 flex-1 text-[11px] text-red-700 font-geneva-12">
+                  {t("apps.control-panels.autoSync.error", {
+                    error: autoSyncLastError,
+                  })}
+                </p>
+                <Button
+                  variant="retro"
+                  size="sm"
+                  onClick={requestCloudSyncCheck}
+                  disabled={isAutoSyncChecking}
+                  className="h-7 shrink-0"
+                >
+                  {isAutoSyncChecking
+                    ? t("apps.control-panels.autoSync.checking")
+                    : t("common.retry", { defaultValue: "Retry" })}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+
+        <hr className="border-t" style={tabStyles.separatorStyle} />
+        <div
+          className={cn(
+            "space-y-2",
+            !username && "opacity-50 pointer-events-none select-none"
+          )}
+        >
+          <div className="flex gap-2">
+            <Button
+              variant="retro"
+              onClick={() => setIsConfirmForceUploadOpen(true)}
+              disabled={isCloudForceSyncing}
+              tabIndex={!username ? -1 : undefined}
+              className="flex-1"
+            >
+              {isCloudForceUploading
+                ? t("apps.control-panels.cloudSync.forceUploading")
+                : t("apps.control-panels.cloudSync.forceUpload")}
+            </Button>
+            <Button
+              variant="retro"
+              onClick={() => setIsConfirmForceDownloadOpen(true)}
+              disabled={isCloudForceSyncing}
+              tabIndex={!username ? -1 : undefined}
+              className="flex-1"
+            >
+              {isCloudForceDownloading
+                ? t("apps.control-panels.cloudSync.forceDownloading")
+                : t("apps.control-panels.cloudSync.forceDownload")}
+            </Button>
+          </div>
+          <p className="text-[11px] text-neutral-600 font-geneva-12">
+            {t("apps.control-panels.cloudSync.forceSyncDescription")}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

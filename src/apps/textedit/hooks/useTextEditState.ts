@@ -1,0 +1,86 @@
+import { useCallback, useEffect } from "react";
+import { JSONContent } from "@tiptap/core";
+import { useTextEditStore } from "@/stores/useTextEditStore";
+import { usePersistHydrated } from "@/hooks/usePersistHydrated";
+
+interface UseTextEditStateProps {
+  instanceId: string;
+}
+
+export function useTextEditState({ instanceId }: UseTextEditStateProps) {
+  const hasHydrated = usePersistHydrated(useTextEditStore.persist);
+
+  // Store actions
+  const createTextEditInstance = useTextEditStore(
+    (state) => state.createInstance
+  );
+  const removeTextEditInstance = useTextEditStore(
+    (state) => state.removeInstance
+  );
+  const updateTextEditInstance = useTextEditStore(
+    (state) => state.updateInstance
+  );
+  // Subscribe only to THIS instance, not the whole instances map. Subscribing to
+  // the entire map re-rendered every open TextEdit window whenever any instance
+  // changed (e.g. another window's per-keystroke content write).
+  const currentInstance = useTextEditStore(
+    (state) => state.instances[instanceId] || null
+  );
+
+  // IndexedDB hydrates asynchronously. Do not create or remove an instance
+  // until restoration finishes, or a default instance can overwrite its draft.
+  useEffect(() => {
+    if (!hasHydrated) return;
+    createTextEditInstance(instanceId);
+    return () => {
+      removeTextEditInstance(instanceId);
+    };
+  }, [
+    hasHydrated,
+    instanceId,
+    createTextEditInstance,
+    removeTextEditInstance,
+  ]);
+
+  // Instance state
+  const currentFilePath = currentInstance?.filePath || null;
+  const contentJson = currentInstance?.contentJson || null;
+  const hasUnsavedChanges = currentInstance?.hasUnsavedChanges || false;
+
+  const setCurrentFilePath = useCallback(
+    (path: string | null) => {
+      updateTextEditInstance(instanceId, { filePath: path });
+    },
+    [instanceId, updateTextEditInstance]
+  );
+
+  const setContentJson = useCallback(
+    (json: JSONContent | null) => {
+      updateTextEditInstance(instanceId, { contentJson: json });
+    },
+    [instanceId, updateTextEditInstance]
+  );
+
+  const setHasUnsavedChanges = useCallback(
+    (val: boolean) => {
+      updateTextEditInstance(instanceId, { hasUnsavedChanges: val });
+    },
+    [instanceId, updateTextEditInstance]
+  );
+
+  return {
+    // Current state
+    currentFilePath,
+    contentJson,
+    hasUnsavedChanges,
+    currentInstance,
+
+    // State setters
+    setCurrentFilePath,
+    setContentJson,
+    setHasUnsavedChanges,
+
+    // Instance management
+    instanceId,
+  };
+}

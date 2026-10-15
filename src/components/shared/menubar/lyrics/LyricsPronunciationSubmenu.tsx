@@ -1,0 +1,178 @@
+import {
+  MenubarSub,
+  MenubarSubTrigger,
+  MenubarSubContent,
+  MenubarSeparator,
+  MenubarCheckboxItem,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+} from "@/components/ui/menubar";
+import {
+  chinesePhoneticPatch,
+  type RomanizationSettings,
+} from "@/types/lyrics";
+import type { ChineseLyricsLanguagePreference } from "@/shared/media/chineseLyrics";
+import { MENUBAR_SEPARATOR_CLASS } from "../menubarStyles";
+
+export type LyricsPronunciationSubmenuProps = {
+  submenuLabel: string;
+  pronunciationLabel: string;
+  pronunciationOnlyLabel: string;
+  japaneseFuriganaLabel: string;
+  japaneseRomajiLabel: string;
+  koreanRomanizationLabel: string;
+  chinesePinyinLabel: string;
+  chineseZhuyinLabel: string;
+  automaticLabel: string;
+  chineseTraditionalLabel: string;
+  chineseSimplifiedLabel: string;
+  chineseSoramimiLabel: string;
+  soramimiLabel: string;
+  romanization: RomanizationSettings | undefined;
+  setRomanization: (patch: Partial<RomanizationSettings>) => void;
+};
+
+export function LyricsPronunciationSubmenu({
+  submenuLabel,
+  pronunciationLabel,
+  pronunciationOnlyLabel,
+  japaneseFuriganaLabel,
+  japaneseRomajiLabel,
+  koreanRomanizationLabel,
+  chinesePinyinLabel,
+  chineseZhuyinLabel,
+  automaticLabel,
+  chineseTraditionalLabel,
+  chineseSimplifiedLabel,
+  chineseSoramimiLabel,
+  soramimiLabel,
+  romanization,
+  setRomanization,
+}: LyricsPronunciationSubmenuProps) {
+  return (
+    <MenubarSub>
+      <MenubarSubTrigger className="text-md h-6 px-3">{submenuLabel}</MenubarSubTrigger>
+      <MenubarSubContent className="px-0">
+        <MenubarCheckboxItem
+          checked={romanization?.enabled ?? true}
+          onCheckedChange={(checked) => setRomanization({ enabled: checked })}
+          className="text-md h-6 px-3 truncate"
+        >
+          {pronunciationLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={romanization?.pronunciationOnly ?? false}
+          onCheckedChange={(checked) =>
+            setRomanization({ pronunciationOnly: checked })
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {pronunciationOnlyLabel}
+        </MenubarCheckboxItem>
+        <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+        <MenubarCheckboxItem
+          checked={romanization?.japaneseFurigana ?? true}
+          onCheckedChange={(checked) =>
+            setRomanization({ japaneseFurigana: checked })
+          }
+          disabled={!romanization?.enabled || romanization?.japaneseRomaji}
+          className="text-md h-6 px-3"
+        >
+          {japaneseFuriganaLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={romanization?.japaneseRomaji ?? false}
+          onCheckedChange={(checked) =>
+            setRomanization({
+              japaneseRomaji: checked,
+              japaneseFurigana: checked || (romanization?.japaneseFurigana ?? true),
+            })
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {japaneseRomajiLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={romanization?.korean ?? true}
+          onCheckedChange={(checked) => setRomanization({ korean: checked })}
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {koreanRomanizationLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={romanization?.chinese ?? false}
+          onCheckedChange={(checked) =>
+            setRomanization(chinesePhoneticPatch("pinyin", checked))
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {chinesePinyinLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={romanization?.chineseZhuyin ?? false}
+          onCheckedChange={(checked) =>
+            setRomanization(chinesePhoneticPatch("zhuyin", checked))
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {chineseZhuyinLabel}
+        </MenubarCheckboxItem>
+        <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+        <MenubarRadioGroup
+          value={romanization?.chineseLyricsLanguage ?? "auto"}
+          onValueChange={(value) =>
+            setRomanization({
+              chineseLyricsLanguage: value as ChineseLyricsLanguagePreference,
+            })
+          }
+        >
+          <MenubarRadioItem value="auto" className="text-md h-6 pr-3">
+            {automaticLabel}
+          </MenubarRadioItem>
+          <MenubarRadioItem value="zh-TW" className="text-md h-6 pr-3">
+            {chineseTraditionalLabel}
+          </MenubarRadioItem>
+          <MenubarRadioItem value="zh-CN" className="text-md h-6 pr-3">
+            {chineseSimplifiedLabel}
+          </MenubarRadioItem>
+        </MenubarRadioGroup>
+        <MenubarSeparator className={MENUBAR_SEPARATOR_CLASS} />
+        <MenubarCheckboxItem
+          checked={
+            romanization?.soramimi && romanization?.soramamiTargetLanguage === "zh-TW"
+          }
+          onCheckedChange={(checked) =>
+            setRomanization({
+              soramimi: checked,
+              soramamiTargetLanguage: "zh-TW",
+            })
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {chineseSoramimiLabel}
+        </MenubarCheckboxItem>
+        <MenubarCheckboxItem
+          checked={
+            romanization?.soramimi && romanization?.soramamiTargetLanguage === "en"
+          }
+          onCheckedChange={(checked) =>
+            setRomanization({
+              soramimi: checked,
+              soramamiTargetLanguage: "en",
+            })
+          }
+          disabled={!romanization?.enabled}
+          className="text-md h-6 px-3"
+        >
+          {soramimiLabel}
+        </MenubarCheckboxItem>
+      </MenubarSubContent>
+    </MenubarSub>
+  );
+}

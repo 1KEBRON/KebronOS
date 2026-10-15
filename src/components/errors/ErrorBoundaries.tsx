@@ -1,0 +1,419 @@
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { cn } from "@/lib/utils";
+import type { AppId } from "@/config/appRegistry";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import {
+  reportRuntimeCrash,
+  RYOS_ERROR_BOUNDARY_TEST_EVENT,
+  type RuntimeCrashTestDetail,
+} from "@/utils/errorReporting";
+
+type CrashDialogScope = "app" | "desktop";
+
+interface ErrorBoundaryBaseProps {
+  children: React.ReactNode;
+  fallback: (error: Error) => React.ReactNode;
+  onError?: (error: Error, info: React.ErrorInfo) => void;
+}
+
+interface ErrorBoundaryBaseState {
+  error: Error | null;
+}
+
+interface CrashDialogProps {
+  scope: CrashDialogScope;
+  titleBarLabel: string;
+  heading: string;
+  description: string;
+  primaryActionLabel: string;
+  onPrimaryAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  error: Error;
+}
+
+export interface AppErrorBoundaryProps {
+  children: React.ReactNode;
+  appId: AppId;
+  appName: string;
+  instanceId: string;
+  onRelaunch: () => void;
+  onQuit: () => void;
+  onCrash?: () => void;
+}
+
+export interface DesktopErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+class ErrorBoundaryBase extends React.Component<
+  ErrorBoundaryBaseProps,
+  ErrorBoundaryBaseState
+> {
+  state: ErrorBoundaryBaseState = {
+    error: null,
+  };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryBaseState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    this.props.onError?.(error, info);
+  }
+
+  render(): React.ReactNode {
+    if (this.state.error) {
+      return this.props.fallback(this.state.error);
+    }
+
+    return this.props.children;
+  }
+}
+
+function BoundaryTestCrash({
+  scope,
+  appId,
+  instanceId,
+}: {
+  scope: CrashDialogScope;
+  appId?: AppId;
+  instanceId?: string;
+}) {
+  const [message, setMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const handleBoundaryTestCrash = (event: Event) => {
+      const detail = (event as CustomEvent<RuntimeCrashTestDetail>).detail;
+      if (detail.scope !== scope) {
+        return;
+      }
+
+      if (scope === "app") {
+        if (detail.instanceId && detail.instanceId !== instanceId) {
+          return;
+        }
+
+        if (detail.appId && detail.appId !== appId) {
+          return;
+        }
+
+        if (!detail.instanceId && !detail.appId) {
+          return;
+        }
+      }
+
+      setMessage(detail.message ?? `[ryOS] Simulated ${scope} crash`);
+    };
+
+    window.addEventListener(
+      RYOS_ERROR_BOUNDARY_TEST_EVENT,
+      handleBoundaryTestCrash as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        RYOS_ERROR_BOUNDARY_TEST_EVENT,
+        handleBoundaryTestCrash as EventListener,
+      );
+    };
+  }, [appId, instanceId, scope]);
+
+  if (message) {
+    throw new Error(message);
+  }
+
+  return null;
+}
+
+function CrashDialog({
+  scope,
+  titleBarLabel,
+  heading,
+  description,
+  primaryActionLabel,
+  onPrimaryAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  error,
+}: CrashDialogProps) {
+  const {
+    isWindowsTheme,
+    isMacOSTheme: isMacTheme,
+  } = useThemeFlags();
+  const { t } = useTranslation();
+  const primaryActionButtonRef = React.useRef<HTMLButtonElement>(null);
+  const secondaryActionButtonRef = React.useRef<HTMLButtonElement>(null);
+  const headingId = React.useId();
+  const descriptionId = React.useId();
+
+  const bodyTextClasses = cn(
+    "leading-[1.45] text-black",
+    isWindowsTheme
+      ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+      : isMacTheme
+        ? "text-[13px]"
+        : "font-geneva-12 text-[12px]",
+  );
+
+  const primaryButtonVariant = isMacTheme ? "default" : "retro";
+  const secondaryButtonVariant = isMacTheme ? "secondary" : "retro";
+  const handleDismissCrashDialog = onSecondaryAction ?? onPrimaryAction;
+
+  const dialogBody = (
+    <div
+      className={cn(isWindowsTheme ? "p-2 px-4" : "p-5")}
+    >
+      <div className="flex items-start gap-3">
+        <ThemedIcon
+          name="warn.png"
+          alt={t("common.dialog.close", { defaultValue: "Warning" })}
+          className="mt-0.5 size-8 shrink-0 [image-rendering:pixelated]"
+          width={32}
+          height={32}
+        />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p
+            id={headingId}
+            className={cn(
+              "text-black",
+              isWindowsTheme
+                ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px] font-bold"
+                : isMacTheme
+                  ? "text-[13px] font-semibold"
+                  : "font-geneva-12 text-[12px] font-bold",
+            )}
+          >
+            {heading}
+          </p>
+
+          <p id={descriptionId} className={cn(bodyTextClasses, "mt-0")}>
+            {description}
+          </p>
+
+          {import.meta.env.DEV ? (
+            <div
+              className={cn(
+                "rounded border border-black/15 bg-black/5 px-2 py-1.5 text-black/80",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[10px]"
+                  : "font-os-mono text-[10px]",
+              )}
+            >
+              {error.name}: {error.message || "Unknown error"}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-0.5">
+            {secondaryActionLabel && onSecondaryAction ? (
+              <Button
+                ref={secondaryActionButtonRef}
+                variant={secondaryButtonVariant}
+                onClick={onSecondaryAction}
+                className={cn(
+                  !isMacTheme && "h-7",
+                  isWindowsTheme
+                    ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                    : isMacTheme
+                      ? "text-[13px]"
+                      : "font-geneva-12 text-[12px]",
+                )}
+              >
+                {secondaryActionLabel}
+              </Button>
+            ) : null}
+            <Button
+              ref={primaryActionButtonRef}
+              variant={primaryButtonVariant}
+              onClick={onPrimaryAction}
+              className={cn(
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : isMacTheme
+                    ? "text-[13px]"
+                    : "font-geneva-12 text-[12px]",
+              )}
+            >
+              {primaryActionLabel}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog
+      open={true}
+      modal={scope === "desktop"}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleDismissCrashDialog();
+        }
+      }}
+    >
+      {scope === "app" ? (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-[49] bg-black/20"
+          onClick={handleDismissCrashDialog}
+        />
+      ) : null}
+      <DialogContent
+        overlayClassName={
+          scope === "app"
+            ? "bg-black/20 pointer-events-none"
+            : "bg-black/25"
+        }
+        className={cn("max-w-[420px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          primaryActionButtonRef.current?.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          event.preventDefault();
+        }}
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">{titleBarLabel}</DialogTitle>
+            <DialogDescription className="sr-only">{description}</DialogDescription>
+            <DialogHeader>{titleBarLabel}</DialogHeader>
+            <div className="window-body">{dialogBody}</div>
+          </>
+        ) : isMacTheme ? (
+          <>
+            <DialogTitle className="sr-only">{titleBarLabel}</DialogTitle>
+            <DialogDescription className="sr-only">{description}</DialogDescription>
+            <DialogHeader>{titleBarLabel}</DialogHeader>
+            {dialogBody}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {titleBarLabel}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {description}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogBody}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function AppErrorBoundary({
+  children,
+  appId,
+  appName,
+  instanceId,
+  onRelaunch,
+  onQuit,
+  onCrash,
+}: AppErrorBoundaryProps) {
+  const { currentTheme } = useThemeFlags();
+  const { t } = useTranslation();
+
+  return (
+    <ErrorBoundaryBase
+      fallback={(error) => (
+        <CrashDialog
+          scope="app"
+          titleBarLabel={appName}
+          heading={t("common.errorBoundaries.appHeading", {
+            appName,
+            defaultValue: "{{appName}} quit unexpectedly.",
+          })}
+          description={t("common.errorBoundaries.appDescription", {
+            defaultValue:
+              "Relaunch it to open a fresh window, or quit this crashed window. Other open apps will keep running.",
+          })}
+          primaryActionLabel={t("common.errorBoundaries.relaunch", {
+            defaultValue: "Relaunch",
+          })}
+          onPrimaryAction={onRelaunch}
+          secondaryActionLabel={t("common.dock.quit", {
+            defaultValue: "Quit",
+          })}
+          onSecondaryAction={onQuit}
+          error={error}
+        />
+      )}
+      onError={(error, info) => {
+        onCrash?.();
+        reportRuntimeCrash(error, {
+          scope: "app",
+          boundary: "AppErrorBoundary",
+          appId,
+          appName,
+          instanceId,
+          componentStack: info.componentStack,
+          theme: currentTheme,
+        });
+      }}
+    >
+      <BoundaryTestCrash scope="app" appId={appId} instanceId={instanceId} />
+      {children}
+    </ErrorBoundaryBase>
+  );
+}
+
+export function DesktopErrorBoundary({
+  children,
+}: DesktopErrorBoundaryProps) {
+  const { currentTheme } = useThemeFlags();
+  const { t } = useTranslation();
+
+  return (
+    <ErrorBoundaryBase
+      fallback={(error) => (
+        <CrashDialog
+          scope="desktop"
+          titleBarLabel="ryOS"
+          heading={t("common.errorBoundaries.desktopHeading", {
+            defaultValue: "Desktop quit unexpectedly.",
+          })}
+          description={t("common.errorBoundaries.desktopDescription", {
+            defaultValue:
+              "Reload ryOS to restore the Dock, Desktop, and menu bar.",
+          })}
+          primaryActionLabel={t("common.errorBoundaries.reloadDesktop", {
+            defaultValue: "Reload Desktop",
+          })}
+          onPrimaryAction={() => window.location.reload()}
+          error={error}
+        />
+      )}
+      onError={(error, info) => {
+        reportRuntimeCrash(error, {
+          scope: "desktop",
+          boundary: "DesktopErrorBoundary",
+          componentStack: info.componentStack,
+          theme: currentTheme,
+        });
+      }}
+    >
+      <BoundaryTestCrash scope="desktop" />
+      {children}
+    </ErrorBoundaryBase>
+  );
+}

@@ -1,0 +1,645 @@
+import React, { useReducer, useEffect, useCallback, type CSSProperties } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+import { getApiUrl } from "@/utils/platform";
+import { abortableFetch } from "@/utils/abortableFetch";
+import { formatKugouImageUrl } from "@/utils/coverArt";
+import { createClientLogger } from "@/utils/logger";
+
+const lyricsSearchLog = createClientLogger("LyricsSearch");
+
+const lyricsSearchListStyle: CSSProperties = {
+  border: "1px solid var(--os-color-input-border)",
+  borderRadius: "6px",
+  backgroundColor: "var(--os-color-input-bg)",
+  overflowX: "hidden",
+};
+
+function lyricsSearchRowStyle(
+  index: number,
+  selected: boolean,
+  fontStyle?: CSSProperties
+): CSSProperties {
+  return {
+    ...fontStyle,
+    padding: "6px 8px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    boxSizing: "border-box",
+    background: selected
+      ? undefined
+      : index % 2 === 1
+        ? "var(--os-color-list-row-alt-bg)"
+        : "var(--os-color-input-bg)",
+  };
+}
+
+export interface LyricsSearchResult {
+  title: string;
+  artist: string;
+  album?: string;
+  hash: string;
+  albumId: string | number;
+  score: number;
+  /** Album cover URL (may contain `{size}` placeholder) */
+  cover?: string;
+}
+
+interface LyricsSearchDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Song ID (e.g., YouTube video ID) for API calls */
+  trackId: string;
+  trackTitle: string;
+  trackArtist?: string;
+  initialQuery?: string;
+  onSelect: (result: LyricsSearchResult) => void;
+  onReset: () => void;
+  hasOverride: boolean;
+  /** Current active selection (shown when dialog opens) */
+  currentSelection?: {
+    title: string;
+    artist: string;
+    album?: string;
+    /** Album cover URL (may contain `{size}` placeholder) */
+    cover?: string;
+  };
+}
+
+export function LyricsSearchDialog({
+  isOpen,
+  onOpenChange,
+  trackId,
+  trackTitle,
+  trackArtist,
+  initialQuery,
+  onSelect,
+  onReset,
+  hasOverride,
+  currentSelection,
+}: LyricsSearchDialogProps) {
+  const { t } = useTranslation();
+  const {
+    isWindowsTheme,
+    isMacOSTheme: isMacTheme,
+  } = useThemeFlags();
+
+  type LyricsSearchState = {
+    query: string;
+    results: LyricsSearchResult[];
+    selectedIndex: number;
+    isSearching: boolean;
+    error: string | null;
+  };
+  type LyricsSearchAction =
+    | { type: "reset"; query: string }
+    | { type: "setQuery"; query: string }
+    | { type: "searchStart" }
+    | { type: "searchSuccess"; results: LyricsSearchResult[] }
+    | { type: "searchError"; error: string }
+    | { type: "setSelectedIndex"; index: number };
+  const initialState: LyricsSearchState = {
+    query: initialQuery || "",
+    results: [],
+    selectedIndex: -1,
+    isSearching: false,
+    error: null,
+  };
+  const reducer = (
+    state: LyricsSearchState,
+    action: LyricsSearchAction
+  ): LyricsSearchState => {
+    switch (action.type) {
+      case "reset":
+        return { ...initialState, query: action.query };
+      case "setQuery":
+        return { ...state, query: action.query };
+      case "searchStart":
+        return {
+          ...state,
+          isSearching: true,
+          error: null,
+          results: [],
+          selectedIndex: -1,
+        };
+      case "searchSuccess":
+        return {
+          ...state,
+          isSearching: false,
+          results: action.results,
+          error: action.results.length === 0 ? t("apps.ipod.dialogs.lyricsSearchNoResults") : null,
+        };
+      case "searchError":
+        return { ...state, isSearching: false, error: action.error };
+      case "setSelectedIndex":
+        return { ...state, selectedIndex: action.index };
+      default:
+        return state;
+    }
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { query, results, selectedIndex, isSearching, error } = state;
+
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      dispatch({ type: "reset", query: initialQuery || "" });
+    }
+  }, [isOpen, initialQuery]);
+
+  const handleSearch = async () => {
+    if (!query.trim()) {
+      dispatch({
+        type: "searchError",
+        error: t("apps.ipod.dialogs.lyricsSearchEmptyQuery"),
+      });
+      return;
+    }
+
+    dispatch({ type: "searchStart" });
+
+    try {
+      const response = await abortableFetch(
+        getApiUrl(`/api/songs/${encodeURIComponent(trackId)}`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "search-lyrics",
+            query: query.trim(),
+          }),
+          timeout: 15000,
+          throwOnHttpError: false,
+          retry: { maxAttempts: 1, initialDelayMs: 250 },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          response.status === 404
+            ? t("apps.ipod.dialogs.lyricsSearchNoResults")
+            : t("apps.ipod.dialogs.lyricsSearchHttpError", {
+                status: response.status,
+              })
+        );
+      }
+
+      const data = await response.json();
+      if (data.results && Array.isArray(data.results)) {
+        dispatch({ type: "searchSuccess", results: data.results });
+      } else {
+        throw new Error(t("apps.ipod.dialogs.lyricsSearchInvalidResponse"));
+      }
+    } catch (err) {
+      lyricsSearchLog.error("search:failed", {
+        error: err,
+        query: query.trim(),
+        trackTitle,
+        trackArtist,
+      });
+      dispatch({
+        type: "searchError",
+        error:
+          err instanceof Error
+            ? err.message
+            : t("apps.ipod.dialogs.lyricsSearchError"),
+      });
+    }
+  };
+
+  const handleUseSelected = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < results.length) {
+      onSelect(results[selectedIndex]);
+      onOpenChange(false);
+    }
+  }, [selectedIndex, results, onSelect, onOpenChange]);
+
+  const handleSelectAndUse = useCallback((index: number) => {
+    if (index >= 0 && index < results.length) {
+      dispatch({ type: "setSelectedIndex", index });
+      onSelect(results[index]);
+      onOpenChange(false);
+    }
+  }, [results, onSelect, onOpenChange]);
+
+  const handleReset = useCallback(() => {
+    onReset();
+    onOpenChange(false);
+  }, [onReset, onOpenChange]);
+
+  const handleDialogKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const dialogContent = (
+    <div className={isWindowsTheme ? "p-2 px-4" : "p-4 px-6"}>
+      <p
+        className={cn(
+          "text-neutral-500 mb-2",
+          isWindowsTheme
+            ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+            : "font-geneva-12 text-[12px]"
+        )}
+        style={{
+          fontFamily: isWindowsTheme
+            ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+            : undefined,
+          fontSize: isWindowsTheme ? "11px" : undefined,
+        }}
+        id="dialog-description"
+      >
+        {t("apps.ipod.dialogs.lyricsSearchDescription", {
+          title: trackTitle,
+          artist: trackArtist || t("apps.ipod.menu.unknownArtist"),
+        })}
+      </p>
+
+      <div className="flex gap-2 mb-3">
+        <Input
+          autoFocus
+          value={query}
+          onChange={(e) =>
+            dispatch({ type: "setQuery", query: e.target.value })
+          }
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && !isSearching) {
+              handleSearch();
+            }
+          }}
+          placeholder={t("apps.ipod.dialogs.lyricsSearchPlaceholder")}
+          className={cn(
+            "shadow-none flex-1",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+          disabled={isSearching}
+        />
+        <Button
+          variant={isMacTheme ? "secondary" : "retro"}
+          onClick={handleSearch}
+          disabled={isSearching || !query.trim()}
+          className={cn(
+            "flex-shrink-0",
+            !isMacTheme && "h-7",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+        >
+          {isSearching
+            ? t("apps.ipod.dialogs.lyricsSearchSearching")
+            : t("apps.ipod.dialogs.lyricsSearchSearch")}
+        </Button>
+      </div>
+
+      {/* Show current active selection when there's an override */}
+      {hasOverride && currentSelection && results.length === 0 && !isSearching && (
+        <div className="mb-3">
+          <p
+            className={cn(
+              "text-neutral-500 mb-2",
+              isWindowsTheme
+                ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                : "font-geneva-12 text-[12px]"
+            )}
+            style={{
+              fontFamily: isWindowsTheme
+                ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                : undefined,
+              fontSize: isWindowsTheme ? "11px" : undefined,
+            }}
+          >
+            {t("apps.ipod.dialogs.lyricsSearchCurrentSelection")}
+          </p>
+          <div style={lyricsSearchListStyle}>
+            <div
+              className={cn(
+                "w-full",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              data-selected="true"
+              style={lyricsSearchRowStyle(0, true, {
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              })}
+            >
+              {(() => {
+                const coverUrl = formatKugouImageUrl(currentSelection.cover, 100);
+                return (
+                  <div
+                    className={cn(
+                      "flex-shrink-0 w-9 h-9 overflow-hidden",
+                      isWindowsTheme ? "border border-neutral-400" : "rounded-sm"
+                    )}
+                    style={{ backgroundColor: "var(--os-color-list-row-alt-bg)" }}
+                    aria-hidden="true"
+                  >
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt=""
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                        }}
+                        draggable={false}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })()}
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold truncate">{currentSelection.title}</div>
+                <div className="opacity-80 truncate">
+                  {currentSelection.artist}
+                  {currentSelection.album && ` • ${currentSelection.album}`}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p
+          className={cn(
+            "text-red-600 mb-2",
+            isWindowsTheme
+              ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+              : "font-geneva-12 text-[12px]"
+          )}
+          style={{
+            fontFamily: isWindowsTheme
+              ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+              : undefined,
+            fontSize: isWindowsTheme ? "11px" : undefined,
+          }}
+        >
+          {error}
+        </p>
+      )}
+
+      {results.length > 0 && (
+        <div className="mb-3">
+          <p
+            className={cn(
+              "text-neutral-500 mb-2",
+              isWindowsTheme
+                ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                : "font-geneva-12 text-[12px]"
+            )}
+            style={{
+              fontFamily: isWindowsTheme
+                ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                : undefined,
+              fontSize: isWindowsTheme ? "11px" : undefined,
+            }}
+          >
+            {t("apps.ipod.dialogs.lyricsSearchSelectResult")}
+          </p>
+          <div
+            style={{
+              ...lyricsSearchListStyle,
+              height: "200px",
+              overflowY: "auto",
+            }}
+          >
+            {results.map((result, index) => {
+                const coverUrl = formatKugouImageUrl(result.cover, 100);
+                const rowSelected = selectedIndex === index;
+                return (
+                  <div
+                    key={result.hash}
+                    onClick={() =>
+                      dispatch({ type: "setSelectedIndex", index })
+                    }
+                    onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectAndUse(index);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    className={cn(
+                      "w-full",
+                      isWindowsTheme
+                        ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                        : "font-geneva-12 text-[12px]"
+                    )}
+                    data-selected={rowSelected ? "true" : undefined}
+                    style={lyricsSearchRowStyle(index, rowSelected, {
+                      fontFamily: isWindowsTheme
+                        ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                        : undefined,
+                      fontSize: isWindowsTheme ? "11px" : undefined,
+                    })}
+                  >
+                    <div
+                      className={cn(
+                        "flex-shrink-0 w-9 h-9 overflow-hidden",
+                        isWindowsTheme ? "border border-neutral-400" : "rounded-sm"
+                      )}
+                      style={{ backgroundColor: "var(--os-color-list-row-alt-bg)" }}
+                      aria-hidden="true"
+                    >
+                      {coverUrl ? (
+                        <img
+                          src={coverUrl}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+                          }}
+                          draggable={false}
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate">{result.title}</div>
+                      <div
+                        className="truncate"
+                        style={{
+                          opacity: rowSelected ? 0.8 : 1,
+                          color: rowSelected
+                            ? undefined
+                            : "var(--os-color-text-secondary)",
+                        }}
+                      >
+                        {result.artist}
+                        {result.album && ` • ${result.album}`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      <DialogFooter className="mt-4 gap-1.5 sm:justify-between">
+        <div className="flex gap-1.5 w-full sm:w-auto">
+          {hasOverride && (
+            <Button
+              variant="retro"
+              onClick={handleReset}
+              disabled={isSearching}
+              className={cn(
+                "w-full sm:w-auto h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("apps.ipod.dialogs.lyricsSearchReset")}
+            </Button>
+          )}
+        </div>
+        {/* Only show Cancel and Use Selected when there are results */}
+        {results.length > 0 && (
+          <div className="flex flex-col-reverse gap-2 w-full sm:w-auto sm:flex-row">
+            <Button
+              variant={isMacTheme ? "secondary" : "retro"}
+              onClick={() => onOpenChange(false)}
+              disabled={isSearching}
+              className={cn(
+                "w-full sm:w-auto",
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("common.dialog.cancel")}
+            </Button>
+            <Button
+              variant={isMacTheme ? "default" : "retro"}
+              onClick={handleUseSelected}
+              disabled={isSearching || selectedIndex < 0}
+              className={cn(
+                "w-full sm:w-auto",
+                !isMacTheme && "h-7",
+                isWindowsTheme
+                  ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+                  : "font-geneva-12 text-[12px]"
+              )}
+              style={{
+                fontFamily: isWindowsTheme
+                  ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+                  : undefined,
+                fontSize: isWindowsTheme ? "11px" : undefined,
+              }}
+            >
+              {t("apps.ipod.dialogs.lyricsSearchUseSelected")}
+            </Button>
+          </div>
+        )}
+      </DialogFooter>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn("max-w-[600px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        onKeyDown={handleDialogKeyDown}
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.ipod.dialogs.lyricsSearchTitle")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.ipod.dialogs.lyricsSearchDescription", {
+                title: trackTitle,
+                artist: trackArtist || t("apps.ipod.menu.unknownArtist"),
+              })}
+            </DialogDescription>
+            <DialogHeader>
+              {t("apps.ipod.dialogs.lyricsSearchTitle")}
+            </DialogHeader>
+            <div className="window-body">{dialogContent}</div>
+          </>
+        ) : isMacTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("apps.ipod.dialogs.lyricsSearchTitle")}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("apps.ipod.dialogs.lyricsSearchDescription", {
+                title: trackTitle,
+                artist: trackArtist || t("apps.ipod.menu.unknownArtist"),
+              })}
+            </DialogDescription>
+            <DialogHeader>
+              {t("apps.ipod.dialogs.lyricsSearchTitle")}
+            </DialogHeader>
+            {dialogContent}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {t("apps.ipod.dialogs.lyricsSearchTitle")}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("apps.ipod.dialogs.lyricsSearchDescription", {
+                  title: trackTitle,
+                  artist: trackArtist || t("apps.ipod.menu.unknownArtist"),
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogContent}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+

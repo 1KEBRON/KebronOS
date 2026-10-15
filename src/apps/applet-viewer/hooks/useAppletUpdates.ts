@@ -1,0 +1,63 @@
+import { useState, useCallback, useMemo } from "react";
+import { useAppletActions, type Applet } from "../utils/appletActions";
+import { fetchAppletCatalog } from "../utils/appletCatalog";
+
+export function useAppletUpdates() {
+  const [applets, setApplets] = useState<Applet[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const actions = useAppletActions();
+
+  const fetchApplets = useCallback(async (): Promise<Applet[]> => {
+    // Check if offline
+    if (typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine) {
+      setIsLoading(false);
+      return [];
+    }
+    setIsLoading(true);
+    try {
+      const sortedApplets = await fetchAppletCatalog();
+      setApplets(sortedApplets);
+      return sortedApplets;
+    } catch (error) {
+      console.error("Error fetching applets:", error);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Check for updates
+  const checkForUpdates = useCallback(async () => {
+    const fetchedApplets = await fetchApplets();
+    // Calculate updates from freshly fetched applets
+    const updates = fetchedApplets.filter(
+      (applet) =>
+        actions.isAppletInstalled(applet.id) && actions.needsUpdate(applet)
+    );
+    return {
+      count: updates.length,
+      updates: updates,
+    };
+  }, [fetchApplets, actions]);
+
+  // Get updates available - memoized to avoid recalculation on every render
+  const updatesAvailable = useMemo(() => {
+    return applets.filter(
+      (applet) =>
+        actions.isAppletInstalled(applet.id) && actions.needsUpdate(applet)
+    );
+  }, [applets, actions]);
+
+  const updateCount = updatesAvailable.length;
+
+  // Don't fetch on mount - only fetch when explicitly requested via checkForUpdates
+  // This avoids duplicate fetches since AppStore component also fetches independently
+
+  return {
+    updateCount,
+    updatesAvailable,
+    isLoading,
+    checkForUpdates,
+    fetchApplets,
+  };
+}

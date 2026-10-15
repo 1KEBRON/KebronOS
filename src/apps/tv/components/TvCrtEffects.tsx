@@ -1,0 +1,667 @@
+import { memo, useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { cn } from "@/lib/utils";
+
+/** Total durations for the one-shot CRT animations, in ms. Kept in one
+ *  place so completion timers, exit fades, and inner timings stay in
+ *  sync. The power-on/off curves are split into named phases below; if
+ *  these change, retune the corresponding `times` arrays. */
+const POWER_ON_DURATION_MS = 900;
+const POWER_OFF_DURATION_MS = 750;
+const CHANNEL_SWITCH_DURATION_MS = 550;
+
+/**
+ * Animated analog-static canvas. Used both as a brief "channel-switch"
+ * burst and as a sustained "buffering / loading" overlay. Intensity (0..1)
+ * controls how aggressively the noise is drawn; alpha (0..1) controls how
+ * opaque the canvas is layered on top of the picture.
+ *
+ * NOTE: rAF-based; the parent should mount/unmount the canvas via
+ * AnimatePresence or a conditional so the loop only runs while visible.
+ *
+ * Performance notes:
+ *  - The internal `ImageData` (and its `Uint32Array` view) is reused
+ *    across frames instead of being allocated each tick. Each pixel is
+ *    written with a single 32-bit store and `Math.random()` is called
+ *    once per pixel rather than once per channel.
+ *  - The redraw runs at the native refresh rate (60 fps on most
+ *    displays) for the most "live" analog-static feel; the per-frame
+ *    fill loop is cheap enough now that we don't need to drop frames
+ *    to keep the overlay smooth.
+ *  - When the document is hidden, the rAF loop is paused entirely so
+ *    a backgrounded tab stops generating noise frames.
+ */
+
+function NoiseCanvas({
+  intensity = 1,
+  className,
+  style,
+}: {
+  intensity?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const intensityRef = useRef(intensity);
+
+  useEffect(() => {
+    intensityRef.current = intensity;
+  }, [intensity]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) return;
+
+    let imgData: ImageData | null = null;
+    let pixels32: Uint32Array | null = null;
+
+    const resize = () => {
+      // Render at 1/1.5 CSS resolution; the browser upscales each canvas
+      // pixel ~1.5× on screen, giving slightly chunky analog-style grain
+      // without the blockiness of half-res or the cost of full-res.
+      // Matches the visual size used before this perf pass so the look
+      // of the static is unchanged.
+      const w = Math.max(1, Math.floor(canvas.offsetWidth / 1.5));
+      const h = Math.max(1, Math.floor(canvas.offsetHeight / 1.5));
+      const sizeChanged = canvas.width !== w || canvas.height !== h;
+      if (sizeChanged) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      // (Re)allocate the reusable buffer whenever the canvas changed
+      // size OR we don't have one yet. The "yet" branch matters in dev:
+      // React StrictMode mounts → unmounts → re-mounts the effect, and
+      // the second mount sees a canvas that's already the right size.
+      // Without this fallback, `imgData` / `pixels32` would stay null
+      // and the draw loop would silently produce no output.
+      if (sizeChanged || !imgData || !pixels32) {
+        imgData = ctx.createImageData(w, h);
+        pixels32 = new Uint32Array(imgData.data.buffer);
+      }
+    };
+
+    const draw = () => {
+      if (!imgData || !pixels32) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      const w = canvas.width;
+      const h = canvas.height;
+      const k = intensityRef.current;
+      // Fill RGBA in a single 32-bit write per pixel. Endianness only
+      // matters when the channels differ; here R=G=B and A=0xff so the
+      // packed value is identical on little- and big-endian hosts.
+      const len = pixels32.length;
+      for (let i = 0; i < len; i++) {
+        const v = (Math.random() * 255 * k) | 0;
+        pixels32[i] = 0xff000000 | (v << 16) | (v << 8) | v;
+      }
+      // Subtle scanline darkening on every other row. Operate on the
+      // packed 32-bit view so the inner loop is one read/write per
+      // pixel instead of three byte updates. Multiply by 200/256 ≈
+      // 0.781 to closely match the original 0.78 factor without
+      // floating-point math.
+      for (let y = 0; y < h; y += 2) {
+        const rowStart = y * w;
+        const rowEnd = rowStart + w;
+        for (let i = rowStart; i < rowEnd; i++) {
+          const v = ((pixels32[i] & 0xff) * 200) >> 8;
+          pixels32[i] = 0xff000000 | (v << 16) | (v << 8) | v;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    resize();
+    rafRef.current = requestAnimationFrame(draw);
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    // Pause when the document is hidden so a backgrounded tab doesn't
+    // continue chewing through noise frames. rAF already throttles
+    // backgrounded tabs heavily, but explicitly stopping is cheaper.
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      } else if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(draw);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      ro.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      imgData = null;
+      pixels32 = null;
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={cn("pointer-events-none", className)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        ...style,
+      }}
+    />
+  );
+}
+
+/**
+ * Persistent CRT shader-style overlay: vignette + horizontal scanlines +
+ * a faint RGB phosphor mask. Pure CSS gradients so it composites cheaply
+ * over the YouTube iframe.
+ *
+ * The gradient stack is heavy for the layout engine to parse on each
+ * render, so the (constant) inline style is hoisted to module scope and
+ * the component is memoized. Only the on/off opacity actually changes,
+ * which lets the browser keep the painted layer cached across the
+ * frequent `playedSeconds`-driven parent re-renders.
+ */
+const CRT_SHADER_BACKGROUND_IMAGE = [
+  // Layered effects:
+  //  1. Horizontal scanlines (1px on / 2px off)
+  //  2. RGB phosphor mask (vertical R/G/B subpixel stripes)
+  //  3. Soft corner vignette
+  "repeating-linear-gradient(to bottom, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px)",
+  "repeating-linear-gradient(to right, rgba(255,0,0,0.04) 0px, rgba(255,0,0,0.04) 1px, rgba(0,255,0,0.04) 1px, rgba(0,255,0,0.04) 2px, rgba(0,0,255,0.04) 2px, rgba(0,0,255,0.04) 3px)",
+  "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%)",
+].join(", ");
+
+const CRT_SHADER_BASE_STYLE: React.CSSProperties = {
+  transition: "opacity 220ms ease-out",
+  backgroundImage: CRT_SHADER_BACKGROUND_IMAGE,
+  mixBlendMode: "multiply",
+  // Promote to its own compositor layer so the (expensive) gradient
+  // stack is rasterised once and only the opacity flip is animated.
+  willChange: "opacity",
+  transform: "translateZ(0)",
+};
+
+const CRT_SHADER_ON_STYLE: React.CSSProperties = {
+  ...CRT_SHADER_BASE_STYLE,
+  opacity: 1,
+};
+
+const CRT_SHADER_OFF_STYLE: React.CSSProperties = {
+  ...CRT_SHADER_BASE_STYLE,
+  opacity: 0,
+};
+
+const CrtShaderOverlay = memo(function CrtShaderOverlay({
+  active,
+}: {
+  active: boolean;
+}) {
+  return (
+    <div
+      aria-hidden
+      className="absolute inset-0 pointer-events-none z-30"
+      style={active ? CRT_SHADER_ON_STYLE : CRT_SHADER_OFF_STYLE}
+    />
+  );
+});
+
+/**
+ * One-shot CRT power-on animation, modeled on a real cathode-ray tube
+ * warming up:
+ *
+ *   1. Hold full black while the heater warms.
+ *   2. A tiny phosphor dot appears at the exact vertical/horizontal
+ *      center of the screen and brightens.
+ *   3. The dot stretches horizontally into a thin bright scanline.
+ *   4. The two black bars covering the top and bottom recede toward
+ *      their respective outer edges, revealing the picture growing
+ *      outward from the center beam.
+ *   5. A subtle white wash flashes (screen-blend) as the picture
+ *      settles into full brightness.
+ *
+ * The component auto-unmounts via a timer once the animation completes
+ * so it never leaves a black overlay parked on top of the iframe.
+ */
+function PowerOnEffect({ playKey }: { playKey: number }) {
+  const [activeKey, setActiveKey] = useState(0);
+
+  useEffect(() => {
+    if (playKey <= 0) return;
+    setActiveKey(playKey);
+    const id = window.setTimeout(
+      () => setActiveKey(0),
+      POWER_ON_DURATION_MS
+    );
+    return () => window.clearTimeout(id);
+  }, [playKey]);
+
+  // All keyframe `times` are normalized to this total duration so the
+  // beats stay coordinated even if POWER_ON_DURATION_MS is retuned.
+  const totalSec = POWER_ON_DURATION_MS / 1000;
+  // Phase milestones (as fractions of totalSec):
+  //   0.00 .. 0.32  bars hold full black (heater warming, dot brightens)
+  //   0.32 .. 0.82  bars recede; beam peaks then fades
+  //   0.55 .. 0.95  brightness flash settling into the picture
+
+  return (
+    <AnimatePresence>
+      {activeKey > 0 && (
+        <motion.div
+          key={activeKey}
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          className="absolute inset-0 pointer-events-none z-40 overflow-hidden"
+        >
+          {/* Top half black bar — fully covers initially, holds, then
+              recedes toward the top edge. transform-origin: top means
+              scaleY 0 leaves the bar pinned to the top edge with zero
+              height, so the picture appears to grow downward from a
+              center beam (mirrored by the bottom bar). */}
+          <motion.div
+            initial={{ scaleY: 1 }}
+            animate={{ scaleY: [1, 1, 0] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.32, 0.82],
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="absolute left-0 right-0 top-0 bg-black"
+            style={{ height: "50%", transformOrigin: "top center" }}
+          />
+          <motion.div
+            initial={{ scaleY: 1 }}
+            animate={{ scaleY: [1, 1, 0] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.32, 0.82],
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="absolute left-0 right-0 bottom-0 bg-black"
+            style={{ height: "50%", transformOrigin: "bottom center" }}
+          />
+
+          {/* Phosphor warm-up dot at center: appears during the black
+              hold, brightens, then expands and fades as the beam takes
+              over. Stays visible above the bars (later in DOM order). */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.2 }}
+            animate={{
+              opacity: [0, 0.4, 1, 1, 0],
+              scale: [0.2, 0.4, 0.7, 1.0, 2.6],
+            }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.12, 0.24, 0.42, 0.72],
+              ease: "easeOut",
+            }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 8,
+              height: 8,
+              background:
+                "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(220,235,255,0.7) 40%, rgba(180,210,255,0.25) 70%, transparent 100%)",
+              boxShadow:
+                "0 0 24px 8px rgba(255,255,255,0.6), 0 0 56px 18px rgba(180,210,255,0.3)",
+            }}
+          />
+
+          {/* Horizontal scanline beam stretches out from the dot, peaks
+              just as the bars start to recede, then fades into the
+              picture. */}
+          <motion.div
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{
+              scaleX: [0, 0, 1, 1, 1],
+              opacity: [0, 0, 1, 0.6, 0],
+            }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.2, 0.42, 0.7, 0.92],
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
+            style={{
+              height: "2px",
+              background:
+                "linear-gradient(to right, transparent 0%, rgba(255,255,255,0.95) 50%, transparent 100%)",
+              boxShadow:
+                "0 0 14px 3px rgba(255,255,255,0.85), 0 0 32px 8px rgba(255,255,255,0.4)",
+              transformOrigin: "center",
+            }}
+          />
+
+          {/* Brightness wash that peaks just after the picture is fully
+              revealed, then fades. mix-blend-mode: screen so it brightens
+              the picture rather than washing it out. */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0, 0.5, 0] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.55, 0.72, 0.95],
+              ease: "easeOut",
+            }}
+            className="absolute inset-0 bg-white"
+            style={{ mixBlendMode: "screen" }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * One-shot CRT power-off animation, modeled on a real flyback shutdown:
+ *
+ *   1. Top + bottom black bars close inward from the outer edges,
+ *      squeezing the picture into a thin horizontal slit at center.
+ *   2. A bright scanline beam pops at the slit (the electron beam
+ *      compressed onto a single line) and holds briefly.
+ *   3. The beam collapses horizontally toward the center as the slit
+ *      shortens, while a black fill takes over the rest of the screen.
+ *   4. The remaining bright dot lingers, then fades with a soft bloom
+ *      halo as the phosphors cool.
+ *
+ * Used both for closing the window (poweringOff) and for pause
+ * (screenOff) — in the pause case the final keyframes leave a fully
+ * black screen parked indefinitely.
+ */
+function PowerOffEffect({
+  active,
+  onComplete,
+}: {
+  active: boolean;
+  onComplete?: () => void;
+}) {
+  // Fire onComplete via a real timer rather than AnimatePresence.onExitComplete
+  // so it triggers when the animation *finishes playing*, not when the
+  // overlay later unmounts.
+  //
+  // Pin onComplete in a ref so re-renders that change the callback
+  // identity don't reset the timer. Callers typically pass an inline
+  // closure (recreated on every parent render); without this ref, the
+  // [active, onComplete] dependency cycle would clear the pending
+  // timeout on every re-render and the close event would never fire.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Boolean dep handles the pause → close transition: while paused,
+  // active is true but onComplete is undefined (no timer wanted); when
+  // the user then clicks close, hasOnComplete flips true and a fresh
+  // timer is scheduled.
+  const hasOnComplete = Boolean(onComplete);
+  useEffect(() => {
+    if (!active || !hasOnComplete) return;
+    const id = window.setTimeout(() => {
+      onCompleteRef.current?.();
+    }, POWER_OFF_DURATION_MS);
+    return () => window.clearTimeout(id);
+  }, [active, hasOnComplete]);
+
+  const totalSec = POWER_OFF_DURATION_MS / 1000;
+  // Phase milestones (as fractions of totalSec):
+  //   0.00 .. 0.30  bars close in from top/bottom (cubic ease-in)
+  //   0.22 .. 0.44  beam fades up at the slit, holds full width briefly
+  //   0.40 .. 0.55  black fill takes over the rest of the screen
+  //   0.44 .. 0.70  beam collapses horizontally toward center
+  //   0.55 .. 0.94  center dot fades in, holds, then collapses + fades
+
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div
+          key="power-off"
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.12 } }}
+          className="absolute inset-0 pointer-events-none z-50 overflow-hidden"
+        >
+          {/* Top + bottom black bars close in from the outer edges with
+              a steep cubic ease-in so the squeeze accelerates the way a
+              real flyback collapse does. scaleY animates to 1 (full
+              coverage); the small overshoot via 0.99 → 1 is what gives
+              the slit a brief moment to be visible before fully
+              closing. */}
+          <motion.div
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: [0, 0.99, 1] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.3, 0.55],
+              ease: [0.5, 0, 0.75, 0.5],
+            }}
+            className="absolute top-0 left-0 right-0 bg-black"
+            style={{ height: "50%", transformOrigin: "top center" }}
+          />
+          <motion.div
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: [0, 0.99, 1] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.3, 0.55],
+              ease: [0.5, 0, 0.75, 0.5],
+            }}
+            className="absolute bottom-0 left-0 right-0 bg-black"
+            style={{ height: "50%", transformOrigin: "bottom center" }}
+          />
+
+          {/* Black background fills the rest of the screen once the
+              bars are nearly closed, so the beam + dot below have
+              something to glow against. */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0, 1] }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.4, 0.55],
+              ease: "linear",
+            }}
+            className="absolute inset-0 bg-black"
+          />
+
+          {/* Bright horizontal beam at the slit — the picture's
+              electron beam compressed onto a single line. The whole
+              beam (bright core + bloom halo + vertical falloff) is
+              baked into a radial gradient on a tall (50px) element,
+              so when we scaleX it down the halo shrinks with the
+              core. No box-shadow → no disconnected glow at the end.
+              Animates: fade in as the bars close → hold full width
+              for one breath → collapse horizontally toward the
+              center, where the dot takes over. */}
+          <motion.div
+            initial={{ opacity: 0, scaleX: 1 }}
+            animate={{
+              opacity: [0, 0, 1, 1, 1, 0],
+              scaleX: [1, 1, 1, 1, 0.06, 0],
+            }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.22, 0.34, 0.44, 0.62, 0.7],
+              ease: [0.55, 0, 0.35, 1],
+            }}
+            className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
+            style={{
+              height: "50px",
+              transformOrigin: "center",
+              // Wide bright horizontal core with vertical glow falloff.
+              // ellipse-50% wide × 9% tall → visible bright band with
+              // soft halo above/below. All transparent at the edges so
+              // there are no harsh seams when the element scales.
+              background:
+                "radial-gradient(ellipse 50% 9% at center, rgba(255,255,255,1) 0%, rgba(240,250,255,0.92) 16%, rgba(200,225,255,0.45) 40%, rgba(140,170,220,0.15) 65%, rgba(80,100,180,0.04) 80%, transparent 100%)",
+            }}
+          />
+
+          {/* Center collapse dot. The halo is part of a single radial
+              gradient on an 80px element so when we scale the element
+              down, the bright core *and* the halo shrink together — no
+              disconnected glow at the end. Fades in just as the beam
+              starts collapsing, so the visual energy hands off cleanly
+              from the horizontal beam to the center point. */}
+          <motion.div
+            initial={{ opacity: 0, scale: 1.2 }}
+            animate={{
+              opacity: [0, 0, 1, 1, 0],
+              scale: [1.2, 1.2, 1, 0.55, 0],
+            }}
+            transition={{
+              duration: totalSec,
+              times: [0, 0.5, 0.65, 0.78, 0.94],
+              ease: [0.4, 0, 0.6, 1],
+            }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 80,
+              height: 80,
+              // Tight bright core (0–6%), warm glow falloff (6–35%),
+              // long blue-tinted bloom (35–80%) that fades to fully
+              // transparent. Background = "halo built into the
+              // element", which means scale() shrinks it cleanly.
+              background:
+                "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(240,250,255,0.9) 6%, rgba(220,235,255,0.45) 18%, rgba(180,210,255,0.18) 38%, rgba(80,100,180,0.05) 60%, transparent 82%)",
+            }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export interface TvCrtEffectsProps {
+  /**
+   * When true, skip analog static layers (NoiseCanvas) for buffering and
+   * channel-change bursts. Used in fullscreen so we do not run rAF noise
+   * while the picture is in a portal.
+   */
+  suppressAnalogNoise?: boolean;
+  /** Bumped to play a power-on animation. 0 means no animation has played yet. */
+  powerOnKey: number;
+  /** While true, runs the power-off animation. Caller should set it true
+   *  shortly before the window actually closes. */
+  poweringOff: boolean;
+  onPowerOffComplete?: () => void;
+  /** While true, plays the power-off squeeze and then holds a permanent
+   *  black "screen off" overlay until set back to false. Used for pause. */
+  screenOff?: boolean;
+  /** Bumped to play a brief channel-change static burst. */
+  channelSwitchKey: number;
+  /** Whether the player is currently buffering / loading. Drives a
+   *  sustained light static overlay. */
+  buffering: boolean;
+  /** Whether the persistent CRT scanline / vignette overlay is on. */
+  crtActive: boolean;
+}
+
+/**
+ * Combined CRT / shader effects layer for the TV app. Render this as an
+ * absolutely-positioned sibling of the YouTube player so it overlays the
+ * picture without affecting layout.
+ *
+ * Memoized: the parent re-renders ~5 times/sec while a video is playing
+ * (driven by `onProgress` updates feeding the LCD ticker), but none of
+ * those updates affect the overlay's inputs. Skipping the reconcile
+ * entirely keeps Motion's animation work and the gradient
+ * style objects from being thrashed every frame.
+ */
+export const TvCrtEffects = memo(function TvCrtEffects({
+  suppressAnalogNoise = false,
+  powerOnKey,
+  poweringOff,
+  onPowerOffComplete,
+  screenOff = false,
+  channelSwitchKey,
+  buffering,
+  crtActive,
+}: TvCrtEffectsProps) {
+  // Auto-unmount the channel-switch burst once its animation has played.
+  // We can't gate on `channelSwitchKey > 0` alone because the prop never
+  // resets — that would leave the noise canvas running rAF forever and
+  // would also keep an invisible overlay layered on top of the iframe.
+  const [activeChannelKey, setActiveChannelKey] = useState(0);
+  useEffect(() => {
+    if (channelSwitchKey <= 0) return;
+    setActiveChannelKey(channelSwitchKey);
+    const id = window.setTimeout(
+      () => setActiveChannelKey(0),
+      CHANNEL_SWITCH_DURATION_MS
+    );
+    return () => window.clearTimeout(id);
+  }, [channelSwitchKey]);
+
+  return (
+    <>
+      <CrtShaderOverlay active={crtActive} />
+
+      {/* Sustained buffering static — fully opaque so the loading
+          iframe doesn't bleed through. Only the cross-fade in/out is
+          partially transparent. */}
+      <AnimatePresence>
+        {buffering && !suppressAnalogNoise && (
+          <motion.div
+            key="tv-buffering"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 z-30 pointer-events-none"
+          >
+            <NoiseCanvas intensity={1} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Channel-switch burst — fully opaque while active, briefly
+          fades out on exit so the new picture isn't visible through
+          the static. Re-keys on every channel change so a new burst
+          plays even mid-fade. */}
+      <AnimatePresence>
+        {!suppressAnalogNoise && activeChannelKey > 0 && (
+          <motion.div
+            key={`tv-channel-${activeChannelKey}`}
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.18 } }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 z-40 pointer-events-none"
+          >
+            <NoiseCanvas intensity={1} />
+            {/* Quick horizontal tear / RGB shift band sweeping through. */}
+            <motion.div
+              initial={{ y: "-20%" }}
+              animate={{ y: "120%" }}
+              transition={{ duration: 0.45, ease: "easeIn" }}
+              className="absolute left-0 right-0"
+              style={{
+                height: "18%",
+                background:
+                  "linear-gradient(to bottom, transparent 0%, rgba(255,0,80,0.25) 30%, rgba(0,200,255,0.25) 70%, transparent 100%)",
+                mixBlendMode: "screen",
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <PowerOnEffect playKey={powerOnKey} />
+      <PowerOffEffect
+        active={poweringOff || screenOff}
+        // Only fire onComplete for the close path; pause leaves the
+        // black overlay parked indefinitely until the user resumes.
+        onComplete={poweringOff ? onPowerOffComplete : undefined}
+      />
+    </>
+  );
+});

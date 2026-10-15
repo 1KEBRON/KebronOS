@@ -1,0 +1,1338 @@
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useAppHelpAboutDialogs } from "@/hooks/useAppHelpAboutDialogs";
+import { useTranslation } from "react-i18next";
+import { useTranslatedHelpItems } from "@/hooks/useTranslatedHelpItems";
+import { useAuth } from "@/hooks/useAuth";
+import { useOffline } from "@/hooks/useOffline";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { useIsRyoAdmin } from "@/hooks/useIsRyoAdmin";
+import { toast } from "sonner";
+import {
+  bulkImportSongMetadata,
+  deleteAllSongMetadata,
+  deleteSongMetadata,
+  listAllCachedSongMetadata,
+  type BulkImportProgress,
+  type CachedSongMetadata,
+} from "@/utils/songMetadataCache";
+import {
+  deleteAdminUser,
+  getAdminStats,
+  getAdminCursorAgentRuns,
+  getAdminUsers,
+} from "@/api/admin";
+import { ApiRequestError } from "@/api/core";
+import {
+  deleteRoom as deleteRoomApi,
+  deleteRoomMessage as deleteRoomMessageApi,
+  getRoomMessages as getRoomMessagesApi,
+  listRooms as listRoomsApi,
+} from "@/api/rooms";
+import { listSongs } from "@/api/songs";
+import {
+  getClearedAdminDetailSelection,
+  type AdminSection,
+} from "../utils/navigationState";
+import type { AdminInitialData } from "../types";
+import { formatAdminRelativeTime } from "../utils/adminTime";
+import { helpItems } from "..";
+
+/**
+ * Format Kugou image URL with size and HTTPS
+ * Kugou URLs contain {size} placeholder that needs to be replaced
+ */
+function formatKugouImageUrl(
+  imgUrl: string | undefined,
+  size: number = 100
+): string | null {
+  if (!imgUrl) return null;
+  let url = imgUrl.replace("{size}", String(size));
+  url = url.replace(/^http:\/\//, "https://");
+  return url;
+}
+
+interface User {
+  username: string;
+  lastActive: number;
+  banned?: boolean;
+}
+
+interface Room {
+  id: string;
+  name: string;
+  type: "public" | "private" | "irc";
+  createdAt: number;
+  userCount: number;
+  members?: string[];
+  ircHost?: string;
+  ircPort?: number;
+  ircTls?: boolean;
+  ircChannel?: string;
+  ircServerLabel?: string;
+}
+
+interface Message {
+  id: string;
+  roomId: string;
+  username: string;
+  content: string;
+  timestamp: number;
+}
+
+interface Stats {
+  totalUsers: number;
+  totalRooms: number;
+  totalMessages: number;
+  totalSongs?: number;
+  totalCursorAgents?: number;
+}
+
+interface DeleteTarget {
+  type: "user" | "room" | "message" | "song" | "allSongs";
+  id: string;
+  name: string;
+}
+
+const USERS_PER_PAGE = 100;
+const SONGS_PER_PAGE = 100;
+const EXPORT_FETCH_BATCH_SIZE = 50;
+const EXPORT_TRANSFORM_BATCH_SIZE = 25;
+const IMPORT_PREPARE_PROGRESS_STEP = 50;
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  if (chunkSize <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+function sortAdminUsers(users: User[]): User[] {
+  return [...users].sort((a: User, b: User) => {
+    if (a.banned && !b.banned) return -1;
+    if (!a.banned && b.banned) return 1;
+    return b.lastActive - a.lastActive;
+  });
+}
+
+function filterAdminUsers(users: User[], search: string): User[] {
+  if (search.length === 0) return users;
+  const lowerSearch = search.toLowerCase();
+  return users.filter((user) =>
+    user.username.toLowerCase().includes(lowerSearch)
+  );
+}
+
+interface ExportSongDocument {
+  id: string;
+  title: string;
+  artist?: string;
+  album?: string;
+  cover?: string;
+  coverColor?: string;
+  lyricOffset?: number;
+  lyricsSource?: CachedSongMetadata["lyricsSource"];
+  createdBy?: string;
+  createdAt: number;
+  updatedAt: number;
+  importOrder?: number;
+  lyrics?: { lrc?: string; krc?: string };
+  translations?: Record<string, string>;
+  furigana?: Array<Array<{ text: string; reading?: string }>>;
+  soramimi?: Array<Array<{ text: string; reading?: string }>>;
+  soramimiByLang?: Record<string, Array<Array<{ text: string; reading?: string }>>>;
+}
+
+type ImportStatusPhase =
+  | "idle"
+  | "reading-file"
+  | "parsing-file"
+  | "validating-data"
+  | "preparing-songs"
+  | "uploading-batches"
+  | "waiting-rate-limit"
+  | "refreshing-library"
+  | "completed"
+  | "failed";
+
+interface ImportStatus {
+  phase: ImportStatusPhase;
+  fileName: string | null;
+  fileSizeBytes: number;
+  totalSongs: number;
+  processedSongs: number;
+  imported: number;
+  updated: number;
+  currentBatch: number;
+  totalBatches: number;
+  currentBatchSize: number;
+  message: string | null;
+  error: string | null;
+  startedAt: number | null;
+  finishedAt: number | null;
+}
+
+const INITIAL_IMPORT_STATUS: ImportStatus = {
+  phase: "idle",
+  fileName: null,
+  fileSizeBytes: 0,
+  totalSongs: 0,
+  processedSongs: 0,
+  imported: 0,
+  updated: 0,
+  currentBatch: 0,
+  totalBatches: 0,
+  currentBatchSize: 0,
+  message: null,
+  error: null,
+  startedAt: null,
+  finishedAt: null,
+};
+
+export interface UseAdminLogicProps {
+  isWindowOpen: boolean;
+  initialData?: AdminInitialData;
+}
+
+export function useAdminLogic({ isWindowOpen, initialData }: UseAdminLogicProps) {
+  const { t } = useTranslation();
+  const translatedHelpItems = useTranslatedHelpItems("admin", helpItems);
+  const { username, isAuthenticated } = useAuth();
+  const isOffline = useOffline();
+  const { currentTheme, isWindowsTheme } = useThemeFlags();
+
+  const {
+    isHelpDialogOpen,
+    setIsHelpDialogOpen,
+    isAboutDialogOpen,
+    setIsAboutDialogOpen,
+  } = useAppHelpAboutDialogs();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomMessages, setRoomMessages] = useState<Message[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const userSearchRef = useRef(userSearch);
+  const [isLoading, setIsLoading] = useState(false);
+  const [visibleUsersCount, setVisibleUsersCount] = useState(USERS_PER_PAGE);
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    totalRooms: 0,
+    totalMessages: 0,
+  });
+
+  type AdminNavigationState = {
+    activeSection: AdminSection;
+    selectedRoomId: string | null;
+    selectedUserProfile: string | null;
+    selectedSongId: string | null;
+  };
+  type AdminNavigationAction =
+    | { type: "setActiveSection"; activeSection: AdminSection }
+    | { type: "setSelectedRoomId"; selectedRoomId: string | null }
+    | { type: "setSelectedUserProfile"; selectedUserProfile: string | null }
+    | { type: "setSelectedSongId"; selectedSongId: string | null }
+    | {
+        type: "applyClearedSelection";
+        payload: Pick<
+          AdminNavigationState,
+          "selectedRoomId" | "selectedUserProfile" | "selectedSongId"
+        >;
+      };
+  const initialNavigationState: AdminNavigationState = {
+    activeSection: "dashboard",
+    selectedRoomId: null,
+    selectedUserProfile: null,
+    selectedSongId: null,
+  };
+  const navigationReducer = (
+    state: AdminNavigationState,
+    action: AdminNavigationAction
+  ): AdminNavigationState => {
+    switch (action.type) {
+      case "setActiveSection":
+        return { ...state, activeSection: action.activeSection };
+      case "setSelectedRoomId":
+        return { ...state, selectedRoomId: action.selectedRoomId };
+      case "setSelectedUserProfile":
+        return { ...state, selectedUserProfile: action.selectedUserProfile };
+      case "setSelectedSongId":
+        return { ...state, selectedSongId: action.selectedSongId };
+      case "applyClearedSelection":
+        return { ...state, ...action.payload };
+      default:
+        return state;
+    }
+  };
+  const [navigationState, dispatchNavigation] = useReducer(
+    navigationReducer,
+    initialNavigationState
+  );
+  const { activeSection, selectedRoomId, selectedUserProfile, selectedSongId } =
+    navigationState;
+  const setActiveSection = useCallback((nextSection: AdminSection) => {
+    dispatchNavigation({ type: "setActiveSection", activeSection: nextSection });
+  }, []);
+
+  const adminLaunchAppliedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const section = initialData?.section;
+    const launchKey =
+      initialData?.cursorAgentRequestId ??
+      (initialData?.cursorAgentPrompt && initialData.autoStartCursorAgent
+        ? initialData.cursorAgentPrompt
+        : undefined);
+
+    if (!section && !launchKey) return;
+    if (launchKey && launchKey === adminLaunchAppliedRef.current) return;
+    if (launchKey) adminLaunchAppliedRef.current = launchKey;
+
+    if (section) {
+      setActiveSection(section);
+      dispatchNavigation({
+        type: "applyClearedSelection",
+        payload: getClearedAdminDetailSelection(section, {
+          selectedRoomId,
+          selectedUserProfile,
+          selectedSongId,
+        }),
+      });
+    }
+  }, [
+    initialData?.section,
+    initialData?.cursorAgentPrompt,
+    initialData?.autoStartCursorAgent,
+    initialData?.cursorAgentRequestId,
+    selectedRoomId,
+    selectedUserProfile,
+    selectedSongId,
+    setActiveSection,
+  ]);
+  const setSelectedRoomId = useCallback((roomId: string | null) => {
+    dispatchNavigation({ type: "setSelectedRoomId", selectedRoomId: roomId });
+  }, []);
+  const setSelectedUserProfile = useCallback((profile: string | null) => {
+    dispatchNavigation({
+      type: "setSelectedUserProfile",
+      selectedUserProfile: profile,
+    });
+  }, []);
+  const setSelectedSongId = useCallback((songId: string | null) => {
+    dispatchNavigation({ type: "setSelectedSongId", selectedSongId: songId });
+  }, []);
+  const [cursorAgentsRefreshSignal, setCursorAgentsRefreshSignal] = useState(0);
+  const [isRoomsExpanded, setIsRoomsExpanded] = useState(true);
+  const [songs, setSongs] = useState<CachedSongMetadata[]>([]);
+  const [songSearch, setSongSearch] = useState("");
+  const [songsFilterByRyoOnly, setSongsFilterByRyoOnly] = useState(false);
+  const [visibleSongsCount, setVisibleSongsCount] = useState(SONGS_PER_PAGE);
+
+  // Sidebar visibility and mobile detection
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const [isFrameNarrow, setIsFrameNarrow] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] =
+    useState<ImportStatus>(INITIAL_IMPORT_STATUS);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const importStatusResetTimeoutRef = useRef<number | null>(null);
+  const loadingRequestCountRef = useRef(0);
+
+  const isAdmin = useIsRyoAdmin();
+  const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || null;
+
+  const beginLoading = useCallback(() => {
+    loadingRequestCountRef.current += 1;
+    setIsLoading(true);
+  }, []);
+
+  const endLoading = useCallback(() => {
+    loadingRequestCountRef.current = Math.max(
+      loadingRequestCountRef.current - 1,
+      0
+    );
+    if (loadingRequestCountRef.current === 0) {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const clearImportStatusResetTimer = useCallback(() => {
+    if (importStatusResetTimeoutRef.current !== null) {
+      window.clearTimeout(importStatusResetTimeoutRef.current);
+      importStatusResetTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetImportStatus = useCallback(() => {
+    setImportStatus(INITIAL_IMPORT_STATUS);
+  }, []);
+
+  const scheduleImportStatusReset = useCallback(
+    (delayMs: number = 10000) => {
+      clearImportStatusResetTimer();
+      importStatusResetTimeoutRef.current = window.setTimeout(() => {
+        resetImportStatus();
+      }, delayMs);
+    },
+    [clearImportStatusResetTimer, resetImportStatus]
+  );
+
+  // Fetch stats
+  const fetchStats = useCallback(async () => {
+    if (!username || !isAuthenticated) return;
+    if (isOffline) return; // Skip API calls when offline
+
+    try {
+      const data = await getAdminStats<Partial<Stats>>();
+      // Merge with existing stats to preserve totalSongs (which comes from fetchSongs)
+      setStats((prev) => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    }
+  }, [username, isAuthenticated, isOffline]);
+
+  const fetchCursorAgentCount = useCallback(async () => {
+    if (!username || !isAuthenticated) return;
+    if (isOffline) return;
+
+    try {
+      const data = await getAdminCursorAgentRuns<{ totalCount?: number }>(1);
+      setStats((prev) => ({
+        ...prev,
+        totalCursorAgents: data.totalCount ?? 0,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch Cursor agent count:", error);
+    }
+  }, [username, isAuthenticated, isOffline]);
+
+  const setCursorAgentCount = useCallback((count: number) => {
+    setStats((prev) => ({ ...prev, totalCursorAgents: count }));
+  }, []);
+
+  // Fetch users (uses admin API to get all users)
+  const fetchUsers = useCallback(
+    async (search: string = "") => {
+      if (!username || !isAuthenticated) return;
+      if (isOffline) return; // Skip API calls when offline
+
+      beginLoading();
+      try {
+        const data = await getAdminUsers<{ users?: User[] }>();
+        const sortedUsers = sortAdminUsers(data.users || []);
+        setAllUsers(sortedUsers);
+        setUsers(filterAdminUsers(sortedUsers, search));
+        setVisibleUsersCount(USERS_PER_PAGE); // Reset pagination when fetching
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        toast.error(t("apps.admin.errors.failedToFetchUsers"));
+      } finally {
+        endLoading();
+      }
+    },
+    [username, isAuthenticated, t, isOffline, beginLoading, endLoading]
+  );
+
+  // Fetch rooms
+  const fetchRooms = useCallback(async () => {
+    if (!username || !isAuthenticated) return;
+    if (isOffline) return; // Skip API calls when offline
+
+    beginLoading();
+    try {
+      const data = await listRoomsApi();
+      const normalizedRooms = data.rooms.map((room) => ({
+        ...room,
+        type: room.type ?? "public",
+      }));
+      setRooms(normalizedRooms);
+    } catch (error) {
+      console.error("Failed to fetch rooms:", error);
+      toast.error(t("apps.admin.errors.failedToFetchRooms"));
+    } finally {
+      endLoading();
+    }
+  }, [username, isAuthenticated, t, isOffline, beginLoading, endLoading]);
+
+  // Fetch messages for a room
+  const fetchRoomMessages = useCallback(
+    async (roomId: string) => {
+      if (!username || !isAuthenticated) return;
+      if (isOffline) return; // Skip API calls when offline
+
+      beginLoading();
+      try {
+        const data = await getRoomMessagesApi(roomId);
+        setRoomMessages(data.messages || []);
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+        toast.error(t("apps.admin.errors.failedToFetchMessages"));
+      } finally {
+        endLoading();
+      }
+    },
+    [username, isAuthenticated, t, isOffline, beginLoading, endLoading]
+  );
+
+  // Fetch songs from Redis cache
+  const fetchSongs = useCallback(async () => {
+    if (isOffline) return; // Skip API calls when offline
+
+    beginLoading();
+    try {
+      const allSongs = await listAllCachedSongMetadata();
+      setSongs(allSongs);
+      setStats((prev) => ({ ...prev, totalSongs: allSongs.length }));
+      setVisibleSongsCount(SONGS_PER_PAGE);
+    } catch (error) {
+      console.error("Failed to fetch songs:", error);
+      toast.error(
+        t("apps.admin.errors.failedToFetchSongs", "Failed to fetch songs")
+      );
+    } finally {
+      endLoading();
+    }
+  }, [t, isOffline, beginLoading, endLoading]);
+
+  const loadIndependentAdminDatasets = useCallback(async () => {
+    await Promise.all([
+      fetchRooms(),
+      fetchStats(),
+      fetchSongs(),
+      fetchCursorAgentCount(),
+    ]);
+  }, [fetchRooms, fetchStats, fetchSongs, fetchCursorAgentCount]);
+
+  // Delete user
+  const deleteUser = useCallback(
+    async (targetUsername: string) => {
+      if (!username || !isAuthenticated) return;
+
+      try {
+        await deleteAdminUser<{ success: boolean }>(targetUsername);
+        toast.success(
+          t("apps.admin.messages.userDeleted", { username: targetUsername })
+        );
+        fetchUsers(userSearch);
+        fetchStats();
+      } catch (error) {
+        console.error("Failed to delete user:", error);
+        if (error instanceof ApiRequestError && error.message) {
+          toast.error(error.message);
+          return;
+        }
+        toast.error(t("apps.admin.errors.failedToDeleteUser"));
+      }
+    },
+    [username, isAuthenticated, userSearch, fetchUsers, fetchStats, t]
+  );
+
+  // Delete room
+  const deleteRoom = useCallback(
+    async (roomId: string) => {
+      if (!username || !isAuthenticated) return;
+
+      try {
+        await deleteRoomApi(roomId);
+        toast.success(t("apps.admin.messages.roomDeleted"));
+        fetchRooms();
+        fetchStats();
+        setSelectedRoomId(null);
+        setRoomMessages([]);
+      } catch (error) {
+        console.error("Failed to delete room:", error);
+        if (error instanceof ApiRequestError && error.message) {
+          toast.error(error.message);
+          return;
+        }
+        toast.error(t("apps.admin.errors.failedToDeleteRoom"));
+      }
+    },
+    [username, isAuthenticated, fetchRooms, fetchStats, setSelectedRoomId, t]
+  );
+
+  // Delete message
+  const deleteMessage = useCallback(
+    async (roomId: string, messageId: string) => {
+      if (!username || !isAuthenticated) return;
+
+      try {
+        await deleteRoomMessageApi(roomId, messageId);
+        toast.success(t("apps.admin.messages.messageDeleted"));
+        fetchRoomMessages(roomId);
+      } catch (error) {
+        console.error("Failed to delete message:", error);
+        if (error instanceof ApiRequestError && error.message) {
+          toast.error(error.message);
+          return;
+        }
+        toast.error(t("apps.admin.errors.failedToDeleteMessage"));
+      }
+    },
+    [username, isAuthenticated, fetchRoomMessages, t]
+  );
+
+  // Delete song
+  const deleteSong = useCallback(
+    async (youtubeId: string) => {
+      if (!username || !isAuthenticated) return;
+
+      try {
+        const success = await deleteSongMetadata(youtubeId, {
+          username,
+          isAuthenticated,
+        });
+
+        if (success) {
+          toast.success(t("apps.admin.messages.songDeleted", "Song deleted"));
+          fetchSongs();
+        } else {
+          toast.error(
+            t("apps.admin.errors.failedToDeleteSong", "Failed to delete song")
+          );
+        }
+      } catch (error) {
+        console.error("Failed to delete song:", error);
+        toast.error(
+          t("apps.admin.errors.failedToDeleteSong", "Failed to delete song")
+        );
+      }
+    },
+    [username, isAuthenticated, fetchSongs, t]
+  );
+
+  // Handle import file selection
+  const handleImportFile = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !username || !isAuthenticated) return;
+
+      clearImportStatusResetTimer();
+      setIsImporting(true);
+      const startedAt = Date.now();
+      setImportStatus({
+        phase: "reading-file",
+        fileName: file.name,
+        fileSizeBytes: file.size,
+        totalSongs: 0,
+        processedSongs: 0,
+        imported: 0,
+        updated: 0,
+        currentBatch: 0,
+        totalBatches: 0,
+        currentBatchSize: 0,
+        message: t("apps.admin.songs.importStatus.messages.readingFile"),
+        error: null,
+        startedAt,
+        finishedAt: null,
+      });
+
+      try {
+        const text = await file.text();
+        setImportStatus((prev) => ({
+          ...prev,
+          phase: "parsing-file",
+          message: t("apps.admin.songs.importStatus.messages.parsingFile"),
+        }));
+        const data = JSON.parse(text);
+
+        setImportStatus((prev) => ({
+          ...prev,
+          phase: "validating-data",
+          message: t("apps.admin.songs.importStatus.messages.validatingFile"),
+        }));
+
+        // Support both formats: { videos: [...] } or direct array
+        const videos = data.videos || data;
+        if (!Array.isArray(videos)) {
+          const formatError = t(
+            "apps.admin.errors.invalidImportFormat",
+            "Invalid file format"
+          );
+          setImportStatus((prev) => ({
+            ...prev,
+            phase: "failed",
+            message: formatError,
+            error: formatError,
+            finishedAt: Date.now(),
+          }));
+          toast.error(
+            formatError
+          );
+          scheduleImportStatusReset();
+          return;
+        }
+
+        setImportStatus((prev) => ({
+          ...prev,
+          phase: "preparing-songs",
+          totalSongs: videos.length,
+          processedSongs: 0,
+          message: t("apps.admin.songs.importStatus.messages.preparingSongs"),
+        }));
+
+        // Map to the expected song format, including content fields
+        const songsToImport: Parameters<typeof bulkImportSongMetadata>[0] = [];
+        for (let i = 0; i < videos.length; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const v = videos[i] as Record<string, any>;
+          songsToImport.push({
+            id: v.id as string,
+            url: v.url as string | undefined,
+            title: v.title as string,
+            artist: v.artist as string | undefined,
+            album: v.album as string | undefined,
+            lyricOffset: v.lyricOffset as number | undefined,
+            lyricsSource: (v.lyricsSource || v.lyricsSearch?.selection) as {
+              hash: string;
+              albumId: string | number;
+              title: string;
+              artist: string;
+              album?: string;
+            } | undefined,
+            // Include content fields (may be compressed gzip:base64 strings or raw objects)
+            // These are passed through as-is to the API which handles decompression
+            lyrics: v.lyrics,
+            translations: v.translations,
+            furigana: v.furigana,
+            soramimi: v.soramimi,
+            soramimiByLang: v.soramimiByLang,
+            // Timestamps
+            createdBy: v.createdBy as string | undefined,
+            createdAt: v.createdAt as number | undefined,
+            updatedAt: v.updatedAt as number | undefined,
+            importOrder: v.importOrder as number | undefined,
+          });
+
+          const processedSongs = i + 1;
+          if (
+            processedSongs === videos.length ||
+            processedSongs % IMPORT_PREPARE_PROGRESS_STEP === 0
+          ) {
+            setImportStatus((prev) => ({
+              ...prev,
+              phase: "preparing-songs",
+              totalSongs: videos.length,
+              processedSongs,
+            }));
+          }
+        }
+
+        const result = await bulkImportSongMetadata(songsToImport, {
+          username,
+          isAuthenticated,
+        }, {
+          onProgress: (progress: BulkImportProgress) => {
+            const nextPhase =
+              progress.stage === "error"
+                ? "failed"
+                : progress.stage === "complete"
+                ? "refreshing-library"
+                : progress.stage === "rate-limited"
+                ? "waiting-rate-limit"
+                : "uploading-batches";
+            const message = (() => {
+              switch (progress.stage) {
+                case "batch-split":
+                  return t(
+                    "apps.admin.songs.importStatus.messages.splittingBatch",
+                  );
+                case "batch-start":
+                  return t("apps.admin.songs.importStatus.messages.uploadingSongs");
+                case "rate-limited": {
+                  const seconds = Math.max(
+                    1,
+                    Math.ceil((progress.retryAfterMs ?? 0) / 1000),
+                  );
+                  return t("apps.admin.songs.importStatus.messages.rateLimitedRetry", {
+                    count: seconds,
+                  });
+                }
+                case "complete":
+                  return t(
+                    "apps.admin.songs.importStatus.messages.uploadedRefreshing",
+                  );
+                case "error":
+                  return (
+                    progress.message ||
+                    t("apps.admin.songs.importStatus.messages.failed")
+                  );
+                default:
+                  return (
+                    progress.message ||
+                    t("apps.admin.songs.importStatus.messages.progressUpdated")
+                  );
+              }
+            })();
+
+            setImportStatus((prev) => ({
+              ...prev,
+              phase: nextPhase,
+              totalSongs: progress.totalSongs || prev.totalSongs,
+              processedSongs: progress.processedSongs,
+              imported: progress.importedSongs,
+              updated: progress.updatedSongs,
+              currentBatch: progress.batchIndex,
+              totalBatches: progress.batchCount,
+              currentBatchSize: progress.batchSize,
+              message,
+              error: progress.stage === "error" ? message : null,
+            }));
+          },
+        });
+
+        if (result.success) {
+          setImportStatus((prev) => ({
+            ...prev,
+            phase: "refreshing-library",
+            processedSongs: result.total,
+            imported: result.imported,
+            updated: result.updated,
+            message: t("apps.admin.songs.importStatus.messages.refreshingSongList"),
+            error: null,
+          }));
+          await fetchSongs();
+          setImportStatus((prev) => ({
+            ...prev,
+            phase: "completed",
+            totalSongs: result.total || prev.totalSongs,
+            processedSongs: result.total,
+            imported: result.imported,
+            updated: result.updated,
+            message: t("apps.admin.songs.importStatus.messages.completed", {
+              imported: result.imported,
+              updated: result.updated,
+            }),
+            error: null,
+            finishedAt: Date.now(),
+          }));
+          toast.success(
+            t("apps.admin.messages.importSuccess", {
+              imported: result.imported,
+              updated: result.updated,
+              total: result.total,
+              defaultValue: `Imported ${result.imported} new, updated ${result.updated} (${result.total} total)`,
+            })
+          );
+          scheduleImportStatusReset();
+        } else {
+          const errorMessage =
+            result.error || t("apps.admin.errors.importFailed", "Import failed");
+          setImportStatus((prev) => ({
+            ...prev,
+            phase: "failed",
+            message: errorMessage,
+            error: errorMessage,
+            finishedAt: Date.now(),
+          }));
+          toast.error(
+            errorMessage
+          );
+          scheduleImportStatusReset();
+        }
+      } catch (error) {
+        console.error("Failed to import songs:", error);
+        const fallbackError = t("apps.admin.errors.importFailed", "Import failed");
+        const errorMessage =
+          error instanceof Error && error.message ? error.message : fallbackError;
+        setImportStatus((prev) => ({
+          ...prev,
+          phase: "failed",
+          message: errorMessage,
+          error: errorMessage,
+          finishedAt: Date.now(),
+        }));
+        toast.error(fallbackError);
+        scheduleImportStatusReset();
+      } finally {
+        setIsImporting(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    },
+    [
+      username,
+      isAuthenticated,
+      fetchSongs,
+      t,
+      clearImportStatusResetTimer,
+      scheduleImportStatusReset,
+    ]
+  );
+
+  // Compress and base64 encode a string (for large content fields)
+  const compressToBase64 = useCallback(async (data: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const stream = new Blob([encoder.encode(data)]).stream();
+    const compressedStream = stream.pipeThrough(new CompressionStream("gzip"));
+    const compressedBlob = await new Response(compressedStream).blob();
+    const arrayBuffer = await compressedBlob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    // Convert to base64
+    let binary = "";
+    for (let i = 0; i < uint8Array.length; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    return "gzip:" + btoa(binary);
+  }, []);
+
+  // Handle export library
+  const handleExportLibrary = useCallback(async () => {
+    if (songs.length === 0) {
+      toast.info(t("apps.admin.songs.noSongsToExport", "No songs to export"));
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      // Fetch in batches to avoid oversized responses for large libraries.
+      const songIds = Array.from(
+        new Set(
+          songs.reduce<string[]>((acc, song) => {
+            if (song.youtubeId) {
+              acc.push(song.youtubeId);
+            }
+            return acc;
+          }, [])
+        )
+      );
+      const idBatches = chunkArray(songIds, EXPORT_FETCH_BATCH_SIZE);
+      const fetchedSongs: ExportSongDocument[] = [];
+
+      for (const idBatch of idBatches) {
+        const data = await listSongs<ExportSongDocument>({
+          ids: idBatch,
+          include: "metadata,lyrics,translations,furigana,soramimi",
+        });
+        if (Array.isArray(data.songs)) {
+          fetchedSongs.push(...data.songs);
+        }
+      }
+
+      // Preserve UI ordering in the exported file.
+      const songMap = new Map(fetchedSongs.map((song) => [song.id, song]));
+      const fullSongs = songIds.reduce<ExportSongDocument[]>((acc, id) => {
+        const song = songMap.get(id);
+        if (song) {
+          acc.push(song);
+        }
+        return acc;
+      }, []);
+
+      // Map songs to export format with compressed content
+      const exportVideos: Record<string, unknown>[] = [];
+      const songBatches = chunkArray(fullSongs, EXPORT_TRANSFORM_BATCH_SIZE);
+
+      for (const songBatch of songBatches) {
+        const exportBatch = await Promise.all(
+          songBatch.map(async (song) => {
+            const result: Record<string, unknown> = {
+              // Metadata (never compressed - small and needs to be readable)
+              id: song.id,
+              title: song.title,
+              artist: song.artist,
+              album: song.album,
+              coverColor: song.coverColor,
+              lyricOffset: song.lyricOffset,
+              lyricsSource: song.lyricsSource,
+              createdBy: song.createdBy,
+              createdAt: song.createdAt,
+              updatedAt: song.updatedAt,
+              importOrder: song.importOrder,
+            };
+
+            // Compress large content fields
+            // Include cover in lyrics for backwards compatibility with old import format
+            if (song.lyrics) {
+              const lyricsWithCover = song.cover
+                ? { ...song.lyrics, cover: song.cover }
+                : song.lyrics;
+              const lyricsJson = JSON.stringify(lyricsWithCover);
+              result.lyrics =
+                lyricsJson.length > 500
+                  ? await compressToBase64(lyricsJson)
+                  : lyricsWithCover;
+            }
+            if (song.translations && Object.keys(song.translations).length > 0) {
+              const translationsJson = JSON.stringify(song.translations);
+              result.translations =
+                translationsJson.length > 500
+                  ? await compressToBase64(translationsJson)
+                  : song.translations;
+            }
+            if (song.furigana && song.furigana.length > 0) {
+              const furiganaJson = JSON.stringify(song.furigana);
+              result.furigana =
+                furiganaJson.length > 500
+                  ? await compressToBase64(furiganaJson)
+                  : song.furigana;
+            }
+            if (song.soramimi && song.soramimi.length > 0) {
+              const soramimiJson = JSON.stringify(song.soramimi);
+              result.soramimi =
+                soramimiJson.length > 500
+                  ? await compressToBase64(soramimiJson)
+                  : song.soramimi;
+            }
+            if (
+              song.soramimiByLang &&
+              Object.keys(song.soramimiByLang).length > 0
+            ) {
+              const soramimiByLangJson = JSON.stringify(song.soramimiByLang);
+              result.soramimiByLang =
+                soramimiByLangJson.length > 500
+                  ? await compressToBase64(soramimiByLangJson)
+                  : song.soramimiByLang;
+            }
+
+            return result;
+          })
+        );
+        exportVideos.push(...exportBatch);
+      }
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        version: 3, // Version 3 supports compressed content
+        compressed: true, // Indicates content fields may be compressed
+        videos: exportVideos,
+      };
+
+      // Create and download the file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ryos-library-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        t("apps.admin.messages.exportSuccess", {
+          count: exportVideos.length,
+          defaultValue: `Exported ${exportVideos.length} songs`,
+        })
+      );
+    } catch (error) {
+      console.error("Failed to export library:", error);
+      toast.error(t("apps.admin.errors.exportFailed", "Export failed"));
+    } finally {
+      setIsExporting(false);
+    }
+  }, [songs, t, compressToBase64]);
+
+  // Prompt delete all songs (opens dialog)
+  const handleDeleteAllSongs = useCallback(() => {
+    setDeleteTarget({
+      type: "allSongs",
+      id: "all",
+      name: t("apps.admin.songs.allSongs", "all songs"),
+    });
+    setIsDeleteDialogOpen(true);
+  }, [t]);
+
+  // Execute delete all songs (called from confirm dialog)
+  const executeDeleteAllSongs = useCallback(async () => {
+    if (!username || !isAuthenticated) return;
+
+    setIsDeletingAll(true);
+
+    try {
+      const result = await deleteAllSongMetadata({ username, isAuthenticated });
+
+      if (result.success > 0) {
+        toast.success(
+          t("apps.admin.messages.deleteAllSuccess", {
+            count: result.success,
+            total: result.total,
+            defaultValue: `Deleted ${result.success} of ${result.total} songs`,
+          })
+        );
+        fetchSongs();
+      } else if (result.total === 0) {
+        toast.info(
+          t("apps.admin.messages.noSongsToDelete", "No songs to delete")
+        );
+      } else {
+        toast.error(
+          t("apps.admin.errors.deleteAllFailed", "Failed to delete songs")
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete all songs:", error);
+      toast.error(
+        t("apps.admin.errors.deleteAllFailed", "Failed to delete songs")
+      );
+    } finally {
+      setIsDeletingAll(false);
+    }
+  }, [username, isAuthenticated, fetchSongs, t]);
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteTarget) return;
+
+    switch (deleteTarget.type) {
+      case "user":
+        deleteUser(deleteTarget.id);
+        break;
+      case "room":
+        deleteRoom(deleteTarget.id);
+        break;
+      case "message":
+        if (selectedRoomId) {
+          deleteMessage(selectedRoomId, deleteTarget.id);
+        }
+        break;
+      case "song":
+        deleteSong(deleteTarget.id);
+        break;
+      case "allSongs":
+        executeDeleteAllSongs();
+        break;
+    }
+    setDeleteTarget(null);
+    setIsDeleteDialogOpen(false);
+  }, [
+    deleteTarget,
+    selectedRoomId,
+    deleteUser,
+    deleteRoom,
+    deleteMessage,
+    deleteSong,
+    executeDeleteAllSongs,
+  ]);
+
+  // Prompt for delete
+  const promptDelete = useCallback(
+    (type: "user" | "room" | "message" | "song", id: string, name: string) => {
+      setDeleteTarget({ type, id, name });
+      setIsDeleteDialogOpen(true);
+    },
+    []
+  );
+
+  // Load data on mount
+  useEffect(() => {
+    if (isAdmin && isWindowOpen) {
+      void loadIndependentAdminDatasets();
+      void fetchUsers(userSearchRef.current);
+    }
+  }, [
+    isAdmin,
+    isWindowOpen,
+    loadIndependentAdminDatasets,
+    fetchUsers,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearImportStatusResetTimer();
+    };
+  }, [clearImportStatusResetTimer]);
+
+  // Handle user search
+  useEffect(() => {
+    userSearchRef.current = userSearch;
+    const timer = setTimeout(() => {
+      setUsers(filterAdminUsers(allUsers, userSearch));
+      setVisibleUsersCount(USERS_PER_PAGE);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [allUsers, userSearch]);
+
+  // Fetch room messages when room is selected
+  useEffect(() => {
+    if (selectedRoomId) {
+      fetchRoomMessages(selectedRoomId);
+    }
+  }, [selectedRoomId, fetchRoomMessages]);
+
+  // Close detail panels when switching to a different list section.
+  useEffect(() => {
+    const nextSelectionState = getClearedAdminDetailSelection(activeSection, {
+      selectedRoomId,
+      selectedUserProfile,
+      selectedSongId,
+    });
+    dispatchNavigation({
+      type: "applyClearedSelection",
+      payload: {
+        selectedSongId: nextSelectionState.selectedSongId,
+        selectedUserProfile: nextSelectionState.selectedUserProfile,
+        selectedRoomId: nextSelectionState.selectedRoomId,
+      },
+    });
+  }, [activeSection, selectedSongId, selectedUserProfile, selectedRoomId]);
+
+  const handleRefresh = useCallback(() => {
+    if (isOffline) {
+      toast.error(t("common.offline", "You are offline"));
+      return;
+    }
+    void loadIndependentAdminDatasets();
+    if (selectedRoomId) {
+      void fetchRoomMessages(selectedRoomId);
+    }
+    void fetchUsers(userSearch);
+    setCursorAgentsRefreshSignal((n) => n + 1);
+    toast.success(t("apps.admin.messages.dataRefreshed"));
+  }, [
+    loadIndependentAdminDatasets,
+    fetchRoomMessages,
+    fetchUsers,
+    selectedRoomId,
+    userSearch,
+    t,
+    isOffline,
+  ]);
+
+  // Toggle sidebar visibility
+  const toggleSidebarVisibility = useCallback(() => {
+    setIsSidebarVisible((prev) => !prev);
+  }, []);
+
+  // Detect narrow frame for mobile layout
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateWidth = (width: number) => {
+      const narrow = width < 550;
+      setIsFrameNarrow(narrow);
+      // Collapse sidebar by default on mobile
+      if (narrow && isSidebarVisible) {
+        setIsSidebarVisible(false);
+      }
+    };
+
+    // Initial measurement
+    updateWidth(containerRef.current.getBoundingClientRect().width);
+
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        updateWidth(entries[0].contentRect.width);
+      }
+    });
+
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+    // Only run on mount to set initial state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-show sidebar when transitioning from narrow to wide
+  const prevFrameNarrowRef = useRef(isFrameNarrow);
+  useEffect(() => {
+    if (prevFrameNarrowRef.current && !isFrameNarrow) {
+      // Transitioned from narrow -> wide
+      if (!isSidebarVisible) {
+        setIsSidebarVisible(true);
+      }
+    }
+    prevFrameNarrowRef.current = isFrameNarrow;
+  }, [isFrameNarrow, isSidebarVisible]);
+
+  // Scroll to top when navigating to detail views
+  useEffect(() => {
+    if (selectedSongId || selectedUserProfile) {
+      const viewport = scrollAreaRef.current?.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      );
+      if (viewport) {
+        viewport.scrollTo({ top: 0 });
+      }
+    }
+  }, [selectedSongId, selectedUserProfile]);
+
+  const formatRelativeTime = useCallback(
+    (timestamp: number) => formatAdminRelativeTime(timestamp, t),
+    [t]
+  );
+
+  return {
+    t,
+    translatedHelpItems,
+    username,
+    isAdmin,
+    isOffline,
+    currentTheme,
+    isWindowsTheme,
+    isHelpDialogOpen,
+    setIsHelpDialogOpen,
+    isAboutDialogOpen,
+    setIsAboutDialogOpen,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    deleteTarget,
+    users,
+    rooms,
+    selectedRoomId,
+    setSelectedRoomId,
+    roomMessages,
+    userSearch,
+    setUserSearch,
+    isLoading,
+    visibleUsersCount,
+    setVisibleUsersCount,
+    USERS_PER_PAGE,
+    stats,
+    activeSection,
+    setActiveSection,
+    cursorAgentsRefreshSignal,
+    setCursorAgentCount,
+    isRoomsExpanded,
+    setIsRoomsExpanded,
+    selectedUserProfile,
+    setSelectedUserProfile,
+    selectedSongId,
+    setSelectedSongId,
+    songs,
+    songSearch,
+    setSongSearch,
+    songsFilterByRyoOnly,
+    setSongsFilterByRyoOnly,
+    visibleSongsCount,
+    setVisibleSongsCount,
+    SONGS_PER_PAGE,
+    containerRef,
+    scrollAreaRef,
+    isSidebarVisible,
+    toggleSidebarVisibility,
+    isImporting,
+    importStatus,
+    isExporting,
+    isDeletingAll,
+    fileInputRef,
+    selectedRoom,
+    fetchUsers,
+    fetchStats,
+    fetchSongs,
+    deleteMessage,
+    handleImportFile,
+    handleExportLibrary,
+    handleDeleteAllSongs,
+    handleDeleteConfirm,
+    handleRefresh,
+    promptDelete,
+    formatRelativeTime,
+    formatKugouImageUrl,
+  };
+}

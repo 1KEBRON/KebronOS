@@ -1,0 +1,101 @@
+# UI Components and Shared Systems
+
+Overview of shared UI components and system-wide utilities that power the ryOS desktop environment.
+
+## Overview
+
+The ryOS component architecture is organized into distinct categories, each serving specific purposes across the desktop environment. Components are built with React and TypeScript, leveraging Tailwind CSS for styling and shadcn/ui as the foundation for consistent, accessible UI elements. The system emphasizes reusability, theme-aware components, and cross-app compatibility.
+
+The component library is structured hierarchically: base UI components provide fundamental building blocks, layout components handle window management and desktop structure, dialog components manage modal interactions, shared components offer cross-application utilities, and error components provide crash recovery surfaces. This organization ensures consistent behavior and appearance across all 29 built-in applications while maintaining flexibility for app-specific customizations.
+
+## Component Categories
+
+| Category | Description | Location |
+|----------|-------------|----------|
+| UI Components | shadcn-based components and custom primitives | `src/components/ui/` |
+| Layout Components | Window frames, desktop layout, menu bars | `src/components/layout/` |
+| Dialog Components | Modal dialogs, alerts, and system dialogs | `src/components/dialogs/` |
+| Shared Components | Cross-app utilities and themed components | `src/components/shared/` |
+| Error Components | App/desktop error boundaries with crash dialogs | `src/components/errors/` |
+| Dashboard Widgets | Dashboard widget surfaces and controls | `src/components/layout/dashboard/` |
+| Screensavers | Desktop screen saver overlays | `src/components/screensavers/` |
+| Listen Components | Listen Together session UI | `src/components/listen/` |
+| Icons | Shared icon components | `src/components/icons/` |
+
+```mermaid
+graph LR
+    subgraph src/components
+        UI[ui/]
+        Layout[layout/]
+        Dialogs[dialogs/]
+        Shared[shared/]
+        Errors[errors/]
+    end
+    
+    UI --> |primitives| Layout
+    UI --> |primitives| Dialogs
+    UI --> |primitives| Shared
+    UI --> |primitives| Errors
+    Layout --> |frames| Apps[src/apps/]
+    Dialogs --> |modals| Apps
+    Shared --> |utilities| Apps
+    Errors --> |crash recovery UI| Apps
+```
+
+## Technologies
+
+- **React 19** with TypeScript for type-safe component development
+- **Tailwind CSS** for utility-first styling and theme support
+- **shadcn/ui** component library for accessible, customizable UI primitives
+- **Motion** for animations and transitions
+
+## Component Architecture
+
+The UI system follows a layered approach:
+
+1. **Base Layer**: ~20 shadcn/ui primitives in `src/components/ui/`
+2. **Custom Layer**: ~12 specialized UI components in the same folder (activity indicators, aqua-checkbox, audio-bars, dial, playback-bars, search-input, right-click-menu, etc.)
+3. **Layout Layer**: WindowFrame, MenuBar, Desktop, and Dock components manage the desktop environment structure
+4. **Application Layer**: Dialog, shared, and error components provide common patterns used across multiple apps (including runtime crash recovery)
+
+```mermaid
+graph TD
+    subgraph Layer 4: Application
+        D1[Dialog Components]
+        D2[Shared Components]
+        D3[Error Boundaries<br/>Crash Dialog]
+    end
+    
+    subgraph Layer 3: Layout
+        C1[WindowFrame]
+        C2[MenuBar]
+        C3[Desktop]
+        C4[Dock]
+    end
+    
+    subgraph Layer 2: Custom
+        B1[activity-indicator]
+        B2[aqua-checkbox]
+        B3[audio-bars]
+        B4[dial]
+        B5[playback-bars]
+        B6[audio-input-button]
+    end
+    
+    subgraph Layer 1: Base
+        A1[shadcn/ui]
+        A2[button, dialog, input, select, ...]
+    end
+    
+    A1 --> B1 & B2 & B3 & B4 & B5 & B6
+    B1 & B2 & B3 & B4 & B5 & B6 --> C1 & C2 & C3 & C4
+    C1 & C2 & C3 & C4 --> D1 & D2 & D3
+```
+
+All components are theme-aware, automatically adapting to the active system theme (IDs: `system7`/System 7, `macosx`/Aqua, `xp`/XP, `win98`/98) through the theme system.
+
+## Subsections
+
+- [Component Library](/docs/component-library) - UI primitives in `src/components/ui/` (~33 files) plus ~30 top-level shared components (≈65 files including nested subfolders) under `src/components/shared/`, and crash boundary components
+- [Internationalization](/docs/i18n) - i18n hooks and translation system supporting 11 languages
+- [Icon Resources](/docs/icon-resources) - searchable gallery for the bundled Mac and Windows source icon catalogs in `public/resources/`

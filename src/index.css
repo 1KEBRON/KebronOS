@@ -1,0 +1,2289 @@
+@import url("/fonts/fonts.css");
+@import "./styles/themes.css";
+@import "./styles/ipod-device.css";
+@import "tailwindcss";
+@source "../node_modules/@streamdown/code/dist/*.js";
+@config "../tailwind.config.js";
+
+/* Additional font not declared in fonts.css */
+@font-face {
+  font-family: "Geneva-9";
+  src: url("/fonts/geneva-9.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 89%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 89%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 89%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 0%;
+    --ring: 0 0% 0%;
+    --radius: 0px;
+    --sat-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --font-geneva-12: "Geneva-12", "ArkPixel", "SerenityOS-Emoji", system-ui;
+    --font-cjk-serif-jp: "Noto Serif JP", "Source Han Serif JP",
+      "Noto Serif CJK JP", "Source Han Serif", "Noto Serif KR",
+      "Source Han Serif KR", "Noto Serif SC", "Source Han Serif SC",
+      "Noto Serif CJK SC", "Hiragino Mincho ProN", "Hiragino Mincho Pro",
+      "Yu Mincho", "Songti TC", "Songti SC", SimSun, "Nanum Myeongjo",
+      "AppleMyungjo", Batang;
+    --font-apple-garamond: "AppleGaramond", var(--font-cjk-serif-jp),
+      "SerenityOS-Emoji", "Times New Roman", serif;
+    --font-permanent-marker: "Permanent Marker", "Chiron GoRound TC WS",
+      "Hiragino Maru Gothic ProN", "Nanum Gothic", "Yuanti SC",
+      "Comic Sans MS", cursive;
+    --font-mondwest: "Mondwest", "ArkPixel", "SerenityOS-Emoji", system-ui;
+    --font-neuebit: "NeueBit", "ArkPixel", "SerenityOS-Emoji", system-ui;
+    --font-monaco: "Monaco", "ArkPixel", "SerenityOS-Emoji", system-ui;
+    --font-jacquard: "Jacquard", "ArkPixel", "SerenityOS-Emoji", system-ui;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Safari-specific: prevent touch callout and tap highlight globally */
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* CJK typography improvements for Chinese and Japanese */
+  html:lang(zh-TW) *,
+  html:lang(ja) * {
+    word-break: auto-phrase;
+    text-autospace: normal;
+  }
+
+  .no-touch-callout {
+    -webkit-touch-callout: none;
+  }
+  html {
+    background-color: #000;
+    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+    /* Disable pull-to-refresh and back gestures on Android Chrome */
+    -webkit-overscroll-behavior: none;
+    -webkit-overscroll-behavior-x: none;
+    -webkit-overscroll-behavior-y: none;
+  }
+  /* Browser fullscreen for the entire ryOS page (html, so body portals/menus stay visible) */
+  html:fullscreen,
+  html:-webkit-full-screen {
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+  }
+
+  body {
+    @apply text-foreground;
+    background-color: #000;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: var(--os-font-ui);
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+    /* Additional mobile gesture prevention */
+    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+    -webkit-overscroll-behavior: none;
+    -webkit-overscroll-behavior-x: none;
+    -webkit-overscroll-behavior-y: none;
+    /* Prevent touch scrolling behaviors */
+    touch-action: none;
+    -ms-touch-action: none;
+  }
+}
+
+@keyframes blink_input_opacity_to_prevent_scrolling_when_focus {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.input--focused {
+  animation: blink_input_opacity_to_prevent_scrolling_when_focus 0.01s;
+}
+
+/* Terminal input override styles to prevent XP/98 theme interference */
+input.terminal-input[type="text"] {
+  padding: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  box-sizing: border-box !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  /* Allow inline styles to control height/line-height for IME alignment */
+  vertical-align: top;
+}
+
+input.terminal-input[type="text"]:focus {
+  outline: none !important;
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Piano key override styles to prevent XP/98 theme button interference */
+button.piano-key {
+  font-size: inherit !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+  outline: none !important;
+  outline-offset: initial !important;
+}
+
+/* Restore borders for piano keys */
+button.piano-key {
+  border: 1px solid #333333 !important;
+}
+
+/* Default: rounded corners for modern themes */
+button.piano-key {
+  border-radius: 0 0 6px 6px !important; /* rounded-b-md equivalent */
+}
+
+/* Square corners for retro themes - using specific override classes */
+button.piano-key.system7-square {
+  border-radius: 0 !important;
+}
+
+button.piano-key:not(:disabled).active,
+button.piano-key:not(:disabled):active {
+  box-shadow: none !important;
+}
+
+button.piano-key.focused,
+button.piano-key:focus {
+  outline: none !important;
+  outline-offset: initial !important;
+}
+
+/* Specifically preserve Tailwind background classes for piano keys - High specificity */
+button.piano-key.bg-black,
+button.piano-key.bg-black.bg-black {
+  background: rgb(0 0 0) !important;
+  background-color: rgb(0 0 0) !important;
+}
+
+button.piano-key.bg-white,
+button.piano-key.bg-white.bg-white {
+  background: rgb(255 255 255) !important;
+  background-color: rgb(255 255 255) !important;
+}
+
+/* Preserve hover states with high specificity */
+button.piano-key.bg-black:hover,
+button.piano-key.bg-black.bg-black:hover {
+  background: rgb(51 51 51) !important; /* #333333 */
+  background-color: rgb(51 51 51) !important;
+}
+
+button.piano-key.bg-white:hover,
+button.piano-key.bg-white.bg-white:hover {
+  background: rgb(245 245 245) !important; /* #f5f5f5 */
+  background-color: rgb(245 245 245) !important;
+}
+
+/* Preserve pressed state with high specificity */
+button.piano-key[class*="bg-[#ff33ff]"],
+button.piano-key.piano-key[class*="bg-[#ff33ff]"] {
+  background: #ff33ff !important;
+  background-color: #ff33ff !important;
+}
+
+/* Help dialog — soft edge fade on the card scroller viewport only */
+.help-dialog-card-scroller__viewport--fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.help-dialog-card-scroller__viewport--fade-top.help-dialog-card-scroller__viewport--fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.help-dialog-card-scroller__viewport--fade-top:not(
+    .help-dialog-card-scroller__viewport--fade-bottom
+  ) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 24px,
+    #000 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0, #000 24px, #000 100%);
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #3b82f6 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-reverse {
+  animation: progress-indeterminate-reverse 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #3b82f6 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+@keyframes progress-indeterminate-reverse {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-progress-indeterminate-green {
+  animation: progress-indeterminate 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #22c55e 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-green-reverse {
+  animation: progress-indeterminate-reverse 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #22c55e 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-orange {
+  animation: progress-indeterminate 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #f97316 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-orange-reverse {
+  animation: progress-indeterminate-reverse 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #f97316 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-yellow {
+  animation: progress-indeterminate 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    #eab308 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+.animate-progress-indeterminate-white {
+  animation: progress-indeterminate 2.5s linear infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  width: 100%;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(120px);
+  }
+  100% {
+    transform: translateX(-120px);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 2s linear infinite;
+}
+
+/* Seamless horizontal loop: track is two equal segments; -50% = one segment width */
+@keyframes scrolling-text-marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.scrolling-text-marquee-track {
+  animation-name: scrolling-text-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: var(--scrolling-text-duration, 8s);
+  animation-delay: var(--scrolling-text-delay, 0s);
+  animation-fill-mode: backwards;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrolling-text-marquee-track {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+@layer utilities {
+  .font-geneva-12 {
+    font-family: var(--font-geneva-12), -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  :root[data-os-system-font] {
+    --font-geneva-12: var(--os-font-ui);
+  }
+
+  :root[data-os-system-font] .font-geneva-12:not(
+      .ipod-force-font .font-geneva-12
+    ):not(.karaoke-force-font .font-geneva-12):not(
+      .videos-lcd .font-geneva-12
+    ):not(.videos-player-controls .font-geneva-12):not(
+      .synth-force-font .font-geneva-12
+    ):not(.videos-status .font-geneva-12):not(
+      .tv-cc-force-font .font-geneva-12
+    ):not([data-assistant-overlay] .font-geneva-12) {
+    font-family: var(--os-font-ui) !important;
+  }
+
+  .system-font-select-content {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .file-icon-label {
+    font-family: var(--os-font-ui);
+  }
+
+  :root[data-os-theme="system7"] .file-icon-label {
+    font-family: var(--font-geneva-12);
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  .font-apple-garamond {
+    font-family: var(--font-apple-garamond);
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Permanent Marker is a single-weight (normal) webfont with no bold cut;
+     font-synthesis: none stops the browser from faux-bolding its Latin
+     glyphs. Chiron GoRound TC WS (CJK fallback) has real weight cuts, so
+     font-weight: 700 renders it bold to match Permanent Marker's heavy
+     handwritten look instead of looking too thin next to it. */
+  .font-permanent-marker {
+    font-family: var(--font-permanent-marker);
+    font-weight: 700;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Stuff sold nameplate: struck original price. Opaque fill is set inline
+     (washed toward the plate, not black — black gray vanished on sold blue).
+     !important clears inherited plate text-shadow so the wash reads. */
+  .stuff-status-nameplate-struck {
+    text-decoration: line-through solid;
+    text-decoration-thickness: 2px;
+    text-shadow: none !important;
+    opacity: 1;
+  }
+
+  .font-mondwest {
+    font-family: "Mondwest", "Yu Mincho", "Hiragino Mincho Pro", "Georgia",
+      "Palatino", "Yu Mincho", "Hiragino Mincho Pro", serif;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  .font-neuebit {
+    font-family: "NeueBit", "ArkPixel", "SerenityOS-Emoji", "Helvetica", "Arial",
+      "Hiragino Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Rounded lyrics font utility */
+  /* Chiron provides rounded CJK glyphs after bundled VAG Rounded. */
+  .font-lyrics-rounded {
+    font-family: "ryOS VAG Rounded", "Chiron GoRound TC WS",
+      "Hiragino Maru Gothic ProN", "Nanum Gothic", "Yuanti SC", ui-rounded,
+      sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Serif lyrics font utility (JP-first Source Han/Noto CJK fallback) */
+  .font-lyrics-serif {
+    font-family: Charter, var(--font-cjk-serif-jp), "Times New Roman", serif;
+    font-weight: 700;
+    line-height: 1.1;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Sans-serif lyrics font utility (default OS typeface) */
+  .font-lyrics-sans {
+    font-family: "Geneva-12", "ArkPixel", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+      "PingFang SC", "Microsoft YaHei", "Apple SD Gothic Neo", "Malgun Gothic",
+      "Nanum Gothic", system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    line-height: 1.1;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Serif Red - Japanese classic style (same font as serif but with outline styling) */
+  .font-lyrics-serif-red {
+    font-family: Charter, var(--font-cjk-serif-jp), "Times New Roman", serif;
+    font-weight: 700;
+    line-height: 1.1;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Glow - Album art primary color glow style (uses rounded font) */
+  .font-lyrics-gold-glow {
+    font-family: "ryOS VAG Rounded", "Chiron GoRound TC WS",
+      "Hiragino Maru Gothic ProN", "Nanum Gothic", "Yuanti SC", ui-rounded,
+      sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Gradient - Modern gradient fill style (uses bold sans-serif) */
+  .font-lyrics-gradient {
+    font-family: "Geneva-12", "ArkPixel", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+      "PingFang SC", "Microsoft YaHei", "Apple SD Gothic Neo", "Malgun Gothic",
+      "Nanum Gothic", system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* Animated rainbow for gradient lyrics - rotates hue of both text and glow together */
+  @keyframes lyrics-hue-rotate {
+    from { filter: drop-shadow(0 0 6px rgba(0,255,255,0.5)) drop-shadow(0 0 12px rgba(0,255,255,0.3)) hue-rotate(0deg); }
+    to { filter: drop-shadow(0 0 6px rgba(0,255,255,0.5)) drop-shadow(0 0 12px rgba(0,255,255,0.3)) hue-rotate(360deg); }
+  }
+
+  .lyrics-rainbow-animate {
+    animation: lyrics-hue-rotate 6s linear infinite;
+  }
+
+  /* Karaoke force-font container - enables container queries for responsive sizing */
+  .karaoke-force-font {
+    container-type: inline-size;
+  }
+
+  /* Karaoke lyrics text - uses container query units for window-relative sizing */
+  .karaoke-lyrics-text {
+    font-size: clamp(32px, 8cqw, 96px);
+  }
+
+  /* Fullscreen lyrics text - viewport-relative with max cap */
+  .fullscreen-lyrics-text {
+    font-size: clamp(32px, min(10vw, 10vh), 120px);
+  }
+
+  /* TV fullscreen closed captions - viewport-relative with max cap
+     (same min(vw,vh) pattern as karaoke fullscreen lyrics, but ~45%
+     the size since captions sit beneath the video rather than taking
+     over the frame). */
+  .tv-cc-fullscreen-text {
+    font-size: clamp(20px, min(4.5vw, 5vh), 56px);
+    line-height: 1.35;
+  }
+
+  .karaoke-title-card-title-window {
+    font-size: clamp(18px, 5.1cqw, 72px) !important;
+  }
+
+  .karaoke-title-card-title-fullscreen {
+    font-size: clamp(18px, min(6.35vw, 6.35vh), 72px) !important;
+  }
+
+  .karaoke-title-card-secondary-window {
+    font-size: clamp(14px, 4cqw, 60px) !important;
+  }
+
+  .karaoke-title-card-secondary-fullscreen {
+    font-size: clamp(14px, min(5vw, 5vh), 60px) !important;
+  }
+
+  /* Lyrics translation sizes - proportional to main lyrics */
+  .lyrics-translation-ipod {
+    font-size: 10px;
+    margin-top: 0.2em;
+  }
+
+  /* Karaoke in-window: ~50% of main lyrics (4cqw vs 8cqw) */
+  .lyrics-translation-karaoke {
+    font-size: clamp(14px, 4cqw, 60px);
+    margin-top: 0.2em;
+  }
+
+  /* Fullscreen: ~50% of main lyrics (5vw/5vh vs 10vw/10vh) */
+  .lyrics-translation-fullscreen {
+    font-size: clamp(14px, min(5vw, 5vh), 60px);
+    margin-top: 0.2em;
+  }
+
+  /* Old-school karaoke container needs larger gap between lines due to text-stroke */
+  .lyrics-old-school {
+    gap: clamp(0.5rem, 4cqw, 1.5rem) !important;
+  }
+
+  /* Karaoke status text - scales with container */
+  .karaoke-status-text {
+    font-size: clamp(18px, 5cqmin, 48px);
+  }
+
+  /* Karaoke activity indicator - scales with container */
+  .karaoke-activity-indicator {
+    width: clamp(24px, 6cqmin, 64px) !important;
+    height: clamp(24px, 6cqmin, 64px) !important;
+  }
+
+  .font-monaco,
+  .font-monaco-9 {
+    font-family: "Monaco", "ArkPixel", "SerenityOS-Emoji", monospace;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  .font-jacquard {
+    font-family: "Jacquard", "Yu Mincho", "Hiragino Mincho Pro", "Georgia",
+      "Palatino", serif;
+    -webkit-font-smoothing: antialiased;
+    font-smooth: always;
+  }
+
+  /* ----------------------------------------------------------------------- */
+  /* Text selection policy (deny-by-default via @layer base `*` rule)        */
+  /* Opt back in: .select-text, .ryos-chat-streamdown, form controls,      */
+  /* TextEdit ProseMirror. Chrome reinforcement: .no-select-gesture,        */
+  /* .draggable-area, .no-select-all                                        */
+  /* ----------------------------------------------------------------------- */
+
+  .select-text,
+  .select-text * {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .ryos-chat-streamdown,
+  .ryos-chat-streamdown * {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Editable form controls and contenteditable surfaces */
+  input:not(
+      [type="checkbox"]
+    ):not([type="radio"]):not([type="button"]):not([type="submit"]):not(
+      [type="reset"]
+    ):not([type="range"]):not([type="file"]):not([type="image"]):not(
+      [type="hidden"]
+    ),
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable="true"] *,
+  [role="textbox"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* TextEdit (TipTap / ProseMirror) — cross-browser; complements Firefox block */
+  .textedit-prosemirror-root.ProseMirror,
+  .textedit-prosemirror-root.ProseMirror * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
+  }
+
+  /* Books reader (epub.js render host). iOS Safari consults the iframe
+     ELEMENT's -webkit-user-select / -webkit-touch-callout in the parent
+     document before starting the long-press selection gesture inside the
+     frame, so the deny-by-default `*` rule silently kills text selection in
+     books on iOS (desktop browsers only look at the inner document, which is
+     why this is iOS-only). Opt the epub.js host subtree back in. */
+  .books-reader-selectable,
+  .books-reader-selectable * {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  .ryos-chat-streamdown {
+    max-width: 100%;
+    font-size: var(--ryos-chat-font-size, inherit) !important;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .ryos-chat-streamdown :where(p, li, blockquote, table, th, td, a, strong, em, span) {
+    font-size: inherit !important;
+  }
+
+  .ryos-chat-streamdown :where(p) {
+    margin: 0;
+  }
+
+  .ryos-chat-streamdown :where(p + p, ul, ol, pre, blockquote, table) {
+    margin-top: 0.35em;
+  }
+
+  .ryos-chat-streamdown :where(ul, ol) {
+    margin-bottom: 0;
+    padding-left: 1.6em;
+  }
+
+  .ryos-chat-streamdown :where(ul) {
+    list-style: disc;
+  }
+
+  .ryos-chat-streamdown :where(ol) {
+    list-style: decimal;
+  }
+
+  .ryos-chat-streamdown :where(li + li) {
+    margin-top: 0.1em;
+  }
+
+  .ryos-chat-streamdown :where(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0.3em 0.55em !important;
+    font-size: inherit !important;
+    line-height: 1.3;
+  }
+
+  .ryos-chat-streamdown :where(code) {
+    border-radius: 2px;
+    background: rgb(0 0 0 / 0.06);
+    padding: 0 0.18em;
+    font-family: var(--font-monaco);
+    font-size: 0.92em !important;
+  }
+
+  .ryos-chat-streamdown :where(pre code) {
+    background: transparent;
+    padding: 0;
+    font-size: inherit !important;
+    line-height: inherit;
+  }
+
+  /* Code block panel — matches the applet preview box: white, subtle 1px
+     outline, gently rounded, centered inside the chat bubble. */
+  .ryos-chat-streamdown [data-streamdown="code-block"] {
+    content-visibility: visible !important;
+    contain-intrinsic-size: auto !important;
+    gap: 0 !important;
+    margin: 0.3em 0 0.05em !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 3px !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    font-size: var(--ryos-chat-font-size, inherit) !important;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block"] > :first-child {
+    display: none !important;
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block-actions"] {
+    display: none !important;
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(pre, code, span) {
+    font-family: var(--font-monaco) !important;
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(pre, code) {
+    color: #24292f;
+  }
+
+  /* Streamdown's Shiki dual-theme spans expose --sdm-c for the light token
+     color and --shiki-dark for dark mode. Force the light token color to
+     paint correctly on our white panel without depending on Tailwind
+     scanning Streamdown's compiled output for arbitrary-value classes. */
+  .ryos-chat-streamdown [data-streamdown="code-block"] span[style*="--sdm-c"] {
+    color: var(--sdm-c, #24292f) !important;
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block"] span[style*="--sdm-tbg"] {
+    background-color: var(--sdm-tbg, transparent) !important;
+  }
+
+  /* Streamdown's compiled JS applies Tailwind `border` / `border-border`
+     classes to many nested elements (inner code body div, table wrapper,
+     cells). Our global `* { @apply border-border }` resolves border-color
+     to solid black, which produced harsh black lines inside the code panel
+     and around tables. Soften inherited border-color across the chat
+     markdown surface so any stray `border` class is a quiet hairline. */
+  .ryos-chat-streamdown,
+  .ryos-chat-streamdown * {
+    border-color: rgba(0, 0, 0, 0.14);
+  }
+
+  /* The outer `[data-streamdown="code-block"]` already provides the panel
+     outline via box-shadow; nuke every nested border, padding, and
+     background so the inner `code-block-body` div doesn't repaint a
+     second border or 16px (`p-4`) inset on top of the white panel. */
+  .ryos-chat-streamdown [data-streamdown="code-block"],
+  .ryos-chat-streamdown [data-streamdown="code-block"] * {
+    border: 0 !important;
+  }
+
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(div),
+  .ryos-chat-streamdown [data-streamdown="code-block-body"] {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Final pre inside the code panel is the only thing that should pad.
+     Keep `white-space: pre` so authored whitespace is preserved; if a
+     line is wider than the bubble, the panel scrolls horizontally. */
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(pre) {
+    padding: 0.3em 0.55em !important;
+    white-space: pre !important;
+    overflow-x: auto;
+  }
+
+  /* Streamdown's Shiki output is `<pre><code><span>line1</span><span>line2</span>…`
+     with no newline separator between the line wrappers, so without
+     intervention every line collapses onto a single row. Force those
+     line-wrapper spans (direct children of `<code>` inside the panel) to
+     render block-level so authored line breaks become visible. */
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(pre) > code > span,
+  .ryos-chat-streamdown [data-streamdown="code-block"] :where(pre) > span {
+    display: block;
+    white-space: inherit;
+  }
+
+  .ryos-chat-streamdown :where(blockquote) {
+    border-left: 2px solid rgba(0, 0, 0, 0.18);
+    margin-bottom: 0;
+    padding-left: 0.6em;
+  }
+
+  /* Tables: only the wrapper draws the panel outline. The table itself,
+     cells, and rows all clear their borders so we don't end up with the
+     wrapper outline + table outline doubling up. Cells use a hairline
+     bottom border for row dividers and tighter padding than Streamdown's
+     default px-4 py-2. The wrapper scrolls horizontally when the table
+     is wider than the bubble (cells enforce a `min-width`). */
+  .ryos-chat-streamdown [data-streamdown="table-wrapper"] {
+    margin: 0.3em 0 0.05em;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    border: 0 !important;
+    border-radius: 3px;
+    background: #ffffff !important;
+    padding: 0 !important;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ryos-chat-streamdown :where(table) {
+    width: auto;
+    max-width: none !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-collapse: collapse;
+    border-spacing: 0;
+    background: transparent;
+    box-shadow: none !important;
+  }
+
+  .ryos-chat-streamdown :where(thead),
+  .ryos-chat-streamdown [data-streamdown="table-header"] {
+    background: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .ryos-chat-streamdown :where(tr) {
+    border: 0 !important;
+  }
+
+  .ryos-chat-streamdown :where(th, td) {
+    border: 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+    padding: 0.22em 0.55em !important;
+    text-align: left;
+    vertical-align: top;
+    white-space: normal !important;
+    min-width: 6em;
+    overflow-wrap: anywhere;
+  }
+
+  .ryos-chat-streamdown :where(tr:last-child td) {
+    border-bottom: 0 !important;
+  }
+
+  .ryos-chat-streamdown :where(th) {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.72);
+  }
+
+  .ryos-chat-streamdown-link {
+    color: var(--os-color-link);
+    text-decoration: underline;
+  }
+
+  .ryos-chat-streamdown-urgent .ryos-chat-streamdown-link {
+    color: inherit;
+  }
+
+  /* Draggable area styles - prevents browser gestures on touch devices */
+  .draggable-area {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    /* Prevent default touch behaviors */
+    -webkit-touch-callout: none !important;
+    /* Disable context menu on long press */
+    -webkit-context-menu-trigger: none !important;
+    /* Prevent text selection highlighting */
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* Resize handle styles - ensures proper touch handling */
+  .resize-handle {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* Preview button reset - removes XP/98 theme button styling for image/canvas preview buttons */
+  button.preview-button {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none;
+    padding: 0 !important;
+    outline: none !important;
+    outline-offset: 0 !important;
+    border-radius: 3px !important;
+    overflow: hidden;
+  }
+
+  button.preview-button:focus,
+  button.preview-button:active,
+  button.preview-button:hover {
+    background-color: transparent !important;
+    outline: none !important;
+  }
+}
+
+/*
+ * Interlude countdown dots (U+25CF) — MUST be unlayered: themes.css applies unlayered
+ * `.ipod-force-font *` / `.karaoke-force-font * { font-size: unset !important }`, which beats
+ * any `!important` inside `@layer utilities`.
+ */
+.karaoke-force-font .karaoke-interlude-circle-dots {
+  display: inline-block;
+  font-size: clamp(27px, 0.825em, 72px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fullscreen-lyrics-text .karaoke-interlude-circle-dots {
+  display: inline-block;
+  font-size: clamp(27px, min(8.25vw, 8.25vh), 72px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.karaoke-force-font .lyrics-interlude-stack--karaoke .karaoke-interlude-circle-dots {
+  display: inline-block;
+  font-size: clamp(27px, 6.6cqw, 72px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fullscreen-lyrics-text.lyrics-interlude-stack--fullscreen .karaoke-interlude-circle-dots {
+  display: inline-block;
+  font-size: clamp(27px, min(8.25vw, 8.25vh), 72px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.lyrics-interlude-stack--ipod .karaoke-interlude-circle-dots {
+  display: inline-block;
+  font-size: clamp(24px, min(6.3vw, 6.3vh), 42px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+}
+
+/*
+ * U+25CF is much larger in rounded/serif faces (VAG Rounded, Charter, etc.) than in sans/gradient
+ * at the same font-size — scale down so interlude dots match sans/gradient visually.
+ */
+.karaoke-force-font
+  .karaoke-lyrics-text:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif,
+    .font-lyrics-serif-red,
+    .font-lyrics-gold-glow
+  )
+  .karaoke-interlude-circle-dots {
+  font-size: clamp(17px, 0.52em, 45px) !important;
+}
+
+.karaoke-force-font
+  .lyrics-interlude-stack--karaoke:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif,
+    .font-lyrics-serif-red,
+    .font-lyrics-gold-glow
+  )
+  .karaoke-interlude-circle-dots {
+  font-size: clamp(17px, 4.15cqw, 45px) !important;
+}
+
+.fullscreen-lyrics-text:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif,
+    .font-lyrics-serif-red,
+    .font-lyrics-gold-glow
+  )
+  .karaoke-interlude-circle-dots {
+  font-size: clamp(17px, min(5.2vw, 5.2vh), 45px) !important;
+}
+
+.fullscreen-lyrics-text.lyrics-interlude-stack--fullscreen:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif,
+    .font-lyrics-serif-red,
+    .font-lyrics-gold-glow
+  )
+  .karaoke-interlude-circle-dots {
+  font-size: clamp(17px, min(5.2vw, 5.2vh), 45px) !important;
+}
+
+.lyrics-interlude-stack--ipod:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif,
+    .font-lyrics-serif-red,
+    .font-lyrics-gold-glow
+  )
+  .karaoke-interlude-circle-dots {
+  font-size: clamp(15px, min(4vw, 4vh), 28px) !important;
+}
+
+/*
+ * Old-school interlude ● uses a smaller font-size than the lyric line; -webkit-text-stroke is em-based
+ * on the dot layer, so compensate so outline thickness matches the main lyric (~0.12em of lyric size).
+ */
+.lyrics-old-school .karaoke-interlude-circle-dots {
+  --interlude-dot-stroke-scale: 1.212121; /* 1/0.825 — default dot/lyric ratio */
+}
+
+.lyrics-old-school
+  .karaoke-force-font
+  .karaoke-lyrics-text:is(.font-lyrics-rounded, .font-lyrics-serif-red)
+  .karaoke-interlude-circle-dots,
+.lyrics-old-school
+  .karaoke-force-font
+  .lyrics-interlude-stack--karaoke:is(.font-lyrics-rounded, .font-lyrics-serif-red)
+  .karaoke-interlude-circle-dots,
+.lyrics-old-school
+  .fullscreen-lyrics-text:is(.font-lyrics-rounded, .font-lyrics-serif-red)
+  .karaoke-interlude-circle-dots,
+.lyrics-old-school
+  .fullscreen-lyrics-text.lyrics-interlude-stack--fullscreen:is(
+    .font-lyrics-rounded,
+    .font-lyrics-serif-red
+  )
+  .karaoke-interlude-circle-dots {
+  --interlude-dot-stroke-scale: 1.923077; /* ~1/0.52 — compact glyph sizing for rounded/serif-red */
+}
+
+.lyrics-old-school
+  .lyrics-interlude-stack--ipod:is(.font-lyrics-rounded, .font-lyrics-serif-red)
+  .karaoke-interlude-circle-dots {
+  --interlude-dot-stroke-scale: 1.5625; /* ~1/0.64 — iPod stack compact dots */
+}
+
+.lyrics-old-school
+  .karaoke-interlude-circle-dots
+  .lyrics-word-highlight
+  > .lyrics-word-layer:first-child {
+  -webkit-text-stroke-width: calc(0.12em * var(--interlude-dot-stroke-scale, 1.212121)) !important;
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.7) !important;
+  paint-order: stroke fill !important;
+}
+
+.lyrics-old-school
+  .karaoke-interlude-circle-dots
+  .lyrics-word-highlight
+  > .lyrics-word-layer:last-child
+  > span {
+  -webkit-text-stroke-width: calc(0.12em * var(--interlude-dot-stroke-scale, 1.212121)) !important;
+  -webkit-text-stroke-color: #fff !important;
+  paint-order: stroke fill !important;
+}
+
+/* CRT Scanline Effect */
+.crt-effect {
+  position: relative;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.6) 0%,
+    rgba(128, 128, 128, 0.6) 25%,
+    #fff 40%,
+    rgba(128, 128, 128, 0.6) 75%,
+    rgba(128, 128, 128, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Tool-call / chat loading text — subdued sweep on dark surfaces (matches .dark on <html>) */
+.dark .shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgba(163, 163, 163, 0.32) 0%,
+    rgba(163, 163, 163, 0.32) 25%,
+    rgba(212, 212, 212, 0.62) 40%,
+    rgba(163, 163, 163, 0.32) 75%,
+    rgba(163, 163, 163, 0.32) 100%
+  );
+}
+
+.shimmer-gray {
+  /* Use a gradient suitable for gray text */
+  background-image: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.6) 0%,
+    rgba(128, 128, 128, 0.6) 25%,
+    rgba(0, 0, 0, 1) 40%,
+    rgba(128, 128, 128, 0.6) 75%,
+    rgba(128, 128, 128, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s infinite linear;
+}
+
+.dark .shimmer-gray {
+  background-image: linear-gradient(
+    90deg,
+    rgba(115, 115, 115, 0.38) 0%,
+    rgba(115, 115, 115, 0.38) 25%,
+    rgba(212, 212, 212, 0.58) 40%,
+    rgba(115, 115, 115, 0.38) 75%,
+    rgba(115, 115, 115, 0.38) 100%
+  );
+}
+
+/* Link preview loading skeleton — surface + animated sweep (not text clip) */
+.link-preview-loading-skeleton {
+  background-color: rgba(245, 245, 245, 0.9);
+  background-image: linear-gradient(
+    90deg,
+    rgba(229, 229, 229, 0.9) 0%,
+    rgba(229, 229, 229, 0.9) 25%,
+    rgba(250, 250, 250, 1) 40%,
+    rgba(229, 229, 229, 0.9) 75%,
+    rgba(229, 229, 229, 0.9) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.dark .link-preview-loading-skeleton {
+  background-color: rgba(38, 38, 42, 0.95);
+  background-image: linear-gradient(
+    90deg,
+    rgba(63, 63, 70, 0.95) 0%,
+    rgba(63, 63, 70, 0.95) 25%,
+    rgba(82, 82, 91, 0.85) 40%,
+    rgba(63, 63, 70, 0.95) 75%,
+    rgba(63, 63, 70, 0.95) 100%
+  );
+}
+
+/* Cursor agent stream markdown — compact rhythm aligned with tool-call rows */
+.cursor-stream-md > *:first-child {
+  margin-top: 0;
+}
+.cursor-stream-md > *:last-child {
+  margin-bottom: 0;
+}
+.cursor-stream-md p {
+  margin: 0 0 0.6rem 0;
+}
+.cursor-stream-md h1,
+.cursor-stream-md h2,
+.cursor-stream-md h3,
+.cursor-stream-md h4 {
+  margin: 0.6rem 0 0.3rem;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cursor-stream-md ul,
+.cursor-stream-md ol {
+  margin: 0 0 0.6rem 0;
+  padding-left: 1rem;
+}
+.cursor-stream-md ul {
+  list-style: disc;
+}
+.cursor-stream-md ol {
+  list-style: decimal;
+}
+.cursor-stream-md li {
+  margin: 0;
+}
+.cursor-stream-md a {
+  text-decoration: underline;
+}
+.cursor-stream-md strong {
+  font-weight: 600;
+}
+.cursor-stream-md em {
+  font-style: italic;
+}
+.cursor-stream-md blockquote {
+  margin: 0 0 0.6rem 0;
+  border-left: 2px solid rgb(212 212 216);
+  padding-left: 0.5rem;
+  color: rgb(82 82 91);
+}
+.cursor-stream-md code {
+  font-family: var(--font-geneva-12);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.cursor-stream-md pre {
+  margin: 0 0 0.6rem 0;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 11px;
+}
+.cursor-stream-md pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+.cursor-stream-md table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 0.6rem 0;
+}
+.cursor-stream-md th,
+.cursor-stream-md td {
+  border: 1px solid rgb(228 228 231);
+  padding: 2px 4px;
+}
+:root.dark .cursor-stream-md code,
+:root[data-theme="dark"] .cursor-stream-md code,
+.dark .cursor-stream-md code {
+  background: rgba(255, 255, 255, 0.08);
+}
+:root.dark .cursor-stream-md pre,
+:root[data-theme="dark"] .cursor-stream-md pre,
+.dark .cursor-stream-md pre {
+  background: rgba(255, 255, 255, 0.06);
+}
+:root.dark .cursor-stream-md th,
+:root.dark .cursor-stream-md td,
+.dark .cursor-stream-md th,
+.dark .cursor-stream-md td {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.crt-effect::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  animation: scanline 10s linear infinite;
+}
+
+#dosbox canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+#dosbox > div > div.absolute.right-10.bottom-10 > div {
+  display: flex;
+  position: absolute;
+  width: 200px;
+  flex-direction: row;
+  color: #ffffff;
+  top: 12px;
+  left: 12px;
+  text-shadow: 0 0 4px #000;
+  font-family: Geneva-12, Geneva, Tahoma, Wtcsans-serif;
+  font-smooth: always;
+  -webkit-font-smoothing: antialiased;
+  font-size: 12px;
+}
+
+#dosbox > div > div.absolute.right-10.bottom-10 > div > svg {
+  display: none;
+}
+
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+/* Add subtle flicker animation for CRT effect */
+.crt-effect::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% {
+    opacity: 0.05;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.05;
+  }
+}
+
+/* Firefox-specific fixes for text editor */
+@-moz-document url-prefix() {
+  .ProseMirror {
+    cursor: text !important;
+  }
+
+  .ProseMirror * {
+    user-select: text !important;
+    -moz-user-select: text !important;
+  }
+
+  .ProseMirror p {
+    line-height: 1.5 !important;
+  }
+}
+
+/* LCD Screen base styling */
+.lcd-screen {
+  position: relative;
+  image-rendering: pixelated;
+}
+
+/* Horizontal scan lines */
+.lcd-scan-lines::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
+  background-size: 100% 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glass reflection effect */
+.lcd-reflection {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+/* Subtle LCD flicker animation */
+@keyframes lcd-flicker {
+  0% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.lcd-screen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  pointer-events: none;
+  z-index: 40; /* Higher z-index to appear above video */
+  animation: lcd-flicker 3s infinite;
+}
+
+/* Apply subtle color fringing on text - typical of LCD displays */
+.lcd-screen .font-chicago {
+  text-shadow: 0.5px 0 0 rgba(255, 0, 0, 0.1), -0.5px 0 0 rgba(0, 0, 255, 0.1),
+    0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* Add a subtle video effect when playing */
+.lcd-screen .react-player {
+  filter: brightness(1.05) contrast(1.02) saturate(1.1);
+}
+
+/* Fix 1px gap on right and bottom for video players and iframes */
+.react-player,
+.react-player > div,
+.react-player iframe,
+.react-player video {
+  display: block !important;
+  line-height: 0;
+}
+
+/* Extend react-player to cover 1px gap on right and bottom */
+.react-player {
+  width: calc(100% + 1px) !important;
+  height: calc(100% + 1px) !important;
+}
+
+/* Hide default scrollbars for custom implementation */
+.ipod-menu-container {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  /* Touch/trackpad: vertical list scroll only (marquee text must not drag the menu sideways). */
+  touch-action: pan-y;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* Clip vertical spill for scroll metrics; keep X visible so row marquees can scroll.
+ * overflow-clip-margin gives ascenders/descenders a hairline of paint room without
+ * changing the 22px / 33px row slots used for virtualization math. */
+.ipod-modern-screen .ipod-menu-item {
+  overflow-x: visible;
+  overflow-y: clip;
+  overflow-clip-margin-block: 2px;
+}
+
+.ipod-menu-container::-webkit-scrollbar {
+  display: none; /* WebKit browsers */
+}
+
+/* =========================================================================
+ * iPod modern (color screen) skin
+ *
+ * Toggled by the iPod app's "Screen → Modern" view option in the menubar.
+ * Replaces the monochrome 1st-gen LCD look with the color screen UI used
+ * by the iPod nano 6G/7G and the iPod-classic-js simulator. Style values
+ * sampled directly from tvillarete/ipod-classic-js (MIT-licensed) so the
+ * gradients and hairlines match the established reference 1:1:
+ *
+ *   - Header: linear-gradient(180deg, #feffff 0%, #b1b6b9 100%)
+ *             bottom hairline: neutral gray (reference used #7995a3; ours is desaturated)
+ *             15px black title (adjusted from reference for readability)
+ *   - Selected row: linear-gradient(#3cb8ff 0%, #347ab5 100%)
+ *                   white text, no shadow
+ *   - Menu / value column grey: rgb(99, 101, 103) at **15px** (same em as title strip)
+ *   - Battery: #54585b body w/ green #A5E07F gloss gradient, #c4c4c4 cap
+ *
+ * IMPORTANT: dimensions (titlebar height, menu row height, screen border,
+ * progress bar height, paddings) are intentionally unchanged from the
+ * classic skin so the same scrollbar / virtualization / now-playing
+ * geometry can theme cleanly between the two variants.
+ *
+ * The `.font-ipod-modern-ui` utility class explicitly fights the macOS
+ * theme override that forces `font-family: inherit` inside .ipod-force-font,
+ * mirroring how `.font-chicago` is preserved.
+ * ========================================================================= */
+
+.font-ipod-modern-ui {
+  /* MyriadPro (bold cut) is Apple's brand face on the iPod nano 6G/7G
+   * color screen and across iOS 6. We only bundle the bold weight —
+   * the modern skin uses bold everywhere except secondary subtext,
+   * which falls through to Helvetica Neue / -apple-system. */
+  font-family: "MyriadPro", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", "HelveticaNeue", Helvetica, Arial,
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "PingFang SC",
+    "Microsoft YaHei", "Apple SD Gothic Neo", "Malgun Gothic", "Nanum Gothic",
+    system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: always;
+  letter-spacing: 0;
+}
+
+.ipod-modern-screen {
+  font-family: "MyriadPro", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: black;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+/* Modern LCD backlight-off: dims the full screen (menus, now playing,
+ * Cover Flow inline) while keeping the same white surface — matches the
+ * classic skin's timed backlight-off behavior without swapping backgrounds. */
+.ipod-modern-screen.ipod-modern-backlight-off {
+  filter: brightness(0.5) contrast(0.9);
+}
+
+/* On the refined device the lens already darkens the LCD, so an unlit
+ * screen dims less (still clearly "off", but readable under the glass). */
+.ipod-device .ipod-modern-screen.ipod-modern-backlight-off {
+  filter: brightness(0.66) contrast(0.92) saturate(0.85);
+}
+
+/* iPod-classic-js Header (sampled from app/components/Header/index.tsx):
+ *   background: linear-gradient(180deg, #feffff 0%, #b1b6b9 100%);
+ *   reference border-bottom was #7995a3 (slightly blue); we use a neutral gray.
+ *
+ * The modern titlebar is **16px** tall; the **132px** menu body fits six **22px**
+ * rows or four **33px** media rows with no slack (152px outer + border-2).
+ * Classic's title strip stays at 24px to give Chicago bitmap glyphs the room
+ * they need.
+ * The hairline is drawn via inset box-shadow so it doesn't
+ * add height when the existing border-b utility is also present. */
+.ipod-modern-titlebar {
+  background-image: linear-gradient(180deg, #feffff 0%, #b1b6b9 100%);
+  box-shadow: inset 0 -1px 0 #939393;
+}
+
+/* Missing album / playlist artwork — silver inset tile (modern media rows). */
+.ipod-empty-artwork {
+  background-image: linear-gradient(
+    145deg,
+    #f5f6f8 0%,
+    #e2e5ea 38%,
+    #c4cad2 100%
+  );
+}
+
+.ipod-empty-artwork.is-selected {
+  background-image: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(0, 0, 0, 0.08) 100%
+  );
+}
+
+/* iPod-classic-js list rows are simple white cells with no separator —
+ * the only visual cue is the selection highlight. Hover gives a subtle
+ * grey for mouse users, since a real iPod has no hover state. */
+.ipod-modern-row {
+  background-color: #ffffff;
+}
+
+.ipod-modern-row:hover:not(.ipod-modern-row-selected) {
+  background-color: #f5f5f7;
+}
+
+/* Cover Flow flipped album header — softer and greyer than the active
+ * row highlight so the header reads like the muted hardware reference,
+ * while selected tracks keep the brighter tap target gradient below. */
+.ipod-modern-album-header {
+  background-color: #4f9ed4;
+  background-image: linear-gradient(
+    180deg,
+    #7ebdea 0%,
+    #519fd6 48%,
+    #2f78bc 100%
+  );
+  box-shadow: inset 0 -1px 0 rgba(0, 47, 84, 0.18);
+  color: #ffffff;
+}
+
+/* iPod-classic-js SelectableListItem selection (sampled directly):
+ *   background: linear-gradient(rgb(60, 184, 255) 0%, rgb(52, 122, 181) 100%);
+ *   color: white; */
+.ipod-modern-row-selected {
+  background-image: linear-gradient(
+    180deg,
+    rgb(60, 184, 255) 0%,
+    rgb(52, 122, 181) 100%
+  );
+  color: #ffffff;
+}
+
+/* iPod-classic-js BatteryIndicator (sampled directly):
+ *   ChargeLevelContainer: 1px solid #626262, background #54585b w/ a
+ *     gloss `linear-gradient(180deg, transparent 25%, 65%, rgba(255,255,255,.5))`
+ *   ChargeLevel: green #A5E07F (or red #D17F6B at <=20%) overlaid with a
+ *     specular highlight + dark base.
+ *   BatteryCap: light grey #c4c4c4 with a #626262 outline.
+ *
+ * Sized at 14×7 with a 2×3 cap for the slim 16px modern titlebar — the
+ * gradient stops are unchanged from the iPod-classic-js reference. */
+.ipod-modern-battery-container {
+  border: 1px solid #626262;
+  background-color: #54585b;
+  background-image: linear-gradient(
+    180deg,
+    transparent 25%,
+    transparent 65%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+}
+
+.ipod-modern-battery-fill {
+  background-color: #a5e07f;
+  background-image: linear-gradient(
+    180deg,
+    transparent 10%,
+    rgba(255, 255, 255, 0.5) 20%,
+    transparent 35%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.2) 55%,
+    rgba(0, 0, 0, 0.3) 65%,
+    rgba(0, 0, 0, 0.4) 80%
+  );
+}
+
+.ipod-modern-battery-fill--low {
+  background-color: #d17f6b;
+}
+
+.ipod-modern-battery-cap {
+  background-color: #c4c4c4;
+  border: 1px solid #626262;
+  border-left-width: 0;
+  /* No rounded corners — the iPod classic 6G/7G silver header battery
+   * is a flat rectangle (cap included), not the iOS 6 rounded pill. */
+  border-radius: 0;
+}
+
+/* iPod 6G/7G "split menu" view: the right HALF of the screen shows
+ * the now-playing album art with a slow Ken Burns zoom + pan, while
+ * the menu list + titlebar are clamped to the left half. Matches the
+ * "Music + Now Playing" layout on the iPod classic 6G/7G reference
+ * photo. The container clips the over-scaled image; the inner image
+ * animates `transform`.
+ *
+ * The art panel sits *behind* the menu (z-5 < menu's z-10/z-30) so
+ * the menu's drop shadow lands on top of the artwork. The depth
+ * illusion comes from two stacked sources: an inset gradient on the
+ * art column itself that darkens the leftmost slice of the cover (so
+ * the shadow reads as falling ON the artwork rather than a flat
+ * gutter), plus the soft drop shadow cast by `.ipod-modern-menu-panel`.
+ *
+ * The inner box-shadow uses an inset spread so it darkens roughly
+ * the leftmost ~12px of the cover with a smooth falloff — without
+ * this, the cast shadow alone leaves the cover edge looking too
+ * bright next to the menu, and the split read more like two flat
+ * panels than a layered stack.
+ *
+ * Background is pure black so it reads as a "backface" behind the
+ * cover artwork — as the cover art image fades out during the
+ * split→full transition the visible backing is solid black instead
+ * of leaking the white screen color through. */
+.ipod-modern-split-art {
+  background: #000;
+  box-shadow:
+    inset 8px 0 12px -4px rgba(0, 0, 0, 0.40),
+    inset 3px 0 5px -1px rgba(0, 0, 0, 0.30),
+    inset 1px 0 0 rgba(0, 0, 0, 0.18);
+}
+
+/* LEFT-side menu surface in split mode: must clip its contents (so menu
+ * row chrome and the silver titlebar gradient never bleed past the
+ * panel edge) and cast a soft drop shadow onto the album art panel
+ * to its right. The shadow lands on the artwork because the art
+ * panel sits at z-5 (below the menu's z-10/z-30) and is the SOLE
+ * source of depth — the art panel itself only carries a 1px
+ * hairline. Both the titlebar and content area get this class in
+ * split mode, so the shadow runs unbroken down the entire right
+ * edge of the menu surface. No inset line on the right — that read
+ * as a hard border next to the art; depth comes from the outer
+ * drop-shadow layers only.
+ *
+ * The class is kept mounted on the menu wrapper for every modern UI
+ * frame so the box-shadow can transition smoothly as the menu width
+ * animates split↔full. Default state has both shadow layers at zero
+ * alpha; the `.is-split` modifier fades them in. Combined with a
+ * `transition: box-shadow ...` on the wrapper this gives a smooth
+ * fade of the depth shadow in lock-step with the width animation. */
+.ipod-modern-menu-panel {
+  overflow: hidden;
+  box-shadow:
+    8px 0 16px -2px rgba(0, 0, 0, 0),
+    4px 0 8px -1px rgba(0, 0, 0, 0),
+    1px 0 0 rgba(0, 0, 0, 0);
+}
+
+/* Long-throw shadow stack so the menu reads as a card floating above
+ * the album art column — matches the gutter shadow visible in the
+ * iPod classic 6G/7G reference photo where the cover artwork's left
+ * edge sits a touch darker than its center. Alphas are kept on the
+ * softer side so the seam never reads as a hard inked rule (the
+ * inset gutter on `.ipod-modern-split-art` adds the rest of the
+ * depth on top). */
+.ipod-modern-menu-panel.is-split {
+  box-shadow:
+    8px 0 16px -2px rgba(0, 0, 0, 0.32),
+    4px 0 8px -1px rgba(0, 0, 0, 0.22),
+    1px 0 0 rgba(0, 0, 0, 0.15);
+}
+
+.ipod-modern-split-art-img {
+  transform-origin: center center;
+  animation: ipod-modern-ken-burns 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes ipod-modern-ken-burns {
+  0% {
+    transform: scale(1.08) translate(-3%, -2%);
+  }
+  50% {
+    transform: scale(1.18) translate(2%, 1%);
+  }
+  100% {
+    transform: scale(1.1) translate(3%, 3%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ipod-modern-split-art-img {
+    animation: none;
+    transform: scale(1.08);
+  }
+}
+
+/* macOS theme override: the `.ipod-force-font *` rule in themes.css sets
+ * `font-family: inherit !important`, which would clobber Helvetica Neue.
+ * Restore it for the modern skin classes — same approach used for
+ * `.font-chicago` further down in themes.css. */
+:root[data-os-theme="macosx"] .ipod-force-font .font-ipod-modern-ui,
+:root[data-os-theme="macosx"] .font-ipod-modern-ui {
+  font-family: "MyriadPro", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", "HelveticaNeue", Helvetica, Arial,
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "PingFang SC",
+    "Microsoft YaHei", "Apple SD Gothic Neo", "Malgun Gothic", "Nanum Gothic",
+    system-ui, sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  font-smooth: always !important;
+}
+
+.widget-strip-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.widget-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Crossfade for static desktop wallpaper layers (see DesktopStaticWallpaper). */
+@keyframes desktop-wallpaper-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Safari override: disable SerenityOS-Emoji to fix missing emoji glyphs      */
+/* ------------------------------------------------------------------------- */
+
+@supports (font: -apple-system-body) {
+  /* Safari (both macOS & iOS) uniquely supports the proprietary
+     `-apple-system-body` value in the `font` shorthand. We redeclare the
+     SerenityOS-Emoji font inside this feature query with an empty `src` so
+     Safari falls back to its native Apple Color Emoji set, while other
+     browsers continue to use SerenityOS-Emoji. */
+  @font-face {
+    font-family: "SerenityOS-Emoji";
+    /* Point to a non-existent local font to prevent download */
+    src: local("☃︎");
+    /* Ensure all styles/weights are covered */
+    font-weight: normal;
+    font-style: normal;
+  }
+}
+
+/* Prevent text selection on interactive elements */
+.user-select-none {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Safari-specific selection prevention for interactive UI elements          */
+/* Safari can trigger selection during touch gestures even with user-select: */
+/* none. This class provides comprehensive prevention for all browsers.      */
+/* ------------------------------------------------------------------------- */
+.no-select-all {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* Force no-select on all descendants as well (Safari fix) */
+.no-select-all * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Variant with touch-action: none for elements that handle their own gestures */
+.no-select-gesture {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: none !important;
+  -ms-touch-action: none !important;
+}
+
+.no-select-gesture * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* ------------------------------------------------------------------------- */
+/* macOS X theme override: disable pixelated rendering for icons and media    */
+/* Ensures smoother interpolation for macOS X while keeping retro themes      */
+/* (system7, win98, xp) pixelated via existing utility classes or inline      */
+/* styles. Uses !important to override Tailwind arbitrary value classes or    */
+/* inline styles that set image-rendering: pixelated.                         */
+/* ------------------------------------------------------------------------- */
+:root[data-os-theme="macosx"] .\[image-rendering\:pixelated\],
+:root[data-os-theme="macosx"] img,
+:root[data-os-theme="macosx"] canvas,
+:root[data-os-theme="macosx"] video {
+  image-rendering: auto !important;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Sonner toast positioning and animations                                   */
+/* ------------------------------------------------------------------------- */
+
+/* Reduce right margin for right-positioned toasts */
+[data-sonner-toaster][data-x-position="right"] {
+  right: 12px !important;
+}
+
+/* Mobile bottom-positioned toasts: account for dock/taskbar height and safe area */
+@media (max-width: 768px) {
+  [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+  
+  /* macOS X theme: add dock height (56px) */
+  :root[data-os-theme="macosx"] [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 72px) !important;
+  }
+
+  /* macOS X Aqua glass: dock sits a bit higher (6px lift + 8px taller bar) */
+  :root[data-os-theme="macosx"][data-os-aqua-material="glass"] [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 82px) !important;
+  }
+  
+  /* Windows XP theme: add taskbar height (30px) */
+  :root[data-os-theme="xp"] [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 46px) !important;
+  }
+  
+  /* Windows 98 theme: add taskbar height (30px) */
+  :root[data-os-theme="win98"] [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 46px) !important;
+  }
+}
+
+/* System 7 theme: square corners, black border, drop shadow, smaller body text */
+:root[data-os-theme="system7"] [data-sonner-toast] {
+  border-radius: 0 !important;
+  border: 1px solid #000 !important;
+  box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Smaller body text for System 7 toasts */
+:root[data-os-theme="system7"] [data-sonner-toast] .text-sm,
+:root[data-os-theme="system7"] [data-sonner-toast] [data-content] {
+  font-size: 12px !important;
+}
+
+/* Retro button style for System 7 toasts */
+:root[data-os-theme="system7"] [data-sonner-toast] button {
+  font-size: 12px !important;
+  border: 5px solid transparent !important;
+  border-image: url('/assets/button.svg') 30 stretch !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  color: #000 !important;
+}
+
+:root[data-os-theme="system7"] [data-sonner-toast] button:active {
+  border-image: url('/assets/button-default.svg') 60 stretch !important;
+}
+
+
+
+/* Windows XP theme: yellow XP background, no shadows, rounded corners */
+:root[data-os-theme="xp"] [data-sonner-toast] {
+  background: #ECE9D8 !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(0, 0, 0, 0.7) !important;
+  box-shadow: none !important;
+  color: #000 !important;
+}
+
+:root[data-os-theme="xp"] [data-sonner-toast] [data-title],
+:root[data-os-theme="xp"] [data-sonner-toast] [data-description],
+:root[data-os-theme="xp"] [data-sonner-toast] .text-sm,
+:root[data-os-theme="xp"] [data-sonner-toast] [data-content] {
+  color: #000 !important;
+  font-family: "Pixelated MS Sans Serif", "ArkPixel", Tahoma, sans-serif !important;
+  font-size: 11px !important;
+  -webkit-font-smoothing: none !important;
+  font-smooth: never !important;
+}
+
+:root[data-os-theme="xp"] [data-sonner-toast] button {
+  font-family: "Pixelated MS Sans Serif", "ArkPixel", Tahoma, sans-serif !important;
+  font-size: 11px !important;
+  background: #ECE9D8 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #888, inset 2px 2px #dfdfdf !important;
+  color: #000 !important;
+  padding: 4px 12px !important;
+  -webkit-font-smoothing: none !important;
+  font-smooth: never !important;
+}
+
+:root[data-os-theme="xp"] [data-sonner-toast] button:active {
+  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px #888, inset -2px -2px #dfdfdf !important;
+}
+
+/* Windows 98 theme: silver background, classic beveled 3D effect */
+:root[data-os-theme="win98"] [data-sonner-toast] {
+  background: #C0C0C0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px grey, inset 2px 2px #dfdfdf !important;
+  color: #000 !important;
+}
+
+:root[data-os-theme="win98"] [data-sonner-toast] [data-title],
+:root[data-os-theme="win98"] [data-sonner-toast] [data-description],
+:root[data-os-theme="win98"] [data-sonner-toast] .text-sm,
+:root[data-os-theme="win98"] [data-sonner-toast] [data-content] {
+  color: #000 !important;
+  font-size: 12px !important;
+  -webkit-font-smoothing: none !important;
+  font-smooth: never !important;
+}
+
+:root[data-os-theme="win98"] [data-sonner-toast] button {
+  font-family: "Pixelated MS Sans Serif", "ArkPixel", Tahoma, sans-serif !important;
+  font-size: 11px !important;
+  background: #C0C0C0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px grey, inset 2px 2px #dfdfdf !important;
+  color: #000 !important;
+  padding: 4px 12px !important;
+  -webkit-font-smoothing: none !important;
+  font-smooth: never !important;
+}
+
+:root[data-os-theme="win98"] [data-sonner-toast] button:active {
+  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #fff, inset 2px 2px grey, inset -2px -2px #dfdfdf !important;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Japanese Furigana (Ruby) styling for lyrics display                       */
+/* Override theme font-size rules with high specificity                      */
+/* ------------------------------------------------------------------------- */
+
+ruby.lyrics-furigana {
+  ruby-align: center;
+  ruby-position: over;
+}
+
+/* Move furigana up in rounded/old-school style */
+.font-lyrics-rounded ruby.lyrics-furigana rt {
+  margin-bottom: 0.2em;
+}
+
+/* Word-level highlight container for karaoke-style lyrics animation */
+/* Uses inline-grid to stack dimmed/highlighted layers */
+/* white-space: pre-wrap preserves trailing spaces while allowing text to wrap at container boundaries */
+/* Base padding accommodates glow and descenders; furigana-specific padding applied conditionally via :has() */
+/* Disable visionOS eye-tracking highlight for lyrics click targets */
+.lyrics-word-highlight,
+.lyrics-line-clickable {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lyrics-word-highlight {
+  --lyrics-shadow-bleed-x: max(36px, 0.9em);
+  --lyrics-shadow-bleed-top: 0.24em;
+  --lyrics-shadow-bleed-bottom: 0.4em;
+  display: inline-grid;
+  vertical-align: baseline;
+  white-space: pre-wrap;
+  padding: var(--lyrics-shadow-bleed-top) var(--lyrics-shadow-bleed-x) var(--lyrics-shadow-bleed-bottom);
+  margin: calc(-1 * var(--lyrics-shadow-bleed-top)) calc(-1 * var(--lyrics-shadow-bleed-x)) calc(-1 * var(--lyrics-shadow-bleed-bottom));
+  overflow: visible;
+}
+
+/* Extra top padding when furigana (ruby elements) are present to prevent overlap */
+.lyrics-word-highlight:has(ruby) {
+  padding-top: 0.35em;
+  margin-top: -0.35em;
+}
+
+/* Old-school karaoke (rounded font) needs more top padding for stroke + furigana */
+.font-lyrics-rounded .lyrics-word-highlight:has(ruby) {
+  padding-top: 0.45em;
+  margin-top: -0.45em;
+}
+
+/* Layer positioning - both layers share the same grid cell (1/1) */
+.lyrics-word-layer {
+  grid-area: 1 / 1;
+  overflow: visible;
+}
+
+/* Use !important to override theme window-body typography sizing where applied */
+/* Inherit opacity and text-shadow from parent lyrics for consistency */
+rt.lyrics-furigana-rt,
+:root[data-os-theme="macosx"] rt.lyrics-furigana-rt,
+:root[data-os-theme="system7"] rt.lyrics-furigana-rt,
+:root[data-os-theme="win98"] rt.lyrics-furigana-rt,
+:root[data-os-theme="xp"] rt.lyrics-furigana-rt {
+  font-size: 50% !important;
+  line-height: 1 !important;
+  font-weight: normal !important;
+  opacity: inherit;
+  text-shadow: inherit;
+  /* Cap height to prevent Safari from adding extra line spacing */
+  max-height: 1em;
+  overflow: visible;
+  /* Move furigana up a bit */
+  transform: translateY(-0.1em);
+  margin-top: 1em;
+}
+
+
+ruby.lyrics-furigana rp {
+  display: none;
+}
+
+/* Bold pronunciation ruby (furigana, pinyin, romaji, etc.) for serif, sans-serif, and rounded lyrics fonts */
+/* :root[data-os-theme] variants outrank the theme-prefixed "normal" rule above in every theme */
+.font-lyrics-serif rt.lyrics-furigana-rt,
+.font-lyrics-sans rt.lyrics-furigana-rt,
+.font-lyrics-rounded rt.lyrics-furigana-rt,
+.font-lyrics-gold-glow rt.lyrics-furigana-rt,
+:root[data-os-theme] .font-lyrics-rounded rt.lyrics-furigana-rt,
+:root[data-os-theme] .font-lyrics-gold-glow rt.lyrics-furigana-rt {
+  font-weight: 700 !important;
+}
+
+
+/* Korean ruby for rounded font inherits font with matching weight */
+.font-lyrics-rounded rt.lyrics-korean-rt {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+}
+
+/* Korean ruby sizes - match translation sizes for each context */
+/* Karaoke in-window: same as .lyrics-translation-karaoke */
+.karaoke-lyrics-text rt.lyrics-korean-rt {
+  font-size: clamp(14px, 4cqw, 60px) !important;
+}
+
+/* Fullscreen: same as .lyrics-translation-fullscreen */
+.fullscreen-lyrics-text rt.lyrics-korean-rt {
+  font-size: clamp(14px, min(5vw, 5vh), 60px) !important;
+}
+
+
+/* ---- kebron desktop: live ocean wallpaper ---- */
+[data-immersive] [data-desktop-icon],
+[data-immersive] [data-desktop-item-id] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.ocean-immersive-bar {
+  position: fixed;
+  z-index: 10010;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(12, 26, 36, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  color: #f3f0e9;
+  font: 500 13px/1 var(--os-font-ui, system-ui, sans-serif);
+  max-width: calc(100vw - 24px);
+}
+.ocean-immersive-bar__hint {
+  padding: 0 10px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.ocean-immersive-bar button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  white-space: nowrap;
+}
+.ocean-immersive-bar button:last-child {
+  background: #f3f0e9;
+  color: #0d202c;
+}
+.ocean-immersive-bar button:focus-visible {
+  outline: 2px solid #f6d38b;
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .ocean-immersive-bar__hint {
+    display: none;
+  }
+}

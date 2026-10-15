@@ -1,0 +1,280 @@
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { useAppStore } from "@/stores/useAppStore";
+
+import type {
+  ViewType,
+  SortType,
+} from "@/apps/finder/components/FinderMenuBar";
+
+export interface FinderInstance {
+  instanceId: string;
+  currentPath: string;
+  navigationHistory: string[];
+  navigationIndex: number;
+  viewType: ViewType;
+  sortType: SortType;
+  selectedFile: string | null;
+  selectedFiles: string[];
+  selectionAnchorPath: string | null;
+}
+
+interface FinderStoreState {
+  instances: Record<string, FinderInstance>;
+
+  // Per-path view preferences
+  pathViewPreferences: Record<string, ViewType>;
+  setViewTypeForPath: (path: string, type: ViewType) => void;
+  getViewTypeForPath: (path: string) => ViewType;
+  getDefaultViewTypeForPath: (path: string) => ViewType;
+
+
+  // Instance actions
+  createInstance: (instanceId: string, initialPath?: string) => void;
+  removeInstance: (instanceId: string) => void;
+  updateInstance: (
+    instanceId: string,
+    updates: Partial<Omit<FinderInstance, "instanceId">>
+  ) => void;
+  getInstance: (instanceId: string) => FinderInstance | null;
+  getForegroundInstance: () => FinderInstance | null;
+}
+
+const STORE_NAME = "ryos:finder";
+
+const KNOWN_VIEW_TYPES = new Set<string>(["small", "large", "list", "map"]);
+
+/** Kebron's North Star garden; it opens as a map. */
+export const NORTH_STAR_PATH = "/Documents/North Star";
+
+/**
+ * Built-in view per folder when the visitor hasn't picked one for it: North Star
+ * is a map, media and app folders are icons, everything else is a list.
+ */
+export function defaultViewTypeForPath(path: string): ViewType {
+  if (path === NORTH_STAR_PATH) return "map";
+  if (path === "/") return "large";
+  if (path.startsWith("/Images")) return "large";
+  if (path.startsWith("/Videos")) return "large";
+  if (path.startsWith("/Applications")) return "large";
+  if (path.startsWith("/Applets")) return "large";
+  if (path.startsWith("/Trash")) return "large";
+  if (path.startsWith("/Music")) return "large";
+  return "list";
+}
+
+export const useFinderStore = create<FinderStoreState>()(
+  persist(
+    (set, get) => ({
+      instances: {},
+
+      pathViewPreferences: {},
+      setViewTypeForPath: (path, type) =>
+        set((state) => ({
+          pathViewPreferences: {
+            ...state.pathViewPreferences,
+            [path]: type,
+          },
+        })),
+      getViewTypeForPath: (path) => {
+        const state = get();
+        return (
+          state.pathViewPreferences[path] ||
+          state.getDefaultViewTypeForPath(path)
+        );
+      },
+      getDefaultViewTypeForPath: (path) => defaultViewTypeForPath(path),
+
+
+      createInstance: (instanceId, initialPath = "/") =>
+        set((state) => {
+          if (state.instances[instanceId]) {
+            return state;
+          }
+
+          return {
+            instances: {
+              ...state.instances,
+              [instanceId]: {
+                instanceId,
+                currentPath: initialPath,
+                navigationHistory: [initialPath],
+                navigationIndex: 0,
+                viewType: state.getViewTypeForPath(initialPath),
+                sortType: "name",
+                selectedFile: null,
+                selectedFiles: [],
+                selectionAnchorPath: null,
+              },
+            },
+          };
+        }),
+
+      removeInstance: (instanceId) =>
+        set((state) => {
+          const newInstances = { ...state.instances };
+          delete newInstances[instanceId];
+          return { instances: newInstances };
+        }),
+
+      updateInstance: (instanceId, updates) =>
+        set((state) => {
+          if (!state.instances[instanceId]) return state;
+          return {
+            instances: {
+              ...state.instances,
+              [instanceId]: {
+                ...state.instances[instanceId],
+                ...updates,
+              },
+            },
+          };
+        }),
+
+      getInstance: (instanceId) => {
+        return get().instances[instanceId] || null;
+      },
+
+      getForegroundInstance: () => {
+        const appStore = useAppStore.getState();
+        const foregroundInstance = appStore.getForegroundInstance();
+
+        if (!foregroundInstance || foregroundInstance.appId !== "finder") {
+          return null;
+        }
+
+        return get().instances[foregroundInstance.instanceId] || null;
+      },
+    }),
+    {
+      name: STORE_NAME,
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        instances: state.instances,
+        pathViewPreferences: state.pathViewPreferences,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          if (state.instances) {
+            Object.keys(state.instances).forEach((instanceId) => {
+              const instance = state.instances[instanceId];
+              if (instance) {
+                state.instances[instanceId] = {
+                  instanceId,
+                  currentPath: instance.currentPath || "/",
+                  navigationHistory: instance.navigationHistory || ["/"],
+                  navigationIndex: instance.navigationIndex || 0,
+                  viewType:
+                    instance.viewType ||
+                    state.getViewTypeForPath?.(instance.currentPath || "/") ||
+                    "list",
+                  sortType: instance.sortType || "name",
+                  selectedFile: instance.selectedFile || null,
+                  selectedFiles:
+                    instance.selectedFiles ||
+                    (instance.selectedFile ? [instance.selectedFile] : []),
+                  selectionAnchorPath:
+                    instance.selectionAnchorPath || instance.selectedFile || null,
+                };
+              }
+            });
+          }
+
+          const anyState = state as unknown as {
+            pathViewPreferences?: Record<string, ViewType>;
+          };
+          if (!anyState.pathViewPreferences) anyState.pathViewPreferences = {};
+          // Views that no longer exist (the retired "spatial" view) fall back to the folder default.
+          for (const [path, type] of Object.entries(anyState.pathViewPreferences)) {
+            if (!KNOWN_VIEW_TYPES.has(type)) delete anyState.pathViewPreferences[path];
+          }
+          for (const instance of Object.values(state.instances ?? {})) {
+            if (!KNOWN_VIEW_TYPES.has(instance.viewType)) {
+              instance.viewType = defaultViewTypeForPath(instance.currentPath);
+            }
+          }
+        }
+      },
+    }
+  )
+);
+
+// ---------------------------------------------
+// Utility: calculateStorageSpace (moved from utils/storage)
+// Estimate LocalStorage usage (rough) and quota.
+// Returns { total, used, available, percentUsed }
+export const calculateStorageSpace = () => {
+  let total = 0;
+  let used = 0;
+
+  try {
+    // Typical LocalStorage quota is ~10 MB – keep same heuristic
+    total = 10 * 1024 * 1024;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const value = localStorage.getItem(key);
+      if (value) {
+        // Each UTF-16 char = 2 bytes
+        used += value.length * 2;
+      }
+    }
+  } catch (err) {
+    console.error("[FinderStore] Error calculating storage space", err);
+  }
+
+  return {
+    total,
+    used,
+    available: total - used,
+    percentUsed: Math.round((used / total) * 100),
+  };
+};
+
+// ---------------------------------------------
+// Utility: estimateStorageSpace (async, accurate)
+// Uses the StorageManager API (navigator.storage.estimate) which reports the
+// real per-origin usage across ALL storage backends (localStorage, IndexedDB,
+// Cache Storage, etc.) plus the browser-granted quota. Falls back to the rough
+// localStorage-only heuristic when the API is unavailable (e.g. older Safari).
+export const estimateStorageSpace = async (): Promise<
+  ReturnType<typeof calculateStorageSpace>
+> => {
+  try {
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.storage &&
+      typeof navigator.storage.estimate === "function"
+    ) {
+      const { usage, quota } = await navigator.storage.estimate();
+      if (typeof quota === "number" && quota > 0) {
+        const total = quota;
+        const used = typeof usage === "number" ? usage : 0;
+        const available = Math.max(total - used, 0);
+        return {
+          total,
+          used,
+          available,
+          percentUsed: Math.round((used / total) * 100),
+        };
+      }
+    }
+  } catch (err) {
+    console.error("[FinderStore] Error estimating storage space", err);
+  }
+
+  // Fallback: rough localStorage-only heuristic.
+  return calculateStorageSpace();
+};
+
+// Format a byte count for the Finder status bar, using GB for large quotas
+// (real StorageManager quotas are often several GB) and MB otherwise.
+export const formatStorageSize = (bytes: number): string => {
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) {
+    const gb = mb / 1024;
+    return `${Math.round(gb * 10) / 10} GB`;
+  }
+  return `${Math.round(mb * 10) / 10} MB`;
+};

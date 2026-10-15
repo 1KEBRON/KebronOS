@@ -1,0 +1,155 @@
+/**
+ * Stickies Control Tool Handler
+ */
+
+import type { ToolContext } from "./types";
+import { useStickiesStore, type StickyNote } from "@/stores/useStickiesStore";
+import { useAppStore } from "@/stores/useAppStore";
+import i18n from "@/lib/i18n";
+import {
+  buildStickyPatch,
+  serializeStickyToolRecord,
+  type StickiesControlInput,
+} from "@/shared/tools/stickies";
+import { createShortIdMap, resolveId, type ShortIdMap } from "./helpers";
+
+export type { StickiesControlInput } from "@/shared/tools/stickies";
+
+/**
+ * Module-level storage for short ID mapping.
+ * Created during 'list' action, used by 'update'/'delete' actions.
+ */
+let stickyIdMap: ShortIdMap | undefined;
+
+/**
+ * Ensure the Stickies app is open
+ */
+const ensureStickiesAppOpen = (context: ToolContext): void => {
+  const appStore = useAppStore.getState();
+  const stickiesInstances = appStore.getInstancesByAppId("stickies");
+  if (!stickiesInstances.some((inst) => inst.isOpen)) {
+    context.launchApp("stickies");
+  }
+};
+
+/**
+ * Handle stickies control tool call
+ */
+export const handleStickiesControl = (
+  input: StickiesControlInput,
+  toolCallId: string,
+  context: ToolContext
+): void => {
+  const { action, id, content, color, position, size } = input;
+  const store = useStickiesStore.getState();
+
+  try {
+    switch (action) {
+      case "list": {
+        const notes = store.notes;
+        if (notes.length === 0) {
+          stickyIdMap = undefined;
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, output: i18n.t("apps.chats.toolCalls.stickies.noStickies") });
+          return;
+        }
+        // Create short ID mapping for efficient AI communication
+        stickyIdMap = createShortIdMap(notes.map((n) => n.id), "s");
+        // Return data with short IDs to reduce token usage
+        const notesData = notes.map((n) =>
+          serializeStickyToolRecord(n, stickyIdMap)
+        );
+        context.addToolOutput({ 
+          tool: "stickiesControl", 
+          toolCallId, 
+          output: `${i18n.t("apps.chats.toolCalls.stickies.foundStickies", { count: notes.length })}:\n${JSON.stringify(notesData, null, 2)}` 
+        });
+        break;
+      }
+
+      case "create": {
+        ensureStickiesAppOpen(context);
+        const noteId = store.addNote(color || "yellow");
+        if (content || position || size) {
+          store.updateNote(noteId, { 
+            ...(content !== undefined && { content }),
+            ...(position !== undefined && { position }),
+            ...(size !== undefined && { size }),
+          });
+        }
+        const colorKey = color || "yellow";
+        const translatedColor = i18n.t(`common.colors.${colorKey}`);
+        context.addToolOutput({ 
+          tool: "stickiesControl", 
+          toolCallId, 
+          output: i18n.t("apps.chats.toolCalls.stickies.createdWithColor", { color: translatedColor }) 
+        });
+        break;
+      }
+
+      case "update": {
+        if (!id) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.missingId") });
+          return;
+        }
+        // Resolve short ID to full UUID if mapping exists
+        const resolvedId = resolveId(id, stickyIdMap);
+        if (!store.notes.find((n) => n.id === resolvedId)) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.notFound", { id }) });
+          return;
+        }
+        // Input colors share the same union as the store; the shared patch
+        // builder is typed against the wire DTO (color: string).
+        const updates = buildStickyPatch(input) as Partial<
+          Omit<StickyNote, "id" | "createdAt">
+        >;
+        if (Object.keys(updates).length === 0) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.noUpdates") });
+          return;
+        }
+        store.updateNote(resolvedId, updates);
+        context.addToolOutput({ tool: "stickiesControl", toolCallId, output: i18n.t("apps.chats.toolCalls.stickies.updated") });
+        break;
+      }
+
+      case "delete": {
+        if (!id) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.missingId") });
+          return;
+        }
+        // Resolve short ID to full UUID if mapping exists
+        const resolvedId = resolveId(id, stickyIdMap);
+        if (!store.notes.find((n) => n.id === resolvedId)) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.notFound", { id }) });
+          return;
+        }
+        store.deleteNote(resolvedId);
+        context.addToolOutput({ tool: "stickiesControl", toolCallId, output: i18n.t("apps.chats.toolCalls.stickies.deleted") });
+        break;
+      }
+
+      case "clear": {
+        const count = store.notes.length;
+        if (count === 0) {
+          context.addToolOutput({ tool: "stickiesControl", toolCallId, output: i18n.t("apps.chats.toolCalls.stickies.nothingToClear") });
+          return;
+        }
+        store.clearAllNotes();
+        // Clear the ID mapping since all notes are removed
+        stickyIdMap = undefined;
+        context.addToolOutput({ tool: "stickiesControl", toolCallId, output: i18n.t("apps.chats.toolCalls.stickies.cleared", { count }) });
+        break;
+      }
+
+      default:
+        context.addToolOutput({ tool: "stickiesControl", toolCallId, state: "output-error", errorText: i18n.t("apps.chats.toolCalls.stickies.invalidAction", { action }) });
+    }
+  } catch (error) {
+    console.error("[stickiesControl] Error:", error);
+    context.addToolOutput({
+      tool: "stickiesControl",
+      toolCallId,
+      state: "output-error",
+      errorText: error instanceof Error ? error.message : i18n.t("apps.chats.toolCalls.unknownError"),
+    });
+  }
+};

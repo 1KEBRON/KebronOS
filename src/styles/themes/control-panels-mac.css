@@ -1,0 +1,1778 @@
+/* macOS Aqua Control Panels — System Preferences 10.3 style (macosx theme only). */
+
+/* Toolbar bottom rim + pref well wrapper — keep in sync (border-black/25 in solid). */
+:root[data-os-theme="macosx"] {
+  --control-panels-chrome-border: rgba(0, 0, 0, 0.25);
+  /* Section grid dividers — softer than toolbar/chrome borders. */
+  --control-panels-section-divider: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"] {
+  --control-panels-chrome-border: var(--os-color-window-border);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac {
+  /* Grow to fill the full window-body height (the wrapper around this element is
+     `h-full`, so this flex child can fill it). This is the middle link of the
+     height chain that lets the auto-height body stretch its tint to the window
+     bottom at ANY window height: window-body → wrapper(h-full) → .control-panels-mac
+     (here) → .control-panels-mac-body (flex-grow). Without this the container would
+     collapse to its content height and leave a bare pinstripe band below the body
+     after a manual resize. Filling here never feeds back into measurement — the
+     measured subtree stays at its natural height (see body rule below). */
+  flex: 1 0 auto;
+  min-height: 0;
+  background-image: var(--os-pinstripe-window);
+  color: var(--os-color-text-primary, #000);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-body-measure {
+  width: 100%;
+}
+
+/* Auto-height body (single source of truth for scrolling):
+   The measure subtree (.control-panels-mac-body-measure → -layout → pane) always
+   lays out at its natural height — it is never flex/height-constrained. When that
+   natural height exceeds the window cap, the body element itself becomes the one
+   and only scroll container. Because the cap + overflow live on the *parent* of
+   the measured node, toggling data-scrollable can never change the measured
+   height: measurement is stable across the cap boundary, so there is no
+   measure↔layout feedback loop and none of the WebKit/Safari nested-flex
+   scrollHeight jank (which was worst for panes with an inner scroller). */
+:root[data-os-theme="macosx"] .control-panels-mac-body[data-scrollable] {
+  overflow-y: auto;
+}
+
+/* Stretch the body to fill the ACTUAL current window height (not just a fixed
+   floor), so the light-mode content tint painted on the body always reaches the
+   window bottom — at the auto-height minimum AND after the user drags the window
+   taller. The chain is: .window-body (full window height) → macOS content wrapper
+   (h-full) → .control-panels-mac (flex:1, fills the wrapper) → here the body grows
+   to consume whatever space is left below the toolbar.
+
+   `flex-grow: 1` does the dynamic fill; `flex-shrink: 0` (Tailwind `shrink-0` on the
+   element) keeps the body from collapsing below its content. CRITICAL: this does
+   NOT reopen the auto-height measure↔layout loop. The measured node
+   (.control-panels-mac-body-measure) is an ordinary block child of the body and
+   stays at its natural content height even when the body is flex-grown taller — a
+   flex item only stretches its own height, not its in-flow block descendants — so
+   `offsetHeight` still reports the true content height and the window keeps
+   shrinking to fit short panes.
+
+   The min-height floor is retained as a belt-and-suspenders fallback (and is the
+   value the spotlight search grid reuses); when flex actually fills, it's inert. */
+:root[data-os-theme="macosx"] .control-panels-mac-body {
+  flex-grow: 1;
+  min-height: var(--control-panels-mac-body-fill-min-height, 0);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar {
+  background: transparent;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Non-glass Aqua: a whiter translucent wash over the toolbar's pinstripe so the
+   toolbar reads lighter than the (grayer) content tint below, while the pinstripe
+   still shows through. Light mode only; excluded from Aqua Glass and dark Aqua. */
+:root[data-os-theme="macosx"]:not([data-os-aqua-material="glass"]):not([data-os-color-scheme="dark"])
+  .control-panels-mac-toolbar {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Dark non-glass Aqua: a faint light wash over the toolbar's dark pinstripe so the
+   toolbar reads slightly LIGHTER than the (darker) content tint below — mirroring
+   how light mode's toolbar is whiter than its content. Excluded from Aqua Glass. */
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]:not([data-os-aqua-material="glass"])
+  .control-panels-mac-toolbar {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar.border-b {
+  border-bottom-color: var(--control-panels-chrome-border) !important;
+}
+
+/* Dark non-glass Aqua: the default chrome border (near-black rgba(0,0,0,0.25))
+   disappears against the dark pinstripe, so the toolbar's bottom rim reads as
+   missing. Use the window-border token so it matches the title bar's dark rim. */
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]:not([data-os-aqua-material="glass"])
+  .control-panels-mac-toolbar.border-b {
+  border-bottom-color: var(--os-color-window-border) !important;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar-title {
+  color: #222;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/* Toolbar: Show All + pinned quick-access icons */
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar-pins {
+  overflow-x: auto;
+  scrollbar-width: none;
+  align-self: stretch;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar-pins::-webkit-scrollbar {
+  display: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 0 4px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.28) 0,
+    rgba(0, 0, 0, 0.28) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  flex-shrink: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  gap: 2px;
+  min-width: 52px;
+  max-width: 72px;
+  padding: 4px 6px 3px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin:hover:not(.control-panels-toolbar-pin-active),
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin:focus:not(.control-panels-toolbar-pin-active),
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin:focus-visible:not(.control-panels-toolbar-pin-active),
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin:active:not(.control-panels-toolbar-pin-active) {
+  background: transparent;
+  outline: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-active,
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-active:hover,
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-active:focus,
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-active:focus-visible {
+  border: none;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  outline: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-icon-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-toolbar-pin:active
+  .control-panels-toolbar-pin-icon {
+  filter: brightness(0.7);
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-phosphor {
+  color: #333;
+}
+
+:root[data-os-theme="macosx"] .control-panels-toolbar-pin-label {
+  font-size: 10px;
+  line-height: 1.1;
+  color: #111;
+  text-align: center;
+  max-width: 68px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Home grid — one continuous pinstripe on the scroll area; zebra tint on even sections only */
+:root[data-os-theme="macosx"] .control-panels-category-grid {
+  --control-panels-section-inset-x: 16px;
+  /* Breathing room after the last section row on the Show All screen. */
+  padding: 0 var(--control-panels-section-inset-x) 16px;
+  background-image: var(--os-pinstripe-window);
+}
+
+:root[data-os-theme="macosx"] .control-panels-section {
+  margin: 0 calc(-1 * var(--control-panels-section-inset-x));
+  padding: 10px var(--control-panels-section-inset-x);
+  position: relative;
+  background-image: none;
+}
+
+/* Divider on the section box edge — same width as zebra/pinstripe background. */
+:root[data-os-theme="macosx"] .control-panels-section:not(:first-of-type)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--control-panels-section-divider);
+  pointer-events: none;
+}
+
+/* 10.3 zebra: even sections (Hardware & System) — subtle neutral gray over grid pinstripe */
+:root[data-os-theme="macosx"] .control-panels-section:nth-of-type(even) {
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.06),
+    rgba(0, 0, 0, 0.06)
+  );
+}
+
+:root[data-os-theme="macosx"] .control-panels-section-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+  padding: 0 0 6px;
+  letter-spacing: 0.01em;
+  text-align: left;
+}
+
+:root[data-os-theme="macosx"] .control-panels-section-grid {
+  --control-panels-grid-col-width: 80px;
+  display: grid;
+  grid-template-columns: repeat(
+    var(--control-panels-section-cols, 1),
+    var(--control-panels-grid-col-width)
+  );
+  width: fit-content;
+  max-width: 100%;
+  column-gap: 6px;
+  row-gap: 8px;
+  align-items: start;
+  justify-items: center;
+  padding-bottom: 4px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-grid > p {
+  padding: 8px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: var(--control-panels-grid-col-width, 80px);
+  max-width: var(--control-panels-grid-col-width, 80px);
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-item:hover,
+:root[data-os-theme="macosx"] .control-panels-category-item:focus,
+:root[data-os-theme="macosx"] .control-panels-category-item:focus-visible,
+:root[data-os-theme="macosx"] .control-panels-category-item:active {
+  background: transparent;
+  outline: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-icon-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-category-item:active
+  .control-panels-category-icon {
+  filter: brightness(0.7);
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-label {
+  font-size: 11px;
+  line-height: 1.2;
+  color: #111;
+  max-width: 80px;
+  min-height: 2.4em;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Spotlight search — knock out the matching pane icons from a dimming wash,
+   exactly like Mac OS X System Preferences search. */
+
+/* While searching, the BODY (the animated motion.div display box) becomes the
+   containing block for the grid's scrim pseudo. The body carries the actual
+   current content height as an inline `height` (e.g. height: 393px) — which can
+   be TALLER than the grid's natural box because the body retains a tall measured
+   height via its high-water guard when search begins from a taller pane. Anchor
+   the scrim here so the dimming wash fills the full CURRENT content area, not
+   just the short grid. The scrim is out of flow, so it never grows the measured
+   node (.control-panels-mac-body-measure) — auto-height measurement stays stable
+   and there is no measure→layout feedback loop. Gated to the searching state via
+   :has so non-search panes / normal Show All are untouched. */
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body:has(.control-panels-category-grid--searching) {
+  position: relative;
+}
+
+:root[data-os-theme="macosx"] .control-panels-category-grid--searching {
+  /* Deliberately NOT position:relative — keep the grid static so the scrim
+     ::before below resolves its containing block to the body (above), letting it
+     stretch to the body's full current height instead of the grid's short box.
+     The floor min-height (the minimum window's content height, set as a CSS var
+     by the animated body) still grows the grid — and thus the body — for the
+     complementary case where the result grid is shorter than the minimum window
+     height, so the body never under-fills the floored window. The grid usually
+     exceeds it (no effect). Matching icons (z-index:2) still punch through the
+     wash (z-index:1) in the same stacking context (nothing between the body and
+     the matched items creates a stacking context). */
+  min-height: var(--control-panels-mac-body-fill-min-height, 0);
+}
+
+/* Dimming wash over the whole body content area (resolves to the body box). */
+:root[data-os-theme="macosx"]
+  .control-panels-category-grid--searching::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(70, 72, 80, 0.34);
+  pointer-events: none;
+  animation: control-panels-spotlight-scrim-in 0.15s ease-out;
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]
+  .control-panels-category-grid--searching::before {
+  background: rgba(10, 10, 12, 0.58);
+}
+
+/* Matching panes punch through the wash. */
+:root[data-os-theme="macosx"]
+  .control-panels-category-grid--searching
+  .control-panels-category-item.is-spotlight-match {
+  position: relative;
+  z-index: 2;
+}
+
+/* The knockout circle: a bright disc that reveals the icon at full brightness. */
+:root[data-os-theme="macosx"]
+  .control-panels-category-item.is-spotlight-match
+  .control-panels-category-icon-shell::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(248, 248, 250, 0.48) 0%,
+    rgba(248, 248, 250, 0.48) 64%,
+    rgba(248, 248, 250, 0) 86%
+  );
+  z-index: 0;
+  pointer-events: none;
+  animation: control-panels-spotlight-in 0.18s ease-out;
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]
+  .control-panels-category-item.is-spotlight-match
+  .control-panels-category-icon-shell::before {
+  background: radial-gradient(
+    circle,
+    rgba(228, 228, 234, 0.45) 0%,
+    rgba(228, 228, 234, 0.45) 64%,
+    rgba(228, 228, 234, 0) 86%
+  );
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-category-item.is-spotlight-focused
+  .control-panels-category-icon-shell::before {
+  background: radial-gradient(
+    circle,
+    rgba(248, 248, 250, 0.82) 0%,
+    rgba(248, 248, 250, 0.82) 64%,
+    rgba(248, 248, 250, 0) 86%
+  );
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]
+  .control-panels-category-item.is-spotlight-focused
+  .control-panels-category-icon-shell::before {
+  background: radial-gradient(
+    circle,
+    rgba(228, 228, 234, 0.76) 0%,
+    rgba(228, 228, 234, 0.76) 64%,
+    rgba(228, 228, 234, 0) 86%
+  );
+}
+
+@keyframes control-panels-spotlight-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes control-panels-spotlight-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Toolbar search box + typeahead menu */
+:root[data-os-theme="macosx"] .control-panels-mac-toolbar-search {
+  padding: 0 2px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-search-menu {
+  --control-panels-search-item-h: 28px;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 200px;
+  max-width: 280px;
+  /* Cap to 5.5 rows so a partial item hints at more results. */
+  max-height: calc(var(--control-panels-search-item-h) * 5.5 + 8px);
+  overflow-y: auto;
+  padding: 4px 0;
+  border: none;
+  border-radius: 0;
+  background: var(--os-pinstripe-window);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-os-theme="macosx"] .control-panels-search-item {
+  display: block;
+  width: 100%;
+  height: var(--control-panels-search-item-h, 28px);
+  line-height: var(--control-panels-search-item-h, 28px);
+  margin: 1px 0;
+  padding: 0 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--os-color-text-primary, #111);
+  font-family: var(--os-font-ui);
+  font-size: var(--os-menu-item-font-size, 13px);
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
+}
+
+:root[data-os-theme="macosx"] .control-panels-search-item.is-highlighted {
+  background: var(--os-color-selection-bg, rgba(39, 101, 202, 0.88));
+  color: var(--os-color-selection-text, #fff);
+}
+
+:root[data-os-theme="macosx"] .control-panels-search-empty {
+  padding: 6px 16px;
+  font-family: var(--os-font-ui);
+  font-size: var(--os-menu-item-font-size, 13px);
+  text-align: left;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Preference pane chrome */
+:root[data-os-theme="macosx"] .control-panels-mac-pane {
+  background-image: var(--os-pinstripe-window);
+}
+
+/* Non-glass Aqua: subtle translucent white tint over the content pinstripe so the
+   body reads slightly lighter than the (pinstriped) toolbar — mirrors the Chats
+   content pane's `bg-white/85`. The tint is layered ABOVE --os-pinstripe-window
+   (so it sits behind icons/text/wells and below the spotlight search scrim) and is
+   applied to the scrollable content surfaces (Show All grid + preference pane) so it
+   covers the full scroll height exactly like the pinstripe does — never the toolbar,
+   which stays pinstriped. Light mode only (dark Aqua keeps its dark pinstripe), and
+   excluded from Aqua Glass both here and via the glass override below (which strips
+   these backgrounds entirely with !important).
+
+   The same tint is also painted on the BODY itself (the scroll/clip container) using
+   the identical pinstripe base. The body is floored to the minimum window content
+   height (min-height above), so when a short grid/pane leaves the window floored
+   taller than its content, the body's tint fills that otherwise-bare strip below the
+   grid/pane down to the window bottom. The grid/pane sit on top with the identical
+   tint+pinstripe, so coverage is seamless; when content is taller and scrolls, the
+   grid/pane still paint the full scroll height (the body background only backs the
+   floored remainder). */
+:root[data-os-theme="macosx"]:not([data-os-aqua-material="glass"]):not([data-os-color-scheme="dark"])
+  .control-panels-mac-body,
+:root[data-os-theme="macosx"]:not([data-os-aqua-material="glass"]):not([data-os-color-scheme="dark"])
+  .control-panels-category-grid,
+:root[data-os-theme="macosx"]:not([data-os-aqua-material="glass"]):not([data-os-color-scheme="dark"])
+  .control-panels-mac-pane {
+  background-image: linear-gradient(
+      rgba(232, 233, 236, 0.85),
+      rgba(232, 233, 236, 0.85)
+    ),
+    var(--os-pinstripe-window);
+}
+
+/* Dark non-glass Aqua: the dark-mode mirror of the light content tint above — a
+   subtle dark translucent wash layered ABOVE --os-pinstripe-window so the content
+   surfaces read slightly DARKER than the (lighter-washed) toolbar, while the dark
+   pinstripe still shows through. Applied to the same elements (incl.
+   .control-panels-mac-body) so it inherits the full-height fill behavior for free.
+   Excluded from Aqua Glass (the glass !important strip below clears these). */
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]:not([data-os-aqua-material="glass"])
+  .control-panels-mac-body,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]:not([data-os-aqua-material="glass"])
+  .control-panels-category-grid,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]:not([data-os-aqua-material="glass"])
+  .control-panels-mac-pane {
+  background-image: linear-gradient(
+      rgba(28, 30, 34, 0.18),
+      rgba(28, 30, 34, 0.18)
+    ),
+    var(--os-pinstripe-window);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner {
+  /* Simple form panes (Appearance, International, etc.): more air below toolbar.
+     The larger bottom value is the auto-height window's breathing room beneath the
+     card; it now renders on Safari too (tabbed flex caps are gated to scrollable). */
+  --control-panels-pref-content-inset-x: 16px;
+  padding: 18px 18px 28px;
+}
+
+/* Simple panes: grow with content, scroll on pane-scroll (not nested in pref-form). */
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner:not(:has(.control-panels-pref-form-tabbed)) {
+  box-sizing: border-box;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form:not(.control-panels-pref-form-tabbed) {
+  height: auto;
+  min-height: min-content;
+  overflow: visible;
+  flex: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner > .space-y-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner > .space-y-4 > * {
+  margin-top: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner > .space-y-4 > hr,
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner > .space-y-4 > .border-t {
+  margin: 12px 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner .control-panels-pref-well {
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.32);
+  background: #fff;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+  padding: 12px var(--control-panels-pref-content-inset-x, 16px) 14px;
+}
+
+/* 10.3 form layout: right-aligned labels, controls on the right */
+:root[data-os-theme="macosx"] .control-panels-pref-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Non-well panes: subtle inset so rows align with well content (pane-inner keeps outer 18px). */
+  padding: 4px 4px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-well .control-panels-pref-form-section,
+:root[data-os-theme="macosx"] .control-panels-pref-tab-panel .control-panels-pref-form-section {
+  padding: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 1.2fr);
+  gap: 12px;
+  align-items: start;
+  min-height: 32px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  align-self: start;
+  text-align: right;
+  gap: 2px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-label-text {
+  font-size: 11px;
+  font-weight: 400;
+  color: #111;
+  line-height: 1.2;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-label-desc {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.25;
+  max-width: 180px;
+  text-wrap: pretty;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-control {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  align-self: start;
+  min-height: 24px;
+  padding-top: 1px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-divider {
+  margin: 12px 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+}
+
+/* International pane: recessed locale format preview well */
+:root[data-os-theme="macosx"] .control-panels-pref-format-samples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.035);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-format-sample-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(140px, 1.2fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-format-sample-label {
+  text-align: right;
+  color: #111;
+  padding-top: 1px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-format-sample-value {
+  color: #111;
+}
+
+/* Appearance pane: recessed live theme preview well.
+   Fixed natural height (min-height) — the window auto-sizes to content, so the
+   preview no longer needs flex-fill to absorb leftover space. */
+:root[data-os-theme="macosx"] .control-panels-pref-theme-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.035);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"] {
+  padding: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Live macosx preview: fixed-scale scene cropped from top-left */
+:root[data-os-theme="macosx"] .control-panels-theme-preview-scale-host {
+  --control-panels-preview-inset: 0;
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-canvas {
+  position: absolute;
+  top: var(--control-panels-preview-inset);
+  left: var(--control-panels-preview-inset);
+  transform-origin: 0 0;
+  overflow: visible;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-desktop-live {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background-color: var(--os-color-window-bg);
+  background-image: var(--os-pinstripe-window);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"]
+  .control-panels-theme-preview-desktop-live {
+  background-color: var(--os-color-panel-bg);
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-window-live {
+  position: absolute;
+  top: 52px;
+  width: 300px;
+  height: 196px;
+  font-size: 11px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-window-live .title-bar {
+  height: 24px !important;
+  min-height: 24px !important;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-theme-preview-window-live
+  .group\/traffic
+  > div {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-theme-preview-window-live
+  .group\/traffic
+  > div
+  > div[aria-hidden="true"] {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-window-body-live {
+  padding: 6px 8px 8px;
+}
+
+/* Faithful preview tab group: reuses the real preference tab strip + well so
+   the tabs read identically to the live settings (centered Aqua tabs, bordered
+   well connected to the strip). */
+:root[data-os-theme="macosx"] .control-panels-theme-preview-tabbed {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Connect the well to the tab bar: square top corners sit flush under tabs. */
+:root[data-os-theme="macosx"]
+  .control-panels-mac-pane-inner
+  .control-panels-pref-well.control-panels-theme-preview-tab-well {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-list-live {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-list-row-live {
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-theme-preview-list-row-live-selected {
+  background: var(--os-accent-list-gradient, var(--os-color-selection-bg));
+  color: var(--os-color-selection-text, #fff);
+}
+
+/* --- macosx (Aqua) mock preview (other themes in well) --- */
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"]
+  .control-panels-theme-preview-menubar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 1.5px,
+      rgba(255, 255, 255, 0.55) 1.5px,
+      rgba(255, 255, 255, 0.55) 4px
+    ),
+    linear-gradient(to bottom, #f8f8f8, #d4d4d4);
+  font-size: 9px;
+  line-height: 1;
+  color: #000;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-dark="true"]
+  .control-panels-theme-preview-menubar {
+  border-color: rgba(0, 0, 0, 0.7);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 1.5px,
+      rgba(255, 255, 255, 0.05) 1.5px,
+      rgba(255, 255, 255, 0.05) 4px
+    ),
+    linear-gradient(to bottom, #3b3b40, #232327);
+  color: #f4f4f5;
+  box-shadow: none;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-apple {
+  font-size: 10px;
+  line-height: 1;
+  filter: var(--os-accent-apple-filter, none);
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-menu-item-active {
+  background: var(--os-color-selection-bg, rgba(39, 101, 202, 0.88));
+  color: var(--os-color-selection-text, #fff);
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"]
+  .control-panels-theme-preview-window {
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-dark="true"]
+  .control-panels-theme-preview-window {
+  border-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"]
+  .control-panels-theme-preview-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+  padding: 0 6px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(219, 219, 219, 0.6) 70%,
+      rgba(206, 206, 206, 0.7) 100%
+    ),
+    linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  font-size: 9px;
+  color: #000;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-dark="true"]
+  .control-panels-theme-preview-titlebar {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.04) 70%,
+      rgba(0, 0, 0, 0.18) 100%
+    ),
+    linear-gradient(to bottom, #4a4a50, #2e2e33);
+  border-bottom-color: rgba(0, 0, 0, 0.65);
+  color: #f4f4f5;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-traffic-lights {
+  display: flex;
+  gap: 3px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-traffic-lights > span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45);
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-traffic-lights .close {
+  background: #ff5f57;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-traffic-lights .minimize {
+  background: #febc2e;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-traffic-lights .maximize {
+  background: #28c840;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"]
+  .control-panels-theme-preview-window-body {
+  padding: 6px 8px 8px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 1.5px,
+      rgba(255, 255, 255, 0.85) 1.5px,
+      rgba(255, 255, 255, 0.85) 4px
+    ),
+    linear-gradient(to bottom, #ececec, #ececec);
+  font-size: 9px;
+  color: #111;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-aqua-material="glass"]
+  .control-panels-theme-preview-window-body {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-dark="true"]
+  .control-panels-theme-preview-window-body {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 1.5px,
+      rgba(255, 255, 255, 0.04) 1.5px,
+      rgba(255, 255, 255, 0.04) 4px
+    ),
+    linear-gradient(to bottom, #2b2b2e, #2b2b2e);
+  color: #f4f4f5;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="macosx"][data-preview-dark="true"][data-preview-aqua-material="glass"]
+  .control-panels-theme-preview-window-body {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-list-row {
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-list-row-selected {
+  background: var(--os-color-selection-bg, rgba(39, 101, 202, 0.88));
+  color: var(--os-color-selection-text, #fff);
+}
+
+/* --- System 7 preview --- */
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-menubar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  padding: 0 5px;
+  border: 1px solid #000;
+  background: repeating-linear-gradient(
+    180deg,
+    #fff 0 1px,
+    #000 1px 2px
+  );
+  font-family: "ChicagoKare", "ArkPixel", monospace;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  font-size: 9px;
+  color: #000;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-menu-item-active {
+  background: var(--os-color-selection-bg, #000);
+  color: var(--os-color-selection-text, #fff);
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-window {
+  border: 2px solid #000;
+  background: #fff;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 16px;
+  padding: 0 4px;
+  border-bottom: 1px solid #000;
+  background: #fff;
+  font-family: "ChicagoKare", "ArkPixel", monospace;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  font-size: 9px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-s7-close {
+  width: 11px;
+  height: 11px;
+  border: 1px solid #000;
+  background: #fff;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-window-body {
+  padding: 6px;
+  font-family: "Geneva-12", monospace;
+  font-size: 9px;
+  color: #000;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="system7"]
+  .control-panels-theme-preview-list-row-selected {
+  background: var(--os-color-selection-bg, #000);
+  color: var(--os-color-selection-text, #fff);
+}
+
+/* --- Windows XP preview --- */
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="xp"]
+  .control-panels-theme-preview-window {
+  border: 1px solid #0054e3;
+  box-shadow: 1px 1px 0 #fff inset, -1px -1px 0 #aca899;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="xp"]
+  .control-panels-theme-preview-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+  padding: 0 4px 0 6px;
+  background: linear-gradient(to bottom, #0058e6, #1941a5);
+  color: #fff;
+  font-family: Tahoma, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-win-controls {
+  display: flex;
+  gap: 2px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-win-controls > span {
+  width: 14px;
+  height: 13px;
+  border: 1px solid #0a246a;
+  background: linear-gradient(to bottom, #3c8ef3, #2d6fd6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+:root[data-os-theme="macosx"] .control-panels-theme-preview-win-controls .close {
+  background: linear-gradient(to bottom, #e88, #c44);
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="xp"]
+  .control-panels-theme-preview-window-body {
+  padding: 6px;
+  background: #ece9d8;
+  font-family: Tahoma, sans-serif;
+  font-size: 9px;
+  color: #000;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="xp"]
+  .control-panels-theme-preview-list-row-selected {
+  background: #316ac5;
+  color: #fff;
+}
+
+/* --- Windows 98 preview --- */
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="win98"]
+  .control-panels-theme-preview-window {
+  border: 2px solid #000;
+  box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="win98"]
+  .control-panels-theme-preview-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 18px;
+  padding: 0 3px 0 4px;
+  background: linear-gradient(to right, #000084, #1084d0);
+  color: #fff;
+  font-family: "MS Sans Serif", Tahoma, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="win98"]
+  .control-panels-theme-preview-win-controls > span {
+  width: 13px;
+  height: 12px;
+  border: 1px solid #000;
+  background: #c0c0c0;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="win98"]
+  .control-panels-theme-preview-window-body {
+  padding: 6px;
+  background: #c0c0c0;
+  font-family: "MS Sans Serif", Tahoma, sans-serif;
+  font-size: 9px;
+  color: #000;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-theme-preview[data-preview-theme="win98"]
+  .control-panels-theme-preview-list-row-selected {
+  background: #000080;
+  color: #fff;
+}
+
+/* Tabbed preference pane (Desktop | Screen Saver) — tabs on pinstripe, well below.
+   Always flows at natural height; the body scrolls if the pane exceeds the cap.
+   No inner scroller, so measurement stays reliable and the pane-inner's bottom
+   padding always renders (the old [data-scrollable] flex/overflow caps that broke
+   Safari measurement have been removed). */
+:root[data-os-theme="macosx"] .control-panels-mac-pane-scroll:has(.control-panels-pref-form-tabbed) {
+  display: flex;
+  flex-direction: column;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner:has(.control-panels-pref-form-tabbed) {
+  display: flex;
+  flex-direction: column;
+  /* Tabbed panes: tabs sit on pinstripe — less air above tab bar than simple wells. */
+  padding-top: 4px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tabbed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* Drop the tab bar a touch below the toolbar so the strip isn't crammed
+     against the pane top (adds to pane-inner's 4px). */
+  padding-top: 10px;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-tabbed:has(> .control-panels-account-profile) {
+  padding-top: 4px;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-pref-tabbed
+  > .control-panels-account-profile {
+  flex-shrink: 0;
+  padding-bottom: 14px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tab-bar {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  /* Inactive tabs use margin-top: 4px + height: 28px; pin bar so active/inactive swaps
+     do not resize the strip and shift the well below. */
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  overflow: visible;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tab-bar .aqua-tab {
+  min-width: 100px;
+  padding: 0 14px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Keep layout stable when swapping tabs — global .aqua-tab transitions margin-top. */
+  transition:
+    background 150ms,
+    box-shadow 150ms,
+    border-color 150ms,
+    color 150ms,
+    text-shadow 150ms;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tab-bar .aqua-tab[data-state="inactive"] {
+  margin-top: 4px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tab-bar .aqua-tab[data-state="active"] {
+  margin-top: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tabbed > .control-panels-pref-well {
+  /* Single-cell grid stacks both tab panels (one hidden) so the well sizes to the
+     tallest and tab swaps don't shift layout. Auto rows in auto-height mode. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  /* Classic tab-well look: rounded top corners connect to the tab bar, square bottom. */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-tab-panel {
+  padding: 20px var(--control-panels-pref-content-inset-x, 16px) 14px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-pref-form-tabbed .control-panels-pref-tab-panel {
+  grid-area: 1 / 1;
+}
+
+/* Tabbed panes at the cap: keep the tab bar pinned and scroll INSIDE the active
+   tab panel rather than scrolling the whole body. Safe with the decoupled
+   measurement: the body only gains data-scrollable AFTER the first (unconstrained)
+   measure captures the natural height, and the JS high-water mark freezes it — so
+   constraining this chain can't reopen the measure↔layout feedback loop, and
+   there is no collapsed-scroller recovery math to bounce on Safari. Gated to
+   tabbed panes; simple panes still scroll the body. */
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]:has(.control-panels-pref-form-tabbed) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]:has(.control-panels-pref-form-tabbed)
+  .control-panels-mac-body-measure,
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]:has(.control-panels-pref-form-tabbed)
+  .control-panels-mac-body-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-mac-pane:has(.control-panels-pref-form-tabbed),
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-mac-pane-scroll:has(.control-panels-pref-form-tabbed),
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-mac-pane-inner:has(.control-panels-pref-form-tabbed),
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-pref-form-tabbed,
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-pref-tabbed {
+  flex: 1;
+  min-height: 0;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-mac-pane-scroll:has(.control-panels-pref-form-tabbed),
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-pref-form-tabbed {
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-pref-tabbed
+  > .control-panels-pref-well {
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"]
+  .control-panels-mac-body[data-scrollable]
+  .control-panels-pref-form-tabbed
+  .control-panels-pref-tab-panel {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Stack both panels in one grid cell; keep mounted content without collapsing the well */
+:root[data-os-theme="macosx"] .control-panels-pref-form-tabbed .control-panels-pref-tab-panel[hidden] {
+  display: block !important;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner label {
+  font-size: 11px;
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner .text-neutral-600 {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+:root[data-os-theme="macosx"] .control-panels-mac-pane-inner button[class*="retro"] {
+  font-size: 11px;
+}
+
+/* Account profile header — centered stack (Security + Accounts panes) */
+:root[data-os-theme="macosx"] .control-panels-account-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* Horizontal inset comes from tab-panel / form-section; avoid double-padding. */
+  padding: 10px 0 14px;
+  text-align: center;
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-presence {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  border: 1.5px solid #fff;
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-username {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #111;
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-status {
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+:root[data-os-theme="macosx"] .control-panels-account-profile-login {
+  margin-top: 2px;
+}
+
+/* Dark mode */
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] {
+  --control-panels-section-divider: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-divider {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--control-panels-chrome-border) 0,
+    var(--control-panels-chrome-border) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-mac-toolbar-title {
+  color: var(--os-color-text-primary);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-label,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-section-header,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-form-label-text {
+  color: var(--os-color-text-primary);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-phosphor {
+  color: var(--os-color-text-primary);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-active,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-active:hover,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-active:focus,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-toolbar-pin-active:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  box-shadow: none;
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-category-label {
+  color: var(--os-color-text-primary);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-section:nth-of-type(even) {
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.14),
+    rgba(0, 0, 0, 0.14)
+  );
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-mac-pane-inner .control-panels-pref-well {
+  background: #2a2a2e;
+  border-color: var(--control-panels-chrome-border);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-form-label-desc {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-format-samples {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-theme-preview {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-format-sample-label,
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-pref-format-sample-value {
+  color: var(--os-color-text-primary);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-account-profile-username {
+  color: var(--os-color-text-primary);
+}
+
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .control-panels-account-profile-status {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Aqua Glass: let the frosted window pane show through — no pinstripe slabs. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  :is(
+    .control-panels-mac,
+    .control-panels-mac-toolbar,
+    .control-panels-mac-body,
+    .control-panels-mac-pane,
+    .control-panels-mac-pane-scroll,
+    .control-panels-mac-pane-inner,
+    .control-panels-category-grid,
+    .control-panels-section
+  ) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Zebra sections: subtle neutral gray only, no pinstripe layer. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-section:nth-of-type(even) {
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.06),
+    rgba(0, 0, 0, 0.06)
+  ) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-section:nth-of-type(even) {
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.14),
+    rgba(0, 0, 0, 0.14)
+  ) !important;
+}
+
+/* Aqua Glass toolbar: rounded pin pills + label breathing room above bottom rim. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-mac-toolbar {
+  padding-bottom: 6px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-mac-toolbar-pins {
+  padding-bottom: 1px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-toolbar-pin,
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-toolbar-pin-active {
+  border-radius: 4px;
+  padding: 4px 6px 4px;
+}
+
+/* Aqua Glass: frosted semi-transparent wells — form wrappers stay clear.
+   International format-samples keeps its own recessed inset fill. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  :is(
+    .control-panels-pref-form,
+    .control-panels-pref-form-tabbed,
+    .control-panels-pref-tabbed,
+    .control-panels-pref-form-section
+  ) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  :is(
+    .control-panels-pref-well,
+    .control-panels-pref-tab-panel
+  ) {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  background-image: none !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-pref-well {
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  :is(
+    .control-panels-pref-well,
+    .control-panels-pref-tab-panel
+  ) {
+  background-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-pref-well {
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+/* International locale preview: subtle recessed inset (not a full white slab). */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-pref-format-samples {
+  background-color: rgba(0, 0, 0, 0.035) !important;
+  background-image: none !important;
+  border-color: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-pref-format-samples {
+  background-color: rgba(0, 0, 0, 0.22) !important;
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-pref-theme-preview {
+  background-color: rgba(0, 0, 0, 0.035) !important;
+  background-image: none !important;
+  border-color: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-pref-theme-preview {
+  background-color: rgba(0, 0, 0, 0.22) !important;
+  border-color: var(--control-panels-chrome-border);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+/* Aqua Glass: frosted typeahead dropdown — mirror the standard menu/popover
+   glass treatment (the frosted-popover + spotlight-panel rules in
+   aqua-glass.css) so this custom (non-Radix) search menu reads as the same
+   translucent material: lighter wash over the desktop blur, hairline rim,
+   rounded glass radius and the soft drop shadow. Classic (non-glass) Aqua keeps
+   the opaque pinstripe look from the base rule above. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-search-menu {
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  backdrop-filter: blur(36px) saturate(200%);
+  background: color-mix(
+    in srgb,
+    var(--os-accent-color, #3a73d6) 6%,
+    rgba(248, 250, 253, 0.62)
+  );
+  border: var(--os-metrics-border-width) solid var(--os-color-window-border);
+  border-radius: var(--os-glass-r-sm);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  /* Inner gutter so the row highlights inset from the rounded panel edge, like
+     the modern glass menus. Vertical padding stays 4px top/bottom, so the
+     5.5-row max-height cap math (+8px) is unchanged. */
+  padding: 4px 5px;
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-search-menu {
+  background: color-mix(
+    in srgb,
+    var(--os-accent-color, #3a73d6) 7%,
+    rgba(36, 38, 44, 0.62)
+  );
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Rows: rounded highlight inset from the panel gutter (5px gutter + 11px =
+   ~16px text inset, preserving the classic alignment). Row height, single-line
+   ellipsis, fonts and the blue --os-color-selection-bg highlight are unchanged
+   — only the highlight corners round to match the glass menus. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-search-item {
+  padding: 0 11px;
+  border-radius: var(--os-glass-r-xs);
+}
+
+/* Empty state contrast over the translucent wash. */
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"]
+  .window.window-material-glass
+  .control-panels-search-empty {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+:root[data-os-theme="macosx"][data-os-aqua-material="glass"][data-os-color-scheme="dark"]
+  .window.window-material-glass
+  .control-panels-search-empty {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+

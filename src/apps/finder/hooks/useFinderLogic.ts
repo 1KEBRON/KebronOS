@@ -1,0 +1,1865 @@
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  useDeferredValue,
+} from "react";
+import { useAppHelpAboutDialogs } from "@/hooks/useAppHelpAboutDialogs";
+import type {
+  ChangeEvent,
+  DragEvent,
+  KeyboardEvent,
+  MouseEvent,
+} from "react";
+import { useTranslation } from "react-i18next";
+import { ViewType, SortType } from "../components/FinderMenuBar";
+import { useFileSystem, DocumentContent } from "./useFileSystem";
+import { dbOperations } from "@/utils/indexedDB";
+import {
+  calculateStorageSpace,
+  estimateStorageSpace,
+  NORTH_STAR_PATH,
+} from "@/stores/useFinderStore";
+import { FileItem } from "../components/FileList";
+import { useFinderStore } from "@/stores/useFinderStore";
+import { useAppStore, type LaunchOriginRect } from "@/stores/useAppStore";
+import { MenuItem } from "@/components/ui/right-click-menu";
+import { usePointerLongPress } from "@/hooks/usePointerLongPress";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { toast } from "sonner";
+import { importAppletFile } from "@/utils/appletImportExport";
+import { useTranslatedHelpItems } from "@/hooks/useTranslatedHelpItems";
+import {
+  getTranslatedAppName,
+  getTranslatedFolderNameFromName,
+} from "@/utils/i18n";
+import { getAppIconPath, type AppId } from "@/config/appRegistry";
+import {
+  getOpenWithApps,
+  resolvePreviewKind,
+} from "@/utils/fileAssociations";
+import {
+  compareFinderItemsByDisplayName,
+  compareFinderSortText,
+} from "@/utils/finderDisplay";
+import { helpItems } from "../index";
+import { useFilesStore, useFilesStoreShallow } from "@/stores/useFilesStore";
+import { useFileMetadataInPath } from "@/services/vfs/FileMetadataService";
+import { useDockStore } from "@/stores/useDockStore";
+import {
+  emitFileRenamed,
+  emitFileSaved,
+  emitFileUpdated,
+} from "@/utils/appEventBus";
+import { useAirDropStore } from "@/stores/useAirDropStore";
+import { useChatsStore } from "@/stores/useChatsStore";
+import { createClientLogger } from "@/utils/logger";
+import {
+  isWritablePath,
+  isProtectedSystemPath,
+  validateNewRootFolderName,
+} from "@/services/vfs/pathPolicy";
+import { getStoreForFile } from "@/utils/indexedDBOperations";
+import {
+  orderFinderRootFolders,
+  orderSidebarRootFolders,
+} from "../utils/sidebarPlaces";
+
+const log = createClientLogger("Finder");
+
+type FinderUndoAction =
+  | { type: "moveToTrash"; fileName: string; originalPath: string }
+  | { type: "rename"; basePath: string; oldName: string; newName: string };
+
+// Type for Finder initial data
+export interface FinderInitialData {
+  path?: string;
+  viewType?: ViewType;
+}
+
+// Helper function to determine file type from FileItem
+const getFileType = (
+  file: FileItem,
+  t: (key: string, options?: { defaultValue?: string }) => string
+): string => {
+  if (file.path === "/") {
+    return t("apps.finder.fileTypes.volume", { defaultValue: "Volume" });
+  }
+
+  // Check for directory first
+  if (file.isDirectory) {
+    return t("apps.finder.fileTypes.folder");
+  }
+
+  // Check for specific known virtual types *before* appId
+  if (file.type === "Music") return t("apps.finder.fileTypes.mp3Audio");
+  if (file.type === "Video") return t("apps.finder.fileTypes.quicktimeMovie");
+  if (file.type === "site-link") {
+    return t("apps.finder.fileTypes.internetShortcut");
+  }
+
+  // Check for application
+  if (file.appId) {
+    return t("apps.finder.fileTypes.application");
+  }
+
+  // Now check extension from file.name
+  const ext = file.name.split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "app":
+      return t("apps.finder.fileTypes.application");
+    case "png":
+      return t("apps.finder.fileTypes.pngImage");
+    case "jpg":
+    case "jpeg":
+      return t("apps.finder.fileTypes.jpegImage");
+    case "gif":
+      return t("apps.finder.fileTypes.gifImage");
+    case "webp":
+      return t("apps.finder.fileTypes.webpImage");
+    case "bmp":
+      return t("apps.finder.fileTypes.bmpImage");
+    case "svg":
+      return t("apps.finder.fileTypes.svgImage");
+    case "pdf":
+      return t("apps.finder.fileTypes.pdfDocument");
+    case "md":
+      return t("apps.finder.fileTypes.document");
+    case "txt":
+      return t("apps.finder.fileTypes.document");
+    case "mp3":
+      return t("apps.finder.fileTypes.mp3Audio");
+    case "mov":
+      return t("apps.finder.fileTypes.quicktimeMovie");
+    case "html":
+      return t("apps.finder.fileTypes.htmlApplet");
+    case "epub":
+      return t("apps.finder.fileTypes.book");
+    default:
+      return t("apps.finder.fileTypes.unknown");
+  }
+};
+
+// Function to decode URL-encoded path for display
+const getDisplayPath = (path: string): string => {
+  // Split path by segments and decode each segment
+  return path
+    .split("/")
+    .map((segment) => {
+      try {
+        return segment ? decodeURIComponent(segment) : segment;
+      } catch {
+        return segment; // If decoding fails, return as-is
+      }
+    })
+    .join("/");
+};
+
+// Helper to get parent path
+const getParentPath = (path: string): string => {
+  if (path === "/") return "/";
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= 1) return "/";
+  return "/" + parts.slice(0, -1).join("/");
+};
+
+export interface UseFinderLogicProps {
+  isWindowOpen: boolean;
+  isForeground?: boolean;
+  initialData?: FinderInitialData;
+  instanceId?: string;
+}
+
+export function useFinderLogic({
+  isWindowOpen,
+  isForeground = true,
+  initialData,
+  instanceId,
+}: UseFinderLogicProps) {
+  const { t, i18n } = useTranslation();
+  const translatedHelpItems = useTranslatedHelpItems("finder", helpItems);
+  const {
+    currentTheme,
+    isWindowsTheme,
+    isMacOSTheme,
+  } = useThemeFlags();
+
+  // Dialog state
+  const {
+    isHelpDialogOpen,
+    setIsHelpDialogOpen,
+    isAboutDialogOpen,
+    setIsAboutDialogOpen,
+  } = useAppHelpAboutDialogs();
+  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState(
+    t("apps.finder.defaultNames.untitledFolder")
+  );
+
+  // UI state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [storageSpace, setStorageSpace] = useState(() =>
+    calculateStorageSpace()
+  );
+  const [contextMenuPos, setContextMenuPos] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [contextMenuFile, setContextMenuFile] = useState<FileItem | null>(null);
+
+  // Refs
+  const pathInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Stores
+  const {
+    getItem: getFileItem,
+    getItemsInPath,
+    updateItemMetadata,
+    createAlias,
+  } = useFilesStoreShallow((state) => ({
+    getItem: state.getItem,
+    getItemsInPath: state.getItemsInPath,
+    updateItemMetadata: state.updateItemMetadata,
+    createAlias: state.createAlias,
+  }));
+  const addDockItem = useDockStore((state) => state.addItem);
+  const hasDockItem = useDockStore((state) => state.hasItem);
+  const createFinderInstance = useFinderStore((state) => state.createInstance);
+  const removeFinderInstance = useFinderStore((state) => state.removeInstance);
+  const updateFinderInstance = useFinderStore((state) => state.updateInstance);
+  // Only this window's Finder instance — sibling path/view writes must not
+  // re-run this god hook's effects and memos.
+  const currentFinderInstance = useFinderStore((state) =>
+    instanceId ? state.instances[instanceId] ?? null : null
+  );
+  const setViewTypeForPath = useFinderStore(
+    (state) => state.setViewTypeForPath
+  );
+
+  // Create instance when component mounts
+  useEffect(() => {
+    if (!instanceId) return;
+
+    // Check if instance already exists (from persisted state)
+    if (currentFinderInstance) {
+      // Instance already exists from persisted state, don't recreate
+      return;
+    }
+
+    // Get initial path from initialData or localStorage
+    const typedInitialData = initialData as FinderInitialData | undefined;
+    const storedPath = localStorage.getItem("ryos:app:finder:initial-path");
+    const initialPath = typedInitialData?.path || storedPath || "/";
+    createFinderInstance(instanceId, initialPath);
+
+    // Apply initial view preference if provided
+    if (typedInitialData?.viewType) {
+      setViewTypeForPath(initialPath, typedInitialData.viewType);
+      updateFinderInstance(instanceId, {
+        viewType: typedInitialData.viewType,
+      });
+    }
+
+    // Clear the localStorage if we used it
+    if (storedPath) {
+      localStorage.removeItem("ryos:app:finder:initial-path");
+    }
+  }, [
+    instanceId,
+    createFinderInstance,
+    initialData,
+    currentFinderInstance,
+    setViewTypeForPath,
+    updateFinderInstance,
+  ]);
+
+  // Sync Finder instance cleanup with App store instance lifecycle
+  useEffect(() => {
+    if (!instanceId) return;
+
+    // Listen for instance close events from the App store
+    const handleInstanceClose = (event: CustomEvent) => {
+      if (event.detail.instanceId === instanceId && !event.detail.isOpen) {
+        // Only remove Finder instance when App store actually closes it
+        removeFinderInstance(instanceId);
+      }
+    };
+
+    window.addEventListener(
+      "instanceStateChange",
+      handleInstanceClose as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "instanceStateChange",
+        handleInstanceClose as EventListener
+      );
+    };
+  }, [instanceId, removeFinderInstance]);
+
+  // Get current instance data
+  const currentInstance = currentFinderInstance;
+
+  // Instance state
+  const viewType = currentInstance?.viewType || "list";
+  const sortType = currentInstance?.sortType || "name";
+
+  const setSortType = useCallback(
+    (type: SortType) => {
+      if (instanceId) {
+        updateFinderInstance(instanceId, { sortType: type });
+      }
+    },
+    [instanceId, updateFinderInstance]
+  );
+
+  // Get all functionality from useFileSystem hook
+  // Use the persisted path from the instance, or initialData path, or root
+  // Important: Check if instance exists from persisted state first
+  const initialFileSystemPath =
+    currentInstance?.currentPath ||
+    (initialData as FinderInitialData | undefined)?.path ||
+    "/";
+
+  const {
+    currentPath,
+    files,
+    selectedFile,
+    selectedFiles,
+    selectionAnchorPath,
+    isLoading,
+    error,
+    handleFileOpen: originalHandleFileOpen,
+    handleFileSelect,
+    navigateUp,
+    navigateToPath,
+    moveToTrash,
+    restoreFromTrash,
+    emptyTrash,
+    trashItemsCount,
+    navigateBack,
+    navigateForward,
+    canNavigateBack,
+    canNavigateForward,
+    saveFile: originalSaveFile,
+    renameFile: originalRenameFile,
+    createFolder,
+    moveFile,
+  } = useFileSystem(initialFileSystemPath, { instanceId });
+
+  const setViewType = useCallback(
+    (type: ViewType) => {
+      // Persist per-path preference
+      setViewTypeForPath(currentPath, type);
+      // Keep instance state in sync for compatibility
+      if (instanceId) {
+        updateFinderInstance(instanceId, { viewType: type });
+      }
+    },
+    [currentPath, instanceId, setViewTypeForPath, updateFinderInstance]
+  );
+
+  // Undo/redo state for file operations
+  const [undoStack, setUndoStack] = useState<FinderUndoAction[]>([]);
+  const [redoStack, setRedoStack] = useState<FinderUndoAction[]>([]);
+  const canUndoFileOp = undoStack.length > 0;
+  const canRedoFileOp = redoStack.length > 0;
+
+  const pushUndoAction = useCallback((action: FinderUndoAction) => {
+    setUndoStack((prev) => [...prev.slice(-19), action]);
+    setRedoStack([]);
+  }, []);
+
+  const undoFileOp = useCallback(() => {
+    const stack = undoStack;
+    if (stack.length === 0) return;
+    const action = stack[stack.length - 1];
+
+    try {
+      switch (action.type) {
+        case "moveToTrash": {
+          // Trashed items keep their original path in the store with status "trashed"
+          const item = getFileItem(action.originalPath);
+          if (item) {
+            restoreFromTrash({ path: action.originalPath, name: action.fileName } as FileItem);
+          } else {
+            console.warn("[Finder] undo moveToTrash: item not found at", action.originalPath);
+            return;
+          }
+          break;
+        }
+        case "rename": {
+          const newPath = `${action.basePath}/${action.newName}`;
+          originalRenameFile(newPath, action.oldName);
+          emitFileRenamed({
+            oldPath: newPath,
+            newPath: `${action.basePath}/${action.oldName}`,
+            oldName: action.newName,
+            newName: action.oldName,
+          });
+          break;
+        }
+      }
+    } catch (e) {
+      console.error("[Finder] undo failed:", e);
+      return;
+    }
+
+    setUndoStack((prev) => prev.slice(0, -1));
+    setRedoStack((r) => [...r, action]);
+  }, [undoStack, getFileItem, restoreFromTrash, originalRenameFile]);
+
+  const redoFileOp = useCallback(() => {
+    const stack = redoStack;
+    if (stack.length === 0) return;
+    const action = stack[stack.length - 1];
+
+    try {
+      switch (action.type) {
+        case "moveToTrash": {
+          const item = getFileItem(action.originalPath);
+          if (item) {
+            moveToTrash({ path: action.originalPath, name: action.fileName } as FileItem);
+          } else {
+            console.warn("[Finder] redo moveToTrash: item not found at", action.originalPath);
+            return;
+          }
+          break;
+        }
+        case "rename": {
+          const oldPath = `${action.basePath}/${action.oldName}`;
+          originalRenameFile(oldPath, action.newName);
+          emitFileRenamed({
+            oldPath,
+            newPath: `${action.basePath}/${action.newName}`,
+            oldName: action.oldName,
+            newName: action.newName,
+          });
+          break;
+        }
+      }
+    } catch (e) {
+      console.error("[Finder] redo failed:", e);
+      return;
+    }
+
+    setRedoStack((prev) => prev.slice(0, -1));
+    setUndoStack((u) => [...u, action]);
+  }, [redoStack, getFileItem, moveToTrash, originalRenameFile]);
+
+  const trackedMoveToTrash = useCallback(
+    (file: FileItem) => {
+      pushUndoAction({
+        type: "moveToTrash",
+        fileName: file.name,
+        originalPath: file.path,
+      });
+      moveToTrash(file);
+    },
+    [moveToTrash, pushUndoAction]
+  );
+
+  // Wrap the original handleFileOpen - now only calls the original without TextEditStore updates
+  const handleFileOpen = async (
+    file: FileItem,
+    launchOrigin?: LaunchOriginRect,
+    requestedAppId?: AppId,
+  ) => {
+    // Call original file open handler from useFileSystem
+    originalHandleFileOpen(file, launchOrigin, requestedAppId);
+    // TextEditStore updates removed - TextEdit instances now manage their own state
+  };
+
+  // Use the original saveFile directly without TextEditStore updates
+  const saveFile = originalSaveFile;
+
+  // Update storage space periodically using the accurate StorageManager
+  // estimate (covers IndexedDB + Cache Storage + localStorage), falling back
+  // to the rough localStorage heuristic when the API is unavailable.
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      const space = await estimateStorageSpace();
+      if (!cancelled) setStorageSpace(space);
+    };
+
+    void refresh();
+    const interval = setInterval(() => void refresh(), 15000); // Update every 15 seconds
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Sort files
+  const sortedFiles = useMemo(() => {
+    const finderSortLanguage = i18n.resolvedLanguage || i18n.language;
+
+    return [...files].sort((a, b) => {
+      switch (sortType) {
+        case "name":
+          return compareFinderItemsByDisplayName(a, b, finderSortLanguage);
+        case "kind": {
+          // Sort by directory first, then by file extension
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          const extA = a.name.split(".").pop() || "";
+          const extB = b.name.split(".").pop() || "";
+          return (
+            compareFinderSortText(extA, extB, finderSortLanguage) ||
+            compareFinderItemsByDisplayName(a, b, finderSortLanguage)
+          );
+        }
+        case "size":
+          // For now, directories are considered smaller than files
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return 0;
+        case "date":
+          // Sort by modified date, directories first
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+
+          // If both have dates, sort by date (newest first)
+          if (a.modifiedAt && b.modifiedAt) {
+            return (
+              new Date(b.modifiedAt).getTime() -
+              new Date(a.modifiedAt).getTime()
+            );
+          }
+          // If only one has a date, put it first
+          if (a.modifiedAt && !b.modifiedAt) return -1;
+          if (!a.modifiedAt && b.modifiedAt) return 1;
+          // If neither has a date, sort by name
+          return compareFinderItemsByDisplayName(a, b, finderSortLanguage);
+        default:
+          return 0;
+      }
+    });
+  }, [files, sortType, i18n.language, i18n.resolvedLanguage]);
+
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const filteredFiles = useMemo(() => {
+    if (!deferredSearchQuery.trim()) return sortedFiles;
+    const q = deferredSearchQuery.toLowerCase();
+    return sortedFiles.filter((f) => f.name.toLowerCase().includes(q));
+  }, [sortedFiles, deferredSearchQuery]);
+
+  const handleEmptyTrash = () => {
+    setIsEmptyTrashDialogOpen(true);
+  };
+
+  const confirmEmptyTrash = () => {
+    emptyTrash();
+    setIsEmptyTrashDialogOpen(false);
+  };
+
+  const handleNewWindow = () => {
+    // Launch a new Finder instance with multi-window support
+    // Always start at the root path
+    const initialPath = "/";
+    // Use the launchApp method which handles multi-window properly
+    const appStore = useAppStore.getState();
+    appStore.launchApp("finder", { path: initialPath }, undefined, true);
+  };
+
+  // External file drop handler (from outside the app)
+  const handleFileDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    // Only handle external files (from the user's disk)
+    // If no files in dataTransfer, this might be an internal move which is handled by FileList
+    if (e.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    // Only allow drops in writable directories
+    if (!isWritablePath(currentPath)) {
+      return;
+    }
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const previewKind = resolvePreviewKind(file.name, file);
+      if (previewKind === "unsupported") {
+        return;
+      }
+
+      try {
+        const content =
+          previewKind === "image" || previewKind === "pdf"
+            ? new Blob([await file.arrayBuffer()], {
+                type: file.type || undefined,
+              })
+            : await file.text();
+        const basePath = currentPath === "/" ? "" : currentPath;
+        const filePath = `${basePath}/${file.name}`;
+
+        await saveFile({
+          name: file.name,
+          path: filePath,
+          content,
+        });
+
+        // Notify file was added
+        emitFileUpdated({
+          name: file.name,
+          path: filePath,
+        });
+      } catch (err) {
+        console.error("Error saving dropped file:", err);
+      }
+    }
+  };
+
+  // Internal file move handler (between folders in the app)
+  const handleFileMoved = (sourceFile: FileItem, targetFolder: FileItem) => {
+    if (!canCreateFolder) {
+      console.warn("File movement is not allowed in this directory");
+      return;
+    }
+
+    if (!sourceFile || !targetFolder || !targetFolder.isDirectory) {
+      console.warn("Invalid source or target for file move");
+      return;
+    }
+
+    // Get the file from the filesystem using the path
+    const sourceItem = getFileItem(sourceFile.path);
+    if (!sourceItem) {
+      console.error(`Source file not found at path: ${sourceFile.path}`);
+      return;
+    }
+
+    // Execute the move
+    moveFile(sourceItem, targetFolder.path);
+  };
+
+  // Handler for dropping files directly into the current directory
+  const handleDropToCurrentDirectory = (sourceFile: FileItem) => {
+    if (!canCreateFolder) {
+      console.warn("File movement is not allowed in this directory");
+      return;
+    }
+
+    if (!sourceFile) {
+      console.warn("Invalid source file for move");
+      return;
+    }
+
+    // Get source file from store
+    const sourceItem = getFileItem(sourceFile.path);
+    if (!sourceItem) {
+      console.error(`Source file not found at path: ${sourceFile.path}`);
+      return;
+    }
+
+    // Don't move a file to the directory it's already in
+    if (getParentPath(sourceFile.path) === currentPath) {
+      console.warn(`File ${sourceFile.name} is already in ${currentPath}`);
+      return;
+    }
+
+    moveFile(sourceItem, currentPath);
+  };
+
+  const handleImportFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = async (
+    e: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fileExtension = file.name.toLowerCase();
+      const isAppletFile =
+        fileExtension.endsWith(".app") || fileExtension.endsWith(".gz");
+      const isAppletsDir = currentPath === "/Applets";
+
+      // .app and .gz files always go to /Applets, regardless of current directory
+      if (isAppletFile) {
+        try {
+          // Use shared import function
+          const importedData = await importAppletFile(file);
+
+          const filePath = `/Applets/${importedData.name}`;
+
+          await saveFile({
+            name: importedData.name,
+            path: filePath,
+            content: importedData.content,
+            type: "html",
+            icon: importedData.icon,
+            shareId: importedData.shareId,
+            createdBy: importedData.createdBy,
+          });
+
+          // Update additional metadata if present
+          if (
+            importedData.windowWidth ||
+            importedData.windowHeight ||
+            importedData.createdAt ||
+            importedData.modifiedAt
+          ) {
+            updateItemMetadata(filePath, {
+              ...(importedData.windowWidth !== undefined && {
+                windowWidth: importedData.windowWidth,
+              }),
+              ...(importedData.windowHeight !== undefined && {
+                windowHeight: importedData.windowHeight,
+              }),
+              ...(importedData.createdAt !== undefined && {
+                createdAt: importedData.createdAt,
+              }),
+              ...(importedData.modifiedAt !== undefined && {
+                modifiedAt: importedData.modifiedAt,
+              }),
+            });
+          }
+
+          // Notify file was added
+          emitFileSaved({
+            name: importedData.name,
+            path: filePath,
+            content: importedData.content,
+            icon: importedData.icon,
+          });
+
+          toast.success(t("apps.finder.messages.appletImported"), {
+            description: t("apps.finder.messages.appletImportedDesc", {
+              name: importedData.name,
+              iconText: importedData.icon
+                ? t("apps.finder.messages.appletImportedIconText", {
+                    icon: importedData.icon,
+                  })
+                : "",
+            }),
+          });
+
+          // Navigate to /Applets if not already there
+          if (!isAppletsDir) {
+            navigateToPath("/Applets");
+          }
+        } catch (error) {
+          console.error("Import failed:", error);
+          toast.error(t("apps.finder.messages.importFailed"), {
+            description: t("apps.finder.messages.importFailedAppletDesc"),
+          });
+        } finally {
+          e.target.value = "";
+        }
+        return;
+      }
+
+      // EPUB books: store the binary as a Blob in /Books
+      const isBooksDir = currentPath === "/Books";
+      if (isBooksDir || fileExtension.endsWith(".epub")) {
+        if (!fileExtension.endsWith(".epub")) {
+          toast.error(t("apps.finder.messages.invalidFileType"), {
+            description: t("apps.finder.messages.invalidFileTypeDesc"),
+          });
+          e.target.value = "";
+          return;
+        }
+        try {
+          const fileName = file.name;
+          const filePath = `/Books/${fileName}`;
+          // Store the raw bytes as a Blob rather than the picker File so the
+          // IndexedDB record stays readable after reloads (a File reference
+          // can later throw "Internal error" on read).
+          const bytes = await file.arrayBuffer();
+          const blob = new Blob([bytes], { type: "application/epub+zip" });
+          await saveFile({
+            name: fileName,
+            path: filePath,
+            content: blob,
+            type: "epub",
+          });
+          emitFileSaved({ name: fileName, path: filePath });
+          if (!isBooksDir) {
+            navigateToPath("/Books");
+          }
+        } catch (err) {
+          console.error("Error importing book:", err);
+          toast.error(t("apps.finder.messages.importFailed"), {
+            description: t("apps.finder.messages.importFailedDesc"),
+          });
+        } finally {
+          e.target.value = "";
+        }
+        return;
+      }
+
+      // Check if we're in Applets directory for HTML files
+      if (isAppletsDir) {
+        // In Applets: accept .html and .htm files
+        if (!fileExtension.endsWith(".html") && !fileExtension.endsWith(".htm")) {
+          toast.error(t("apps.finder.messages.invalidFileType"), {
+            description: t("apps.finder.messages.invalidFileTypeDesc"),
+          });
+          e.target.value = "";
+          return;
+        }
+      } else {
+        const extension = file.name.split(".").pop()?.toLowerCase() || "";
+        const supportedExtensions = new Set([
+          "txt",
+          "md",
+          "pdf",
+          "png",
+          "jpg",
+          "jpeg",
+          "gif",
+          "webp",
+          "bmp",
+          "svg",
+          "html",
+          "htm",
+          "json",
+          "csv",
+          "xml",
+        ]);
+        if (
+          !file.type.startsWith("text/") &&
+          !file.type.startsWith("image/") &&
+          file.type !== "application/pdf" &&
+          !supportedExtensions.has(extension)
+        ) {
+          e.target.value = "";
+          return;
+        }
+      }
+
+      try {
+        // Handle applet HTML files (when in /Applets directory)
+        if (isAppletsDir) {
+          // Use shared import function
+          const importedData = await importAppletFile(file);
+
+          const filePath = `/Applets/${importedData.name}`;
+
+          await saveFile({
+            name: importedData.name,
+            path: filePath,
+            content: importedData.content,
+            type: "html",
+            icon: importedData.icon,
+            shareId: importedData.shareId,
+            createdBy: importedData.createdBy,
+          });
+
+          // Update additional metadata if present
+          if (
+            importedData.windowWidth ||
+            importedData.windowHeight ||
+            importedData.createdAt ||
+            importedData.modifiedAt
+          ) {
+            updateItemMetadata(filePath, {
+              ...(importedData.windowWidth !== undefined && {
+                windowWidth: importedData.windowWidth,
+              }),
+              ...(importedData.windowHeight !== undefined && {
+                windowHeight: importedData.windowHeight,
+              }),
+              ...(importedData.createdAt !== undefined && {
+                createdAt: importedData.createdAt,
+              }),
+              ...(importedData.modifiedAt !== undefined && {
+                modifiedAt: importedData.modifiedAt,
+              }),
+            });
+          }
+
+          // Notify file was added
+          emitFileSaved({
+            name: importedData.name,
+            path: filePath,
+            content: importedData.content,
+            icon: importedData.icon,
+          });
+
+          toast.success(t("apps.finder.messages.appletImported"), {
+            description: t("apps.finder.messages.appletImportedDesc", {
+              name: importedData.name,
+              iconText: importedData.icon
+                ? t("apps.finder.messages.appletImportedIconText", {
+                    icon: importedData.icon,
+                  })
+                : "",
+            }),
+          });
+        } else {
+          const extension = file.name.split(".").pop()?.toLowerCase() || "";
+          const isBinaryPreviewFile =
+            file.type.startsWith("image/") ||
+            file.type === "application/pdf" ||
+            ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "pdf"].includes(
+              extension,
+            );
+          const content = isBinaryPreviewFile
+            ? new Blob([await file.arrayBuffer()], {
+                type: file.type || undefined,
+              })
+            : await file.text();
+          const fileName = file.name;
+          // Import into the current directory when writable; otherwise fall
+          // back to /Documents (e.g. importing while viewing /Music).
+          const targetDir = isWritablePath(currentPath)
+            ? currentPath
+            : "/Documents";
+          const basePath = targetDir === "/" ? "" : targetDir;
+          const filePath = `${basePath}/${fileName}`;
+
+          await saveFile({
+            name: fileName,
+            path: filePath,
+            content,
+          });
+
+          if (targetDir !== currentPath) {
+            navigateToPath(targetDir);
+          }
+
+          // Notify file was added
+          emitFileUpdated({
+            name: fileName,
+            path: filePath,
+          });
+        }
+
+        // Clear the input
+        e.target.value = "";
+      } catch (err) {
+        console.error("Error importing file:", err);
+        toast.error(t("apps.finder.messages.importFailed"), {
+          description: t("apps.finder.messages.importFailedDesc"),
+        });
+        e.target.value = "";
+      }
+    }
+  };
+
+  const handleRename = () => {
+    if (!selectedFile) return;
+    setRenameValue(selectedFile.name);
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleRenameSubmit = async (newName: string) => {
+    if (!selectedFile || !newName || !newName.trim()) return;
+    const trimmedNewName = newName.trim();
+    if (selectedFile.name === trimmedNewName) {
+      setIsRenameDialogOpen(false);
+      return;
+    }
+
+    // Renamed root folders must not collide with system/virtual root names
+    if (currentPath === "/" && selectedFile.isDirectory) {
+      const validation = validateNewRootFolderName(trimmedNewName);
+      if (!validation.ok) {
+        toast.error(
+          validation.reason === "reserved"
+            ? t("apps.finder.messages.reservedFolderName", {
+                name: trimmedNewName,
+              })
+            : t("apps.finder.messages.invalidFolderName")
+        );
+        return;
+      }
+    } else if (trimmedNewName.includes("/")) {
+      toast.error(t("apps.finder.messages.invalidFolderName"));
+      return;
+    }
+
+    const basePath = currentPath === "/" ? "" : currentPath;
+    const oldPathForRename = `${basePath}/${selectedFile.name}`;
+    await originalRenameFile(oldPathForRename, trimmedNewName);
+
+    pushUndoAction({
+      type: "rename",
+      basePath,
+      oldName: selectedFile.name,
+      newName: trimmedNewName,
+    });
+
+    emitFileRenamed({
+      oldPath: oldPathForRename,
+      newPath: `${basePath}/${trimmedNewName}`,
+      oldName: selectedFile.name,
+      newName: trimmedNewName,
+    });
+
+    setIsRenameDialogOpen(false);
+  };
+
+  const handleDuplicate = async () => {
+    if (!selectedFile || selectedFile.isDirectory) return; // Can only duplicate files
+    try {
+      // Create a copy name
+      const ext = selectedFile.name.includes(".")
+        ? `.${selectedFile.name.split(".").pop()}`
+        : "";
+      const baseName = selectedFile.name.replace(ext, "");
+      let copyIndex = 1;
+      let copyName = `${baseName} ${t("apps.finder.defaultNames.copy")}${ext}`;
+      // Fix path construction here
+      const basePath = currentPath === "/" ? "" : currentPath;
+      let copyPath = `${basePath}/${copyName}`;
+
+      // Ensure unique name
+      while (getFileItem(copyPath)) {
+        copyIndex++;
+        copyName = `${baseName} ${t("apps.finder.defaultNames.copy")} ${copyIndex}${ext}`;
+        copyPath = `${basePath}/${copyName}`;
+      }
+
+      // Get the file metadata to find UUID
+      const fileMetadata = getFileItem(selectedFile.path);
+
+      if (!fileMetadata || !fileMetadata.uuid) {
+        console.error(
+          "Could not find file metadata or UUID for:",
+          selectedFile.path
+        );
+        return;
+      }
+
+      // Fetch content for the selected file using UUID
+      let contentToCopy: string | Blob | undefined;
+      // Determine store based on selectedFile.path, not currentPath
+      const storeName = getStoreForFile(selectedFile.path, fileMetadata);
+      if (storeName) {
+        const contentData = await dbOperations.get<DocumentContent>(
+          storeName,
+          fileMetadata.uuid
+        );
+        if (contentData) {
+          contentToCopy =
+            contentData.content instanceof ArrayBuffer
+              ? new Blob([contentData.content])
+              : contentData.content;
+        }
+      }
+
+      if (contentToCopy === undefined) {
+        console.error(
+          "Could not retrieve content for duplication:",
+          selectedFile.path
+        );
+        return; // Or show an error
+      }
+
+      // Use saveFile to create the duplicate
+      await saveFile({
+        name: copyName,
+        path: copyPath,
+        content: contentToCopy,
+        type: selectedFile.type,
+      });
+    } catch (err) {
+      console.error("Error duplicating file:", err);
+    }
+  };
+
+  const handleRestore = () => {
+    if (!selectedFile) return;
+    // restoreFromTrash now expects the DisplayFileItem from the UI
+    restoreFromTrash(selectedFile);
+  };
+
+  const handleNewFolder = useCallback(() => {
+    // Find a unique default name
+    let folderIndex = 0;
+    let defaultName = t("apps.finder.defaultNames.untitledFolder");
+    const basePath = currentPath === "/" ? "" : currentPath;
+    let folderPath = `${basePath}/${defaultName}`;
+    while (getFileItem(folderPath)) {
+      folderIndex++;
+      defaultName = `${t("apps.finder.defaultNames.untitledFolder")} ${folderIndex}`;
+      folderPath = `${basePath}/${defaultName}`;
+    }
+    setNewFolderName(defaultName);
+    setIsNewFolderDialogOpen(true);
+  }, [currentPath, getFileItem, t]);
+
+  const handleNewFolderSubmit = (name: string) => {
+    if (!name || !name.trim()) return;
+    const trimmedName = name.trim();
+
+    // Root-level folders must not collide with system/virtual root names
+    if (currentPath === "/") {
+      const validation = validateNewRootFolderName(trimmedName);
+      if (!validation.ok) {
+        toast.error(
+          validation.reason === "reserved"
+            ? t("apps.finder.messages.reservedFolderName", {
+                name: trimmedName,
+              })
+            : t("apps.finder.messages.invalidFolderName")
+        );
+        return;
+      }
+    } else if (trimmedName.includes("/")) {
+      toast.error(t("apps.finder.messages.invalidFolderName"));
+      return;
+    }
+
+    const basePath = currentPath === "/" ? "" : currentPath;
+    const newPath = `${basePath}/${trimmedName}`;
+
+    if (getFileItem(newPath)) {
+      toast.error(
+        t("apps.finder.messages.folderExists", { name: trimmedName })
+      );
+      return;
+    }
+
+    // Use the createFolder function from the hook
+    createFolder({ path: newPath, name: trimmedName });
+
+    setIsNewFolderDialogOpen(false);
+  };
+
+  // Determine if folder creation (and thus file movement) is allowed in the
+  // current path. Writable paths include "/" (user-created root folders),
+  // the writable system subtrees, and any user root folder subtree.
+  const canCreateFolder = isWritablePath(currentPath);
+
+  // Subscribe to root children so sidebar/Go menu refresh after IndexedDB
+  // rehydrate (stable getItemsInPath refs alone would keep an empty snapshot).
+  const rootItems = useFileMetadataInPath("/");
+
+  // Get all root folders for the Go menu using fileStore
+  // This will always show root folders regardless of current path.
+  // Same place order as the sidebar: Applications, Applets, A–Z, Desktop.
+  const rootFolders = useMemo(() => {
+    const folders = rootItems.reduce<
+      { name: string; isDirectory: true; path: string; icon: string }[]
+    >((acc, item) => {
+      if (!item.isDirectory || item.path === "/Trash") {
+        return acc;
+      }
+      acc.push({
+        name: item.name,
+        isDirectory: true,
+        path: item.path,
+        icon: item.icon || "/icons/default/directory.png",
+      });
+      return acc;
+    }, []);
+    return orderFinderRootFolders(folders);
+  }, [rootItems]);
+
+  // Add a new handler for rename requests
+  const handleRenameRequest = (file: FileItem) => {
+    // Only allow rename in paths where file creation is allowed
+    if (!canCreateFolder) return;
+
+    // Prevent renaming virtual files and system-managed folders
+    if (file.type?.includes("virtual") || isProtectedSystemPath(file.path)) {
+      return;
+    }
+
+    // Set rename value and open the dialog
+    setRenameValue(file.name);
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleItemContextMenu = (file: FileItem, e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setContextMenuFile(file);
+    if (canShareViaAirDrop(file)) {
+      void fetchNearbyUsers();
+    }
+    if (!selectedFiles.includes(file.path)) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleBlankContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setContextMenuFile(null);
+  };
+
+  // ------------------ Mobile long-press support (blank area) ------------------
+  const blankLongPress = usePointerLongPress((event) => {
+    // Check if the target is within a file item - if so, don't show blank context menu
+    const target = event.target as HTMLElement;
+    const fileItem = target.closest("[data-file-item]");
+    if (fileItem) {
+      return; // Let the file item handle its own context menu
+    }
+
+    setContextMenuPos({ x: event.clientX, y: event.clientY });
+    setContextMenuFile(null);
+  });
+  const blankLongPressHandlers = {
+    onMouseDown: blankLongPress.onMouseDown,
+    onMouseMove: blankLongPress.onMouseMove,
+    onMouseUp: blankLongPress.onMouseUp,
+    onMouseLeave: blankLongPress.onMouseLeave,
+    onTouchStart: blankLongPress.onTouchStart,
+    onTouchMove: blankLongPress.onTouchMove,
+    onTouchEnd: blankLongPress.onTouchEnd,
+    onTouchCancel: blankLongPress.onTouchCancel,
+  };
+
+  // Inside component before return create two arrays
+  const blankMenuItems: MenuItem[] = useMemo(
+    () => [
+      {
+        type: "submenu",
+        label: t("apps.finder.contextMenu.sortBy"),
+        items: [
+          {
+            type: "radioGroup",
+            value: sortType,
+            onChange: (val) => setSortType(val as SortType),
+            items: [
+              { label: t("apps.finder.contextMenu.name"), value: "name" },
+              { label: t("apps.finder.contextMenu.date"), value: "date" },
+              { label: t("apps.finder.contextMenu.size"), value: "size" },
+              { label: t("apps.finder.contextMenu.kind"), value: "kind" },
+            ],
+          },
+        ],
+      },
+      { type: "separator" },
+      ...(currentPath === "/Trash"
+        ? [
+            {
+              type: "item" as const,
+              label: t("apps.finder.contextMenu.emptyTrash"),
+              onSelect: handleEmptyTrash,
+              disabled: trashItemsCount === 0,
+            },
+          ]
+        : [
+            {
+              type: "item" as const,
+              label: t("apps.finder.contextMenu.newFolder"),
+              onSelect: handleNewFolder,
+              disabled: !isWritablePath(currentPath),
+            },
+          ]),
+    ],
+    [sortType, setSortType, currentPath, trashItemsCount, t, handleNewFolder]
+  );
+
+  const handleAddToDesktop = (file: FileItem) => {
+    // Check if item is already an alias or is Desktop itself
+    if (file.path.startsWith("/Desktop") || file.path === "/Desktop") {
+      return;
+    }
+
+    // Check if an alias already exists for this target
+    const desktopItems = getItemsInPath("/Desktop");
+    let aliasExists = false;
+
+    // Determine if this is an app or a file/applet
+    if (file.path.startsWith("/Applications/") && file.appId) {
+      // Check if alias already exists for this app
+      const existingShortcut = desktopItems.find(
+        (item) =>
+          item.aliasType === "app" &&
+          item.aliasTarget === file.appId &&
+          item.status === "active"
+      );
+      aliasExists = !!existingShortcut;
+
+      if (aliasExists && existingShortcut) {
+        // If this was a theme-conditional default (hiddenOnThemes), "fix" it by
+        // clearing the hidden themes so it shows on all themes going forward.
+        if (
+          existingShortcut.hiddenOnThemes &&
+          existingShortcut.hiddenOnThemes.length > 0
+        ) {
+          updateItemMetadata(existingShortcut.path, {
+            hiddenOnThemes: [],
+          });
+        }
+      } else {
+        // It's an application - create a new fixed alias
+        createAlias(file.path, file.name, "app", file.appId);
+      }
+    } else if (!file.isDirectory) {
+      // Check if alias already exists for this file
+      aliasExists = desktopItems.some(
+        (item) =>
+          item.aliasType === "file" &&
+          item.aliasTarget === file.path &&
+          item.status === "active"
+      );
+
+      if (!aliasExists) {
+        // It's a file or applet
+        createAlias(file.path, file.name, "file");
+      }
+    }
+  };
+
+  const handleAddToDock = (file: FileItem) => {
+    if (file.path.startsWith("/Applications/") && file.appId) {
+      addDockItem({ type: "app", id: file.appId });
+    } else if (
+      !file.isDirectory &&
+      (file.path.endsWith(".app") || file.path.endsWith(".html"))
+    ) {
+      const fileName =
+        file.path
+          .split("/")
+          .pop()
+          ?.replace(/\.(app|html)$/i, "") || file.name;
+      addDockItem({
+        type: "file",
+        id: `file-${file.path}`,
+        path: file.path,
+        name: fileName,
+        icon: file.icon,
+      });
+    } else if (file.aliasType === "app" && file.aliasTarget) {
+      addDockItem({ type: "app", id: file.aliasTarget });
+    }
+  };
+
+  const isDockable = (file: FileItem): boolean => {
+    if (file.path.startsWith("/Applications/") && file.appId) return true;
+    if (
+      !file.isDirectory &&
+      (file.path.endsWith(".app") || file.path.endsWith(".html"))
+    )
+      return true;
+    if (file.aliasType === "app" && file.aliasTarget) return true;
+    return false;
+  };
+
+  const isAlreadyInDock = (file: FileItem): boolean => {
+    if (file.path.startsWith("/Applications/") && file.appId) {
+      return hasDockItem(file.appId);
+    }
+    if (
+      !file.isDirectory &&
+      (file.path.endsWith(".app") || file.path.endsWith(".html"))
+    ) {
+      return hasDockItem(`file-${file.path}`);
+    }
+    if (file.aliasType === "app" && file.aliasTarget) {
+      return hasDockItem(file.aliasTarget);
+    }
+    return false;
+  };
+
+  // AirDrop state
+  const [isAirDropView, setIsAirDropView] = useState(false);
+  const isAuthenticated = useChatsStore((s) => s.isAuthenticated);
+  const chatUsername = useChatsStore((s) => s.username);
+  const nearbyUsers = useAirDropStore((s) => s.nearbyUsers);
+  const isDiscovering = useAirDropStore((s) => s.isDiscovering);
+  const fetchNearbyUsers = useAirDropStore((s) => s.fetchNearbyUsers);
+  const sendFileToUser = useAirDropStore((s) => s.sendFile);
+
+  const navigateToAirDrop = useCallback(() => {
+    setIsAirDropView(true);
+  }, []);
+
+  const navigateAwayFromAirDrop = useCallback(() => {
+    setIsAirDropView(false);
+  }, []);
+
+  const canShareViaAirDrop = (file: FileItem): boolean => {
+    if (file.isDirectory) return false;
+    if (file.path.startsWith("/Applications")) return false;
+    if (!isAuthenticated || !chatUsername) return false;
+    return true;
+  };
+
+  const handleShareViaAirDrop = useCallback(() => {
+    navigateToAirDrop();
+  }, [navigateToAirDrop]);
+
+  const availableAirDropUsers = useMemo(() => {
+    if (!chatUsername) {
+      return nearbyUsers;
+    }
+
+    return [chatUsername, ...nearbyUsers.filter((user) => user !== chatUsername)];
+  }, [nearbyUsers, chatUsername]);
+
+  const getAirDropMenuItems = (file: FileItem): MenuItem[] => {
+    const recipientItems: MenuItem[] =
+      availableAirDropUsers.length > 0
+        ? availableAirDropUsers.map((recipient) => ({
+            type: "item" as const,
+            label: `@${recipient}`,
+            onSelect: () =>
+              void handleAirDropSendFile(
+                recipient,
+                file.name,
+                file.path,
+                getFileType(file, t)
+              ),
+          }))
+        : [
+            {
+              type: "item",
+              label: isDiscovering
+                ? t("apps.finder.contextMenu.searchingForAirDropUsers")
+                : t("apps.finder.contextMenu.noAirDropUsersAvailable"),
+              disabled: true,
+            },
+          ];
+
+    return [
+      ...recipientItems,
+      { type: "separator" },
+      {
+        type: "item",
+        label: t("apps.finder.contextMenu.openAirDrop"),
+        onSelect: handleShareViaAirDrop,
+      },
+    ];
+  };
+
+  const fileMenuItems = (file: FileItem): MenuItem[] => {
+    const isTrashedItem = currentPath === "/Trash" || file.status === "trashed";
+    const openWithApps =
+      file.appId || file.type === "site-link" || file.type === "Music" || file.type === "Video"
+        ? []
+        : getOpenWithApps(file);
+
+    return [
+      {
+        type: "item",
+        label: t("apps.finder.contextMenu.open"),
+        onSelect: () => handleFileOpen(file),
+      },
+      ...(openWithApps.length > 1
+        ? [
+            {
+              type: "submenu" as const,
+              label: t("apps.finder.contextMenu.openWith"),
+              items: openWithApps.map((appId) => ({
+                type: "item" as const,
+                label: getTranslatedAppName(appId),
+                icon: getAppIconPath(appId),
+                onSelect: () => handleFileOpen(file, undefined, appId),
+              })),
+            },
+          ]
+        : []),
+      { type: "separator" },
+      {
+        type: "submenu",
+        label: t("apps.finder.contextMenu.shareViaAirDrop"),
+        items: getAirDropMenuItems(file),
+        disabled: !canShareViaAirDrop(file),
+      },
+      { type: "separator" },
+      {
+        type: "item",
+        label: t("apps.finder.contextMenu.addToDesktop"),
+        onSelect: () => handleAddToDesktop(file),
+        disabled:
+          file.isDirectory ||
+          file.path.startsWith("/Desktop") ||
+          file.path === "/Desktop",
+      },
+      {
+        type: "item",
+        label: t("common.dock.addToDock"),
+        onSelect: () => handleAddToDock(file),
+        disabled: !isDockable(file) || isAlreadyInDock(file),
+      },
+      { type: "separator" },
+      {
+        type: "item",
+        label: t("apps.finder.contextMenu.rename"),
+        onSelect: handleRename,
+      },
+      {
+        type: "item",
+        label: t("apps.finder.contextMenu.duplicate"),
+        onSelect: handleDuplicate,
+      },
+      isTrashedItem
+        ? {
+            type: "item",
+            label: t("apps.finder.contextMenu.putBack"),
+            onSelect: () => restoreFromTrash(file),
+          }
+        : {
+            type: "item",
+            label: t("apps.finder.contextMenu.moveToTrash"),
+            onSelect: () => trackedMoveToTrash(file),
+            disabled:
+              file.path.startsWith("/Trash") ||
+              file.path.startsWith("/Applications/") ||
+              file.type?.includes("virtual") ||
+              isProtectedSystemPath(file.path),
+          },
+    ];
+  };
+
+  const [showSidebar, setShowSidebar] = useState(() => window.innerWidth >= 500);
+
+  const handleAirDropSendFile = useCallback(
+    async (
+      recipient: string,
+      fileName: string,
+      filePath: string,
+      fileType: string
+    ) => {
+      const fileMetadata = getFileItem(filePath);
+      if (!fileMetadata) {
+        toast.error(t("apps.finder.airdrop.fileNotFound"));
+        return;
+      }
+
+      let content: string = "";
+      if (fileMetadata.uuid) {
+        const storeName = getStoreForFile(filePath, fileMetadata);
+        if (storeName) {
+          const doc = await dbOperations.get<DocumentContent>(
+            storeName,
+            fileMetadata.uuid
+          );
+          if (doc?.content) {
+            if (typeof doc.content === "string") {
+              content = doc.content;
+            } else if (doc.content instanceof Blob) {
+              const buf = await doc.content.arrayBuffer();
+              content = btoa(
+                String.fromCharCode(...new Uint8Array(buf))
+              );
+            }
+          }
+        }
+      }
+
+      if (!content) {
+        toast.error(t("apps.finder.airdrop.noContent"));
+        return;
+      }
+
+      await sendFileToUser(recipient, fileName, content, fileType);
+    },
+    [getFileItem, sendFileToUser, t]
+  );
+
+  const northStarFolder = useFilesStore((state) => state.items[NORTH_STAR_PATH]);
+  const sidebarItems = useMemo(() => {
+    const places = orderSidebarRootFolders(rootFolders).map((f) => ({
+      name: getTranslatedFolderNameFromName(f.name) || f.name,
+      path: f.path,
+      icon: f.icon,
+      divider: false,
+      isAirDrop: false,
+    }));
+    return [
+      { name: t("apps.finder.window.macintoshHd"), path: "/", icon: "/icons/default/disk.png", divider: false, isAirDrop: false },
+      {
+        name: t("apps.finder.airdrop.title"),
+        path: "__airdrop__",
+        icon: "/icons/default/airdrop.png",
+        divider: true,
+        isAirDrop: true,
+      },
+      // North Star sits under Documents, a little indented.
+      ...places.flatMap((place) => {
+        const northStar = place.path === "/Documents" ? northStarFolder : undefined;
+        return northStar && northStar.status !== "trashed"
+          ? [
+              place,
+              {
+                name: northStar.name,
+                path: NORTH_STAR_PATH,
+                icon: northStar.icon || "/icons/default/folder-northstar.png",
+                divider: false,
+                isAirDrop: false,
+                indent: true,
+              },
+            ]
+          : [place];
+      }),
+    ];
+  }, [rootFolders, t, northStarFolder]);
+
+  const activeSidebarPath = useMemo(() => {
+    if (isAirDropView) return "__airdrop__";
+    if (currentPath === "/") return "/";
+    if (currentPath === NORTH_STAR_PATH || currentPath.startsWith(`${NORTH_STAR_PATH}/`)) return NORTH_STAR_PATH;
+    const firstSegment = currentPath.split("/").filter(Boolean)[0];
+    return "/" + firstSegment;
+  }, [currentPath, isAirDropView]);
+
+  // Computed window title
+  const windowTitle = useMemo(() => {
+    if (isAirDropView) {
+      return t("apps.finder.airdrop.title");
+    }
+    if (currentPath === "/") {
+      return t("apps.finder.window.macintoshHd");
+    }
+    // Get the last path segment and decode it
+    const lastSegment = currentPath.split("/").filter(Boolean).pop() || "";
+    try {
+      const decodedName = decodeURIComponent(lastSegment);
+      // Use localized folder name if available
+      return (
+        getTranslatedFolderNameFromName(decodedName) ||
+        t("apps.finder.window.finder")
+      );
+    } catch {
+      // Use localized folder name even if decode fails
+      return (
+        getTranslatedFolderNameFromName(lastSegment) ||
+        t("apps.finder.window.finder")
+      );
+    }
+  }, [currentPath, isAirDropView, t]);
+
+  // Drag handlers
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    // Only handle external file drags, not internal file moves
+    if (e.dataTransfer.types.includes("Files") && e.dataTransfer.files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDraggingOver && currentPath === "/Documents") {
+        setIsDraggingOver(true);
+      }
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Check if we're leaving to a child element
+    const relatedTarget = e.relatedTarget as Node | null;
+    if (e.currentTarget.contains(relatedTarget)) {
+      return;
+    }
+    setIsDraggingOver(false);
+  };
+
+  const handleDragEnd = () => {
+    setIsDraggingOver(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDraggingOver(false);
+  };
+
+  // Handler for dropping on parent folder button
+  const handleParentButtonDrop = (e: DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("bg-black", "text-white");
+
+    // Parse the dragged file data
+    try {
+      const jsonData = e.dataTransfer.getData("application/json");
+      if (jsonData) {
+        const { path, name } = JSON.parse(jsonData);
+        const sourceItem = getFileItem(path);
+
+        if (sourceItem && currentPath !== "/") {
+          // Get parent path
+          const parentPath = getParentPath(currentPath);
+          log.debug("Moving file via parent folder drop", {
+            sourcePath: path,
+            targetPath: `${parentPath}/${name}`,
+          });
+          moveFile(sourceItem, parentPath);
+        }
+      }
+    } catch (err) {
+      console.error("Error handling drop on parent folder button:", err);
+    }
+  };
+
+  const handleParentButtonDragOver = (e: DragEvent<HTMLButtonElement>) => {
+    // Only allow dropping if not at root and if file creation is allowed in parent directory
+    if (currentPath !== "/" && canCreateFolder) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.add("bg-black", "text-white");
+    }
+  };
+
+  const handleParentButtonDragLeave = (e: DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove("bg-black", "text-white");
+  };
+
+  // Path input handlers
+  const handlePathInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    navigateToPath(e.target.value);
+  };
+
+  const handlePathInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      navigateToPath((e.target as HTMLInputElement).value);
+    }
+  };
+
+  return {
+    // Translations
+    t,
+    // State
+    isHelpDialogOpen,
+    setIsHelpDialogOpen,
+    isAboutDialogOpen,
+    setIsAboutDialogOpen,
+    isEmptyTrashDialogOpen,
+    setIsEmptyTrashDialogOpen,
+    isRenameDialogOpen,
+    setIsRenameDialogOpen,
+    renameValue,
+    setRenameValue,
+    isNewFolderDialogOpen,
+    setIsNewFolderDialogOpen,
+    newFolderName,
+    setNewFolderName,
+    isDraggingOver,
+    storageSpace,
+    contextMenuPos,
+    setContextMenuPos,
+    contextMenuFile,
+
+    // Refs
+    pathInputRef,
+    fileInputRef,
+
+    // File system state
+    currentPath,
+    files,
+    selectedFile,
+    selectedFiles,
+    selectionAnchorPath,
+    isLoading,
+    error,
+    sortedFiles: filteredFiles,
+
+    // Search
+    searchQuery,
+    setSearchQuery,
+
+    // View and sort
+    viewType,
+    setViewType,
+    sortType,
+    setSortType,
+
+    // Navigation
+    navigateUp,
+    navigateToPath,
+    navigateBack,
+    navigateForward,
+    canNavigateBack,
+    canNavigateForward,
+
+    // File operations
+    handleFileOpen,
+    handleFileSelect,
+    saveFile,
+    renameFile: originalRenameFile,
+    createFolder,
+    moveFile,
+    moveToTrash: trackedMoveToTrash,
+    restoreFromTrash,
+    emptyTrash,
+    trashItemsCount,
+
+    // Undo/redo for file operations
+    undoFileOp,
+    redoFileOp,
+    canUndoFileOp,
+    canRedoFileOp,
+
+    // Handlers
+    handleEmptyTrash,
+    confirmEmptyTrash,
+    handleNewWindow,
+    handleFileDrop,
+    handleFileMoved,
+    handleDropToCurrentDirectory,
+    handleImportFile,
+    handleFileInputChange,
+    handleRename,
+    handleRenameSubmit,
+    handleDuplicate,
+    handleRestore,
+    handleNewFolder,
+    handleNewFolderSubmit,
+    handleRenameRequest,
+    handleItemContextMenu,
+    handleBlankContextMenu,
+    handleAddToDesktop,
+
+    // Context menu
+    blankMenuItems,
+    fileMenuItems,
+    blankLongPressHandlers,
+
+    // Computed values
+    canCreateFolder,
+    rootFolders,
+    windowTitle,
+    isWindowsTheme,
+    isMacOSTheme,
+    currentTheme,
+
+    // Sidebar
+    showSidebar,
+    setShowSidebar,
+    sidebarItems,
+    activeSidebarPath,
+
+    // Drag handlers
+    handleDragOver,
+    handleDragLeave,
+    handleDragEnd,
+    handleMouseLeave,
+    handleParentButtonDrop,
+    handleParentButtonDragOver,
+    handleParentButtonDragLeave,
+
+    // Path input handlers
+    handlePathInputChange,
+    handlePathInputKeyDown,
+
+    // Help items
+    translatedHelpItems,
+
+    // Helper functions
+    getFileType: (file: FileItem) => getFileType(file, t),
+    getDisplayPath,
+
+    // AirDrop
+    isAirDropView,
+    navigateToAirDrop,
+    navigateAwayFromAirDrop,
+    handleAirDropSendFile,
+
+    // Props passed through
+    isWindowOpen,
+    isForeground,
+  };
+}

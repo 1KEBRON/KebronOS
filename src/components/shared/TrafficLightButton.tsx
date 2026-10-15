@@ -1,0 +1,218 @@
+import { cn } from "@/lib/utils";
+import { X, Minus, Plus } from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+
+export type TrafficLightColor = "red" | "yellow" | "green";
+
+interface TrafficLightButtonProps {
+  color: TrafficLightColor;
+  onClick: (e: React.MouseEvent) => void;
+  isForeground: boolean;
+  showResizers?: boolean;
+  ariaLabel: string;
+}
+
+const symbolIcons: Record<TrafficLightColor, Icon> = {
+  red: X,
+  yellow: Minus,
+  green: Plus,
+};
+
+const colorStyles: Record<
+  TrafficLightColor,
+  { gradient: string; shadow: string; iconColor: string }
+> = {
+  red: {
+    gradient: "linear-gradient(rgb(193, 58, 45), rgb(205, 73, 52))",
+    iconColor: "rgba(130, 30, 20, 0.9)",
+    shadow:
+      "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(225, 70, 64, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgba(150, 40, 30, 0.8) 0px 1px 3px inset, rgba(225, 70, 64, 0.75) 0px 2px 3px 1px inset",
+  },
+  yellow: {
+    gradient: "linear-gradient(rgb(202, 130, 13), rgb(253, 253, 149))",
+    iconColor: "rgba(130, 80, 8, 0.9)",
+    shadow:
+      "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(223, 161, 35, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(155, 78, 21) 0px 1px 3px inset, rgb(241, 157, 20) 0px 2px 3px 1px inset",
+  },
+  green: {
+    gradient: "linear-gradient(rgb(111, 174, 58), rgb(138, 192, 50))",
+    iconColor: "rgba(45, 90, 18, 0.9)",
+    shadow:
+      "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgb(59, 173, 29, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(53, 91, 17) 0px 1px 3px inset, rgb(98, 187, 19) 0px 2px 3px 1px inset",
+  },
+};
+
+const inactiveStyles = {
+  gradient:
+    "linear-gradient(rgba(160, 160, 160, 0.625), rgba(255, 255, 255, 0.625))",
+  shadow:
+    "0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 2px 3px 1px #bbbbbb",
+};
+
+/**
+ * When the macOS accent is set to "graphite", all three traffic lights become a
+ * single cool blue-leaning gray (matching the graphite accent base ~#888d99),
+ * just like the classic Mac graphite appearance. Mode-independent — the colored
+ * lights don't vary by light/dark, so this gray applies in both.
+ */
+const graphiteStyles = {
+  gradient: "linear-gradient(rgb(120, 124, 134), rgb(150, 154, 165))",
+  iconColor: "rgba(66, 70, 80, 0.9)",
+  shadow:
+    "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(150, 154, 165, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgba(82, 86, 96, 0.8) 0px 1px 3px inset, rgba(150, 154, 165, 0.75) 0px 2px 3px 1px inset",
+};
+
+/**
+ * Aqua Glass: the three lights drop their red/yellow/green identity and become
+ * translucent orbs tinted with the active accent color (falling back to the
+ * classic Aqua blue when the accent is "System"/default). `color-mix` keeps the
+ * fill see-through so the frosted titlebar shows through, and the white shine /
+ * glow overlays below still read as glass. Mode-independent.
+ */
+const ACCENT_VAR = "var(--os-accent-color, #2765ca)";
+const glassStyles = {
+  // Slightly semi-opaque accent fill (close to the inactive light's 0.625
+  // alpha) so the orb reads as tinted glass without washing out.
+  gradient: `linear-gradient(color-mix(in srgb, ${ACCENT_VAR} 80%, transparent), color-mix(in srgb, ${ACCENT_VAR} 58%, transparent))`,
+  iconColor: "rgba(0, 0, 0, 0.55)",
+  // Mirror the inactive light's shadow stack — outer drop + a crisp 0.5px dark
+  // inset stroke for definition, tight (non-blurry) inset highlights, and an
+  // accent-tinted inner glow instead of the inactive gray.
+  shadow: `0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.45), inset 0 2px 3px 1px color-mix(in srgb, ${ACCENT_VAR} 60%, transparent)`,
+};
+
+/**
+ * Volos (Kebron OS's Aqua, material `kebron`): glossy jewels, red / yellow /
+ * green like the reference controls kit. Colors come from the
+ * `--kebron-light-*` tokens in aqua-kebron.css; the body is lit from below
+ * (like Aqua's gel) and the shared top shine + bottom glow overlays sit on it.
+ */
+const kebronStyle = (
+  name: "close" | "minimize" | "zoom"
+): { gradient: string; shadow: string; iconColor: string } => ({
+  gradient: `radial-gradient(circle at 50% 85%, var(--kebron-light-${name}-hi) 0%, var(--kebron-light-${name}) 48%, var(--kebron-light-${name}-lo) 100%)`,
+  iconColor: `var(--kebron-light-${name}-glyph)`,
+  shadow:
+    "inset 0 0 0 0.5px var(--kebron-light-rim), inset 0 -1px 1.5px rgba(255, 255, 255, 0.35), 0 1px 1.5px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.4)",
+});
+const kebronStyles: Record<
+  TrafficLightColor,
+  { gradient: string; shadow: string; iconColor: string }
+> = {
+  red: kebronStyle("close"),
+  yellow: kebronStyle("minimize"),
+  green: kebronStyle("zoom"),
+};
+const kebronInactiveStyles = {
+  gradient:
+    "radial-gradient(circle at 50% 85%, var(--kebron-light-idle-hi), var(--kebron-light-idle))",
+  shadow:
+    "inset 0 0 0 0.5px var(--kebron-light-rim), 0 1px 1px rgba(0, 0, 0, 0.15)",
+};
+
+/**
+ * macOS-style traffic light window control button (close, minimize, maximize).
+ * Extracted to reduce duplication in WindowFrame.tsx
+ */
+export function TrafficLightButton({
+  color,
+  onClick,
+  isForeground,
+  showResizers = false,
+  ariaLabel,
+}: TrafficLightButtonProps) {
+  const { accent, isAquaGlass, isKebron } = useThemeFlags();
+  const activeStyles = isKebron
+    ? accent === "graphite"
+      ? graphiteStyles
+      : kebronStyles[color]
+    : isAquaGlass
+      ? glassStyles
+      : accent === "graphite"
+        ? graphiteStyles
+        : colorStyles[color];
+  const styles = isForeground
+    ? activeStyles
+    : isKebron
+      ? kebronInactiveStyles
+      : inactiveStyles;
+
+  return (
+    <div className="group relative" style={{ width: "13px", height: "13px" }}>
+      {/* Visual button */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "rounded-full relative overflow-hidden cursor-default outline-none box-border transition-[filter] duration-150",
+          isForeground && "group-hover:brightness-110"
+        )}
+        style={{
+          width: "13px",
+          height: "13px",
+          background: styles.gradient,
+          boxShadow: styles.shadow,
+          opacity: isForeground || isKebron ? 1 : 0.7,
+        }}
+      >
+        {/* Top shine */}
+        <div
+          className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none"
+          style={{
+            height: "28%",
+            background:
+              "linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.3))",
+            width: "calc(100% - 6px)",
+            borderRadius: "6px 6px 0 0",
+            top: "1px",
+            filter: "blur(0.2px)",
+            zIndex: 2,
+          }}
+        />
+        {/* Bottom glow */}
+        <div
+          className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none"
+          style={{
+            height: "33%",
+            background:
+              "linear-gradient(rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.5))",
+            width: "calc(100% - 3px)",
+            borderRadius: "0 0 6px 6px",
+            bottom: "1px",
+            filter: "blur(0.3px)",
+          }}
+        />
+        {/* Action icon (×, −, +) shown on hover */}
+        {isForeground && (() => {
+          const Icon = symbolIcons[color];
+          return (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover/traffic:opacity-100 transition-opacity duration-150"
+              style={{
+                zIndex: 1,
+                color: activeStyles.iconColor,
+                filter: "drop-shadow(0 0.5px 0 rgba(255,255,255,0.2))",
+              }}
+            >
+              <Icon size={isKebron ? 8 : 10} weight="bold" />
+            </div>
+          );
+        })()}
+      </div>
+      {/* Clickable area (larger for easier interaction) */}
+      <button
+        aria-label={ariaLabel}
+        className={cn(
+          "absolute -inset-2 z-10 rounded-none outline-none cursor-default",
+          showResizers ? "bg-red-500/50" : "opacity-0"
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(e);
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}

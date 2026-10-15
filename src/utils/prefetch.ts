@@ -1,0 +1,964 @@
+/**
+ * Prefetch utility for caching assets after initial boot
+ * This runs during idle time to cache icons, sounds, and app components
+ * without blocking the initial page load.
+ * 
+ * Update checking uses version.json as the single source of truth.
+ * Version is stored in useAppStore after successful prefetch.
+ * 
+ * Unified flow handles:
+ * 1. First-time load (no stored version) - prefetch silently
+ * 2. Returning user with update - clear caches, prefetch, show reload toast
+ * 3. Periodic checks (every 5 min) - same as #2
+ */
+
+import { toast } from "sonner";
+import { createElement } from "react";
+import { PrefetchToast, PrefetchCompleteToast } from "@/components/shared/PrefetchToast";
+import { useAppStore } from "@/stores/useAppStore";
+import { computeDockPinnedItems, useDockStore } from "@/stores/useDockStore";
+import { useThemeStore } from "@/stores/useThemeStore";
+import { setNextBootMessage } from "@/utils/bootMessage";
+import i18n from "@/lib/i18n";
+import { appIds } from "@/config/appRegistryData";
+import { getAppIconPath } from "@/config/appRegistry";
+import {
+  fetchIconManifest,
+  invalidateIconCache,
+  type IconManifest,
+} from "@/utils/icons";
+import {
+  collectActiveThemeIconUrls,
+  getAllThemeStaticAssetUrls,
+  getCoreSoundUrls,
+} from "@/utils/prefetchAssets";
+import { getApiUrl, isDesktop } from "@/utils/platform";
+import { abortableFetch } from "@/utils/abortableFetch";
+import {
+  isInReloadLoop,
+  trackReload,
+  clearStaleReload,
+} from "@/utils/reloadGuard";
+import { shouldPrefetchNow } from "@/utils/network";
+import { track, SYSTEM_ANALYTICS } from "@/utils/analytics";
+import { createVisibilityGatedInterval } from "@/utils/backgroundTask";
+import { getSupportedDesktopDownloadTarget } from "@/utils/desktopDownload";
+import {
+  notifyDesktopUpdate,
+  type DesktopUpdateResult,
+} from "@/utils/desktopUpdateBridge";
+import { createClientLogger } from "@/utils/logger";
+import type { OsThemeId } from "@/themes/types";
+
+const log = createClientLogger("Prefetch");
+
+// Storage key for manifest timestamp (for cache invalidation)
+const MANIFEST_KEY = 'ryos:manifest-timestamp';
+const THEME_WARMUP_KEY_PREFIX = "ryos:theme-assets";
+const OS_THEME_IDS = ["system7", "macosx", "xp", "win98"] as const satisfies readonly OsThemeId[];
+const warmedThemeVersions = new Set<string>();
+
+// Periodic update check interval (5 minutes)
+const UPDATE_CHECK_INTERVAL = 5 * 60 * 1000;
+let disposeUpdateCheckInterval: (() => void) | null = null;
+let disposeThemeWarmupSubscription: (() => void) | null = null;
+
+// HMR cleanup - clear interval when module is replaced
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    if (disposeUpdateCheckInterval) {
+      disposeUpdateCheckInterval();
+      disposeUpdateCheckInterval = null;
+      log.debug("HMR cleanup: cleared update check interval");
+    }
+    disposeThemeWarmupSubscription?.();
+    disposeThemeWarmupSubscription = null;
+  });
+}
+
+// Flag to prevent concurrent operations
+let isUpdateInProgress = false;
+
+// Reload-loop detection is centralized in @/utils/reloadGuard (shared keys with
+// index.html's inline bootstrap script and main.tsx).
+
+/**
+ * Get the currently stored version from the app store
+ */
+function getStoredVersion(): { version: string | null; buildNumber: string | null } {
+  const state = useAppStore.getState();
+  return {
+    version: state.ryOSVersion,
+    buildNumber: state.ryOSBuildNumber,
+  };
+}
+
+/**
+ * Store version in the app store (call after successful prefetch)
+ */
+function storeVersion(version: string, buildNumber: string, buildTime?: string): void {
+  useAppStore.getState().setRyOSVersion(version, buildNumber, buildTime);
+  log.debug("Stored version", { version, buildNumber });
+}
+
+/**
+ * Reload the page to apply updates
+ * Unregisters service worker first to avoid Safari "redirections from worker" errors
+ * @param version - Optional version string to show in boot screen
+ * @param buildNumber - Optional build number to show in boot screen
+ */
+async function reloadPage(version?: string, buildNumber?: string): Promise<void> {
+  if (isInReloadLoop()) {
+    console.warn('[Prefetch] Reload loop detected, aborting reload');
+    return;
+  }
+  trackReload();
+
+  // Set boot message to show boot screen after reload
+  if (version && buildNumber) {
+    setNextBootMessage(i18n.t("common.system.updatingToRyOSWithBuild", { version, buildNumber }));
+  } else if (version) {
+    setNextBootMessage(i18n.t("common.system.updatingToRyOS", { version }));
+  } else {
+    setNextBootMessage(i18n.t("common.system.rebooting"));
+  }
+  
+  track(SYSTEM_ANALYTICS.UPDATE_APPLIED, {
+    category: "events",
+    buildNumber: buildNumber ?? null,
+  });
+
+  try {
+    // Nudge any waiting service worker to take over so the reload lands on the
+    // fresh precache. We intentionally do NOT unregister the SW anymore:
+    // unregistering would discard the Workbox precache and force a full
+    // re-download on the next load. skipWaiting/clientsClaim + the cache-bust
+    // navigation below are enough to get fresh content.
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration?.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    }
+  } catch (error) {
+    console.warn('[Prefetch] Failed to activate waiting service worker:', error);
+  }
+
+  // Add cache-busting query param to force fresh index.html fetch
+  const url = new URL(window.location.href);
+  url.searchParams.set('_cb', Date.now().toString());
+  window.location.href = url.toString();
+}
+
+/**
+ * Clear the prefetch flag to force re-prefetch on next boot
+ * Call this when resetting settings or formatting file system
+ */
+export function clearPrefetchFlag(): void {
+  warmedThemeVersions.clear();
+  try {
+    localStorage.removeItem(MANIFEST_KEY);
+    for (const theme of OS_THEME_IDS) {
+      localStorage.removeItem(`${THEME_WARMUP_KEY_PREFIX}:${theme}`);
+    }
+    log.debug("Flag cleared; will re-prefetch on next boot");
+  } catch {
+    // localStorage might not be available
+  }
+}
+
+export function hasStoredPrefetchManifestTimestamp(): boolean {
+  try {
+    return Boolean(localStorage.getItem(MANIFEST_KEY));
+  } catch {
+    // Avoid repeatedly running background warmup in storage-restricted contexts.
+    return true;
+  }
+}
+
+export function hasWarmedThemeAssets(
+  theme: OsThemeId,
+  manifestVersion: string
+): boolean {
+  const warmupToken = `${theme}:${manifestVersion}`;
+  if (warmedThemeVersions.has(warmupToken)) {
+    return true;
+  }
+
+  try {
+    const isWarm =
+      localStorage.getItem(`${THEME_WARMUP_KEY_PREFIX}:${theme}`) ===
+      manifestVersion;
+    if (isWarm) {
+      warmedThemeVersions.add(warmupToken);
+    }
+    return isWarm;
+  } catch {
+    return false;
+  }
+}
+
+export function markThemeAssetsWarmed(
+  theme: OsThemeId,
+  manifestVersion: string
+): void {
+  warmedThemeVersions.add(`${theme}:${manifestVersion}`);
+  try {
+    localStorage.setItem(
+      `${THEME_WARMUP_KEY_PREFIX}:${theme}`,
+      manifestVersion
+    );
+  } catch {
+    // The in-memory flag still prevents duplicate work in this session.
+  }
+}
+
+export interface ServerVersion {
+  version: string;
+  buildNumber: string;
+  buildTime?: string;
+  desktopVersion?: string;
+}
+
+/**
+ * Fetch version info from version.json
+ * This is the single source of truth for version checking
+ * @param forceRemote - If true, always fetch from production server (used for desktop update checks)
+ */
+async function fetchServerVersion(forceRemote: boolean = false): Promise<ServerVersion | null> {
+  try {
+    // In the desktop shell, /version.json would fetch from the bundled app, not the live server.
+    // For desktop update checks, we need to fetch from the production server.
+    // Use getApiUrl() which returns the production URL in the desktop shell.
+    const url = forceRemote || isDesktop() ? getApiUrl('/version.json') : '/version.json';
+    
+    const response = await abortableFetch(url, { 
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
+      timeout: 15000,
+      throwOnHttpError: false,
+      retry: { maxAttempts: 1, initialDelayMs: 250 },
+    });
+    
+    if (!response.ok) {
+      console.warn('[Prefetch] Could not fetch version.json');
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.version && data.buildNumber) {
+      return {
+        version: data.version,
+        buildNumber: data.buildNumber,
+        buildTime: data.buildTime,
+        desktopVersion: data.desktopVersion,
+      };
+    }
+    
+    console.warn('[Prefetch] version.json missing required fields');
+    return null;
+  } catch (error) {
+    console.warn('[Prefetch] Failed to fetch server version:', error);
+    return null;
+  }
+}
+
+/**
+ * Check for desktop app updates
+ * Returns info about whether this is a first time visit, update available, or no changes
+ */
+export async function checkDesktopUpdate(): Promise<DesktopUpdateResult> {
+  const serverVersion = await fetchServerVersion();
+  if (!serverVersion?.desktopVersion) {
+    return { type: 'none', version: null };
+  }
+  
+  const lastSeenVersion = useAppStore.getState().lastSeenDesktopVersion;
+  
+  // If never seen before, this is the first time
+  if (!lastSeenVersion) {
+    return { type: 'first-time', version: serverVersion.desktopVersion };
+  }
+  
+  // Check if desktop version has changed
+  if (serverVersion.desktopVersion !== lastSeenVersion) {
+    return { type: 'update', version: serverVersion.desktopVersion };
+  }
+  
+  return { type: 'none', version: null };
+}
+
+/**
+ * Check for desktop updates and notify via callback
+ * Called during periodic checks and manual "Check for Updates"
+ */
+async function checkAndNotifyDesktopUpdate(): Promise<void> {
+  // Check supported desktop download targets (both web and desktop shell).
+  if (!getSupportedDesktopDownloadTarget()) {
+    return;
+  }
+  
+  const result = await checkDesktopUpdate();
+  
+  if (result.type !== 'none') {
+    notifyDesktopUpdate(result);
+  }
+}
+
+type CheckResult = 
+  | { action: 'none'; server?: ServerVersion }  // Already up to date, or version unavailable
+  | { action: 'first-time'; server: ServerVersion }
+  | { action: 'update'; server: ServerVersion };
+
+/**
+ * Check what action is needed based on stored vs server version
+ */
+async function determineUpdateAction(): Promise<CheckResult> {
+  const serverVersion = await fetchServerVersion();
+  
+  if (!serverVersion) {
+    return { action: 'none' };
+  }
+  
+  const stored = getStoredVersion();
+  
+  // First-time user (no stored version)
+  if (!stored.buildNumber) {
+    log.debug("First-time user detected");
+    return { action: 'first-time', server: serverVersion };
+  }
+  
+  // Check if versions differ
+  if (serverVersion.buildNumber !== stored.buildNumber) {
+    log.debug("Update available", {
+      storedBuildNumber: stored.buildNumber,
+      serverBuildNumber: serverVersion.buildNumber,
+    });
+    return { action: 'update', server: serverVersion };
+  }
+  
+  log.debug("Already on latest version");
+  return { action: 'none', server: serverVersion };
+}
+
+const SHELL_FALLBACK_ICON_PATHS = [
+  "/icons/default/application.png",
+  "/icons/default/applications.png",
+  "/icons/default/directory.png",
+  "/icons/default/disk.png",
+  "/icons/default/file.png",
+  "/icons/default/file-text.png",
+  "/icons/default/pc.png",
+  "/icons/default/trash-empty.png",
+  "/icons/default/trash-full.png",
+] as const;
+
+function collectShellIconUrls(
+  theme: OsThemeId,
+  manifest: IconManifest
+): string[] {
+  const pinnedIconPaths = computeDockPinnedItems(
+    useDockStore.getState().pinnedItems
+  )
+    .map((item) => item.icon)
+    .filter((icon): icon is string => Boolean(icon));
+
+  return collectActiveThemeIconUrls({
+    theme,
+    manifest,
+    iconPaths: [
+      ...appIds.map((appId) => getAppIconPath(appId)),
+      ...pinnedIconPaths,
+      ...SHELL_FALLBACK_ICON_PATHS,
+    ],
+  });
+}
+
+/**
+ * Warm the active theme without rerunning update toasts or sound prefetching.
+ * Default icon fallbacks and every theme's small chrome assets are included so
+ * a first-time offline theme switch remains usable.
+ */
+export async function warmActiveThemeShellAssets(
+  theme: OsThemeId = useThemeStore.getState().current
+): Promise<boolean> {
+  if (
+    !shouldPrefetchNow() ||
+    (typeof navigator !== "undefined" && navigator.onLine === false)
+  ) {
+    return false;
+  }
+
+  const manifest = await fetchIconManifest().catch((error: unknown) => {
+    log.warn("Could not load icon manifest for theme warmup", { theme, error });
+    return null;
+  });
+  if (!manifest) return false;
+  if (hasWarmedThemeAssets(theme, manifest.generatedAt)) {
+    return true;
+  }
+
+  const iconUrls = collectShellIconUrls(theme, manifest);
+  const assetUrls = getAllThemeStaticAssetUrls();
+  const iconSucceeded = await prefetchUrlsWithProgress(
+    iconUrls,
+    `${theme} icons`,
+    () => undefined
+  );
+  const assetSucceeded = await prefetchUrlsWithProgress(
+    assetUrls,
+    "Theme chrome",
+    () => undefined
+  );
+  const didWarm =
+    iconSucceeded === iconUrls.length && assetSucceeded === assetUrls.length;
+
+  if (didWarm) {
+    markThemeAssetsWarmed(theme, manifest.generatedAt);
+  }
+  return didWarm;
+}
+
+/**
+ * Unified check and update function
+ * Handles first-time load, updates on load, and periodic checks
+ * 
+ * @param isManual - If true, shows toast feedback even when already up-to-date
+ */
+async function checkAndUpdate(isManual: boolean = false): Promise<void> {
+  if (isUpdateInProgress) {
+    log.debug("Update already in progress; skipping");
+    return;
+  }
+  
+  const result = await determineUpdateAction();
+  
+  if (result.action === 'none') {
+    const shouldWarmAssets =
+      Boolean(result.server) && !hasStoredPrefetchManifestTimestamp();
+    if (isManual) {
+      const stored = getStoredVersion();
+      toast.success(i18n.t("common.toast.alreadyLatestVersion"), {
+        description: stored.version
+          ? i18n.t("common.toast.alreadyLatestVersionDetail", {
+              version: stored.version,
+              buildNumber: stored.buildNumber,
+            })
+          : undefined,
+      });
+    }
+    if (shouldWarmAssets && result.server) {
+      log.debug("Asset warmup flag missing; refreshing runtime assets");
+      isUpdateInProgress = true;
+      try {
+        await runPrefetchWithToast(false, result.server);
+      } finally {
+        isUpdateInProgress = false;
+      }
+    } else if (result.server) {
+      await warmActiveThemeShellAssets();
+    }
+    return;
+  }
+  
+  isUpdateInProgress = true;
+  
+  try {
+    // For updates (not first-time), clear caches first
+    if (result.action === 'update') {
+      // Store version IMMEDIATELY to prevent re-detection if the page reloads
+      // mid-flow (e.g. VitePWA's auto-update triggers a controllerchange reload
+      // during clearRuntimeCaches → registration.update()).  Without this, the
+      // stored version would still be old after reload, causing an infinite
+      // detect-update → clear-caches → reload cycle.
+      storeVersion(result.server.version, result.server.buildNumber, result.server.buildTime);
+
+      toast.dismiss('prefetch-progress');
+      clearPrefetchFlag();
+      await clearRuntimeCaches();
+    }
+    
+    // Run prefetch - show reload toast for updates, dismiss silently for first-time
+    const showReloadToast = result.action === 'update';
+    await runPrefetchWithToast(showReloadToast, result.server);
+    
+  } finally {
+    isUpdateInProgress = false;
+  }
+}
+
+/**
+ * Force refresh cache and show update ready toast
+ * Use this for manual "Check for Updates" action
+ * Only shows reboot button if version is actually new
+ */
+export async function forceRefreshCache(): Promise<void> {
+  log.debug("Manual update check triggered");
+  
+  // Also check for desktop updates when manually checking
+  await checkAndNotifyDesktopUpdate();
+  
+  if (isUpdateInProgress) {
+    log.debug("Update already in progress; skipping");
+    return;
+  }
+  
+  const serverVersion = await fetchServerVersion();
+  
+  if (!serverVersion) {
+    toast.error(i18n.t("common.toast.couldNotCheckUpdates"));
+    return;
+  }
+  
+  const stored = getStoredVersion();
+  const isNewVersion = serverVersion.buildNumber !== stored.buildNumber;
+  
+  // If already on latest version, just show success message without reboot
+  if (!isNewVersion) {
+    toast.success(i18n.t("common.toast.alreadyLatestVersion"), {
+      description: stored.version
+        ? i18n.t("common.toast.alreadyLatestVersionDetail", {
+            version: stored.version,
+            buildNumber: stored.buildNumber,
+          })
+        : undefined,
+    });
+    return;
+  }
+  
+  isUpdateInProgress = true;
+  
+  try {
+    // Store version immediately (same early-store rationale as checkAndUpdate)
+    storeVersion(serverVersion.version, serverVersion.buildNumber, serverVersion.buildTime);
+
+    // Clear runtime caches and refetch for new version (preserves the Workbox
+    // precache so JS updates stay revision-efficient).
+    toast.dismiss('prefetch-progress');
+    clearPrefetchFlag();
+    await clearRuntimeCaches();
+    
+    // Show update ready toast with reboot button (only for new versions)
+    await runPrefetchWithToast(true, serverVersion);
+  } finally {
+    isUpdateInProgress = false;
+  }
+}
+
+/**
+ * Run the prefetch logic with toast
+ * @param showVersionToast - If true, shows "Updated to version X" with reload button. 
+ *                           If false, just dismisses the toast on completion.
+ * @param server - Version info from version.json
+ */
+async function runPrefetchWithToast(
+  showVersionToast: boolean,
+  server: ServerVersion
+): Promise<void> {
+  log.debug("Starting prefetch");
+
+  // JS chunks are now precached by the service worker (Workbox) and load from
+  // cache offline, so we no longer crawl/prefetch them here. This pass only
+  // warms NON-JS runtime assets (themed icons, UI sounds, static textures).
+
+  // Be polite on metered / slow connections: skip the background asset warmup
+  // but still finalize the version + update toast. Missing assets just load
+  // on-demand (and the SW caches them then).
+  if (!shouldPrefetchNow()) {
+    log.debug("Skipping asset warmup (data saver / slow network)");
+    track(SYSTEM_ANALYTICS.PREFETCH_SKIPPED_NETWORK, { category: "events" });
+    finalizePrefetch(showVersionToast, server);
+    return;
+  }
+
+  // Fetch manifest first
+  const manifest = await fetchIconManifest().catch((error) => {
+    console.warn('[Prefetch] Failed to load icon manifest:', error);
+    return null;
+  });
+  if (!manifest) {
+    toast.error(i18n.t("common.toast.failedToLoadAssetManifest"));
+    log.debug("Could not fetch manifest");
+    return;
+  }
+  
+  // Warm the current theme plus default icon fallbacks. Default icons keep a
+  // first-time offline theme switch usable until themed icons can be fetched.
+  const theme = useThemeStore.getState().current;
+  const iconUrls = collectShellIconUrls(theme, manifest);
+  const soundUrls = getCoreSoundUrls();
+  const assetUrls = getAllThemeStaticAssetUrls();
+  
+  const totalItems = iconUrls.length + soundUrls.length + assetUrls.length;
+  
+  if (totalItems === 0) {
+    toast.info(i18n.t("common.toast.noAssetsToCache"));
+    log.debug("No assets to prefetch");
+    return;
+  }
+
+  track(SYSTEM_ANALYTICS.PREFETCH_START, {
+    category: "events",
+    total: totalItems,
+  });
+  
+  let overallCompleted = 0;
+  
+  // Create a toast with progress
+  const toastId = toast.loading(
+    createToastContent({ 
+      phase: 'icons', 
+      completed: 0, 
+      total: totalItems 
+    }),
+    {
+      duration: Infinity,
+      id: 'prefetch-progress',
+    }
+  );
+  
+  const updateToast = (phase: string, phaseCompleted: number, phaseTotal: number) => {
+    const percentage = Math.round((overallCompleted / totalItems) * 100);
+    toast.loading(
+      createToastContent({
+        phase,
+        completed: overallCompleted,
+        total: totalItems,
+        phaseCompleted,
+        phaseTotal,
+        percentage,
+      }),
+      { id: toastId, duration: Infinity }
+    );
+  };
+  
+  // Skip browser HTTP cache when prefetching to ensure fresh resources.
+  // The service worker will cache these responses, and ignoreSearch: true
+  // means we don't need ?v= cache busting params anymore.
+  const prefetchOptions = { skipCache: true };
+  let iconSucceeded = 0;
+  let assetSucceeded = 0;
+  
+  try {
+    // Prefetch icons
+    if (iconUrls.length > 0) {
+      iconSucceeded = await prefetchUrlsWithProgress(iconUrls, 'Icons', (completed, total) => {
+        overallCompleted = completed;
+        updateToast('icons', completed, total);
+      }, prefetchOptions);
+    }
+    
+    // Prefetch sounds
+    if (soundUrls.length > 0) {
+      const baseCompleted = overallCompleted;
+      await prefetchUrlsWithProgress(soundUrls, 'Sounds', (completed, total) => {
+        overallCompleted = baseCompleted + completed;
+        updateToast('sounds', completed, total);
+      }, prefetchOptions);
+    }
+    
+    // Prefetch static assets (textures, splash screens, etc.)
+    if (assetUrls.length > 0) {
+      const baseCompleted = overallCompleted;
+      assetSucceeded = await prefetchUrlsWithProgress(assetUrls, 'Assets', (completed, total) => {
+        overallCompleted = baseCompleted + completed;
+        updateToast('assets', completed, total);
+      }, prefetchOptions);
+    }
+    
+    // Store manifest timestamp
+    storeManifestTimestamp(manifest);
+    if (
+      iconSucceeded === iconUrls.length &&
+      assetSucceeded === assetUrls.length
+    ) {
+      markThemeAssetsWarmed(theme, manifest.generatedAt);
+    }
+
+    track(SYSTEM_ANALYTICS.PREFETCH_COMPLETE, {
+      category: "events",
+      total: totalItems,
+    });
+
+    // Dismiss the progress toast and finalize (store version + reboot toast)
+    toast.dismiss(toastId);
+    finalizePrefetch(showVersionToast, server);
+  } catch (error) {
+    console.error('[Prefetch] Error during prefetch:', error);
+    toast.error(i18n.t("common.toast.failedToCacheAssets"), { id: toastId });
+  }
+}
+
+/**
+ * Persist the resolved version and (for updates) show the reboot toast.
+ * Shared by the normal and network-skipped prefetch paths.
+ */
+function finalizePrefetch(
+  showVersionToast: boolean,
+  server: ServerVersion
+): void {
+  // Store version in app store so update detection settles
+  storeVersion(server.version, server.buildNumber, server.buildTime);
+
+  if (showVersionToast) {
+    log.debug("Showing update toast", {
+      version: server.version,
+      buildNumber: server.buildNumber,
+    });
+    toast.success(
+      createElement(PrefetchCompleteToast, {
+        version: server.version,
+        buildNumber: server.buildNumber,
+      }),
+      {
+        duration: Infinity,
+        action: {
+          label: i18n.t("common.toast.reboot"),
+          onClick: () => reloadPage(server.version, server.buildNumber),
+        },
+      }
+    );
+  }
+}
+
+// Max simultaneous prefetch requests. Bounded so the background warmup doesn't
+// saturate the connection or contend with foreground app/network traffic.
+const PREFETCH_CONCURRENCY = 8;
+
+/**
+ * Run an async task over items with a bounded concurrency pool.
+ */
+async function runWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  task: (item: T) => Promise<void>
+): Promise<void> {
+  if (items.length === 0) return;
+  const poolSize = Math.max(1, Math.min(limit, items.length));
+  let cursor = 0;
+  const workers = Array.from({ length: poolSize }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      await task(items[index]);
+    }
+  });
+  await Promise.all(workers);
+}
+
+/**
+ * Prefetch a list of URLs with progress tracking, bounded concurrency.
+ */
+async function prefetchUrlsWithProgress(
+  urls: string[], 
+  label: string,
+  onProgress: (completed: number, total: number) => void,
+  options?: { skipCache?: boolean }
+): Promise<number> {
+  let completed = 0;
+  let succeeded = 0;
+  const total = urls.length;
+
+  await runWithConcurrency(urls, PREFETCH_CONCURRENCY, async (url) => {
+    try {
+      const response = await abortableFetch(url, {
+        method: 'GET',
+        // Use 'reload' when skipCache is true (e.g., after cache clear on updates)
+        // to bypass browser HTTP cache and fetch fresh from network.
+        // Otherwise use 'default' to let browser decide (respects cache headers).
+        cache: options?.skipCache ? 'reload' : 'default',
+        timeout: 15000,
+        throwOnHttpError: false,
+        retry: { maxAttempts: 1, initialDelayMs: 250 },
+      });
+      if (response.ok) {
+        succeeded++;
+      }
+    } catch {
+      // best-effort: count as attempted below regardless
+    } finally {
+      completed++;
+      onProgress(completed, total);
+    }
+  });
+
+  log.debug("Asset cache batch complete", {
+    label,
+    succeeded,
+    total: urls.length,
+  });
+  return succeeded;
+}
+
+/**
+ * Store the manifest timestamp after successful prefetch
+ */
+function storeManifestTimestamp(manifest: IconManifest): void {
+  try {
+    localStorage.setItem(MANIFEST_KEY, manifest.generatedAt);
+  } catch {
+    // localStorage might not be available
+  }
+}
+
+/**
+ * Clear runtime (non-precache) caches so themed icons / sounds / data refresh
+ * on update, while PRESERVING the Workbox precache (`workbox-precache-*`). This
+ * keeps JS updates revision-efficient — only changed hashed chunks are fetched
+ * by the new service worker — instead of nuking and re-downloading everything.
+ */
+async function clearRuntimeCaches(): Promise<void> {
+  invalidateIconCache();
+  try {
+    if (typeof caches === 'undefined') return;
+    const cacheNames = await caches.keys();
+    const runtimeCaches = cacheNames.filter(
+      (name) => !name.startsWith('workbox-precache')
+    );
+    await Promise.all(runtimeCaches.map((name) => caches.delete(name)));
+    log.debug("Cleared runtime caches; precache preserved", {
+      runtimeCacheCount: runtimeCaches.length,
+      runtimeCaches,
+    });
+
+    // Ask the service worker to check for an updated precache.
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration?.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      await registration?.update();
+      log.debug("Service worker update triggered");
+    }
+  } catch (error) {
+    console.warn('[Prefetch] Failed to clear runtime caches:', error);
+  }
+}
+
+/**
+ * Helper to create toast content using createElement
+ */
+function createToastContent(props: {
+  phase: string;
+  completed: number;
+  total: number;
+  phaseCompleted?: number;
+  phaseTotal?: number;
+  percentage?: number;
+}) {
+  return createElement(PrefetchToast, props);
+}
+
+function startThemeAssetWarmup(): void {
+  if (disposeThemeWarmupSubscription) return;
+
+  let timeoutId: number | null = null;
+  const scheduleWarmup = (theme: OsThemeId) => {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      timeoutId = null;
+      void warmActiveThemeShellAssets(theme);
+    }, 250);
+  };
+
+  const unsubscribe = useThemeStore.subscribe((state, previousState) => {
+    if (state.current !== previousState.current) {
+      scheduleWarmup(state.current);
+    }
+  });
+  const handleOnline = () => {
+    scheduleWarmup(useThemeStore.getState().current);
+  };
+  window.addEventListener("online", handleOnline);
+
+  disposeThemeWarmupSubscription = () => {
+    unsubscribe();
+    window.removeEventListener("online", handleOnline);
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  };
+}
+
+/**
+ * Start periodic update checking (every 5 minutes)
+ */
+function startPeriodicUpdateCheck(): void {
+  if (disposeUpdateCheckInterval) return; // Already running
+  
+  log.debug("Starting periodic update checks", {
+    intervalSeconds: UPDATE_CHECK_INTERVAL / 1000,
+  });
+  
+  // Paused while the tab is hidden; catches up immediately on return when a
+  // check is overdue.
+  disposeUpdateCheckInterval = createVisibilityGatedInterval(() => {
+    log.debug("Periodic update check");
+    void (async () => {
+      await checkAndUpdate(false);
+      // Also check for desktop updates during periodic checks
+      await checkAndNotifyDesktopUpdate();
+    })();
+  }, UPDATE_CHECK_INTERVAL);
+}
+
+/**
+ * Stop periodic update checking
+ */
+export function stopPeriodicUpdateCheck(): void {
+  if (disposeUpdateCheckInterval) {
+    disposeUpdateCheckInterval();
+    disposeUpdateCheckInterval = null;
+    log.debug("Stopped periodic update checks");
+  }
+}
+
+/**
+ * Initialize prefetching after the app has loaded
+ * 
+ * Unified flow:
+ * 1. First-time load → prefetch silently, store version
+ * 2. Returning user with update → clear caches, prefetch, show reload toast
+ * 3. Returning user, no update → do nothing
+ * 4. Start periodic checks every 5 minutes
+ */
+export function initPrefetch(): void {
+  startThemeAssetWarmup();
+
+  // Clean up cache-busting param from URL after reload
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('_cb')) {
+    url.searchParams.delete('_cb');
+    window.history.replaceState({}, '', url.toString());
+    // Clear the stale reload flag since we successfully loaded fresh content
+    clearStaleReload();
+  }
+  
+  const runPrefetchFlow = async () => {
+    // Safety net: bail out if we're stuck in a reload loop
+    if (isInReloadLoop()) {
+      console.warn('[Prefetch] Reload loop detected, skipping update check');
+      startPeriodicUpdateCheck();
+      return;
+    }
+
+    // Single unified check handles first-time, updates, and no-op
+    await checkAndUpdate(false);
+    
+    // Start periodic update checking
+    startPeriodicUpdateCheck();
+  };
+  
+  if (document.readyState === 'complete') {
+    // Delay to not interfere with initial render
+    setTimeout(runPrefetchFlow, 2000);
+  } else {
+    window.addEventListener('load', () => {
+      setTimeout(runPrefetchFlow, 2000);
+    }, { once: true });
+  }
+}

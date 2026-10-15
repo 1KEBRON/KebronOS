@@ -1,0 +1,177 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useThemeFlags } from "@/hooks/useThemeFlags";
+import { cn } from "@/lib/utils";
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
+import { useTranslation } from "react-i18next";
+import { getTranslatedAppName, AppId } from "@/utils/i18n";
+import { useAppStore } from "@/stores/useAppStore";
+
+const APP_DOC_NAMES: Partial<Record<AppId, string>> = {
+  pc: "virtual-pc",
+  "applet-viewer": "applet-store",
+};
+
+interface AboutDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  metadata: {
+    name: string;
+    version: string;
+    creator: {
+      name: string;
+      url: string;
+    };
+    github: string;
+    icon: string;
+  };
+  appId?: AppId;
+}
+
+export function AboutDialog({
+  isOpen,
+  onOpenChange,
+  metadata,
+  appId,
+}: AboutDialogProps) {
+  const { t } = useTranslation();
+  const { isWindowsTheme, isMacOSTheme, isSystem7Theme } = useThemeFlags();
+  const launchApp = useAppStore((state) => state.launchApp);
+  
+  // Use translated app name if appId is provided, otherwise fall back to metadata.name
+  const displayName = appId ? getTranslatedAppName(appId) : metadata.name;
+
+  const handleViewDocs = () => {
+    const docName = appId ? (APP_DOC_NAMES[appId] || appId) : "";
+    launchApp("internet-explorer", { url: `os.ryo.lu/docs/${docName}`, year: "current" });
+    onOpenChange(false);
+  };
+
+  const dialogContent = (
+    <div className="flex flex-col items-center justify-center space-y-2 py-8 px-6">
+      <div>
+        <ThemedIcon
+          name={metadata.icon}
+          alt="App Icon"
+          className="size-12 mx-auto [image-rendering:pixelated]"
+        />
+      </div>
+      <div
+        className={cn(
+          "space-y-0 text-center",
+          isWindowsTheme
+            ? "font-['Pixelated_MS_Sans_Serif',Arial] text-[11px]"
+            : isSystem7Theme
+            ? "font-geneva-12 text-[10px]"
+            : "font-os-ui text-[12px]"
+        )}
+        style={{
+          fontFamily: isWindowsTheme
+            ? '"Pixelated MS Sans Serif", "ArkPixel", Arial'
+            : undefined,
+          fontSize: isWindowsTheme ? "11px" : undefined,
+        }}
+      >
+        <div
+          className={cn(
+            "!text-3xl font-medium",
+            isWindowsTheme
+              ? "font-['Trebuchet MS'] !text-[17px]"
+              : "font-apple-garamond"
+          )}
+        >
+          {displayName}
+        </div>
+        <p className="text-neutral-500 mb-2">{t("common.dialog.version")} {metadata.version}</p>
+        <p>
+          {t("common.dialog.madeBy")}{" "}
+          <a
+            href={metadata.creator.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-os-link hover:underline"
+          >
+            {metadata.creator.name}
+          </a>
+        </p>
+        <p>
+          <a
+            href={metadata.github}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-os-link hover:underline"
+          >
+            {t("common.dialog.openInGitHub")}
+          </a>
+        </p>
+        <p>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              handleViewDocs();
+            }}
+            className="text-os-link hover:underline"
+          >
+            {t("common.dialog.viewDocs")}
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn("w-fit min-w-[280px] max-w-[400px]", isWindowsTheme && "p-0 overflow-hidden")}
+        style={isWindowsTheme ? { fontSize: "11px" } : undefined}
+        // About is a reference panel, not an in-window action sheet — always
+        // present as a centered modal even on Aqua.
+        disableSheet
+      >
+        {isWindowsTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("common.dialog.aboutApp", { appName: displayName })}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("common.dialog.informationAboutApp")}
+            </DialogDescription>
+            <DialogHeader>{t("common.dialog.aboutApp", { appName: displayName })}</DialogHeader>
+            <div className={`window-body ${isWindowsTheme ? "p-2 px-4" : "p-4"}`}>
+              {dialogContent}
+            </div>
+          </>
+        ) : isMacOSTheme ? (
+          <>
+            <DialogTitle className="sr-only">
+              {t("common.dialog.aboutApp", { appName: displayName })}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {t("common.dialog.informationAboutApp")}
+            </DialogDescription>
+            <DialogHeader>{t("common.dialog.aboutApp", { appName: displayName })}</DialogHeader>
+            {dialogContent}
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-normal text-[16px]">
+                {t("common.dialog.aboutApp", { appName: displayName })}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("common.dialog.informationAboutApp")}
+              </DialogDescription>
+            </DialogHeader>
+            {dialogContent}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

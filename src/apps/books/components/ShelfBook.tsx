@@ -1,0 +1,181 @@
+import { motion } from "motion/react";
+import type { Ref } from "react";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { usePointerLongPress } from "@/hooks/usePointerLongPress";
+import type {
+  BooksLibraryEntry,
+  BookOriginRect,
+} from "../hooks/useBooksLogic";
+import type { BookProgress } from "@/stores/useBooksStore";
+import { BookCover } from "./BookCover";
+import { BookSpineOverlay } from "./BookSpineOverlay";
+import { useBookCover } from "../utils/useBookCover";
+import type { BookCoverInfo } from "../utils/useBookCover";
+
+interface ShelfBookProps {
+  entry: BooksLibraryEntry;
+  progress?: BookProgress;
+  onOpen: (entry: BooksLibraryEntry, originRect?: BookOriginRect) => void;
+  /** Open the right-click / long-press context menu at the given viewport point. */
+  onContextMenu?: (entry: BooksLibraryEntry, x: number, y: number) => void;
+  /** When true, the book shares a `layoutId` so it morphs to/from list view. */
+  morphLayout?: boolean;
+  /** Animate the layout change (only true on a grid<->list toggle). */
+  layoutAnimated?: boolean;
+  /** Dim the cover in dark mode (restored on hover). */
+  isDark?: boolean;
+}
+
+// Shared-layout transition for the book morph between grid and list views.
+export const COVER_LAYOUT_TRANSITION = {
+  layout: { duration: 0.4, ease: [0.32, 0.72, 0, 1] as const },
+};
+
+// Instant (no-op) layout transition. Used for every layout change that ISN'T a
+// grid<->list toggle (e.g. the async library populating, covers loading, the
+// window-open resize reflow) so those settle silently — while `layout`/
+// `layoutId` stay attached from mount, keeping Framer's projection snapshots
+// fresh so the real toggle morph still starts from the correct position.
+export const INSTANT_LAYOUT_TRANSITION = {
+  layout: { duration: 0 },
+};
+
+/**
+ * The whole visible "book" — cover + spine highlight + shadow + (grid-only)
+ * reading-progress badge. It carries the shared `layoutId`, so the entire book
+ * (not just the cover image) morphs between the grid and list layouts, keeping
+ * its shadow and spine highlight attached as it moves. The list variant hides
+ * the on-cover progress badge (the list row shows progress as separate text).
+ */
+export function BookMorphCover({
+  entry,
+  info,
+  loading,
+  percent,
+  variant,
+  morphLayout,
+  layoutAnimated,
+  isDark,
+  coverRef,
+}: {
+  entry: BooksLibraryEntry;
+  info: BookCoverInfo | null;
+  loading: boolean;
+  percent: number;
+  variant: "grid" | "list";
+  morphLayout?: boolean;
+  /** Animate layout changes (true only on a grid<->list toggle); otherwise the
+   *  change applies instantly so initial load / reflow stays static. */
+  layoutAnimated?: boolean;
+  /** Dim the cover in dark mode (restored to full brightness on hover). */
+  isDark?: boolean;
+  coverRef?: Ref<HTMLDivElement>;
+}) {
+  const { t } = useTranslation();
+  const isGrid = variant === "grid";
+
+  return (
+    <motion.div
+      ref={coverRef}
+      data-book-path={entry.path}
+      layoutId={morphLayout ? `bookcover-${entry.path}` : undefined}
+      layout={morphLayout}
+      transition={
+        layoutAnimated ? COVER_LAYOUT_TRANSITION : INSTANT_LAYOUT_TRANSITION
+      }
+      className={cn(
+        "relative shrink-0 overflow-hidden",
+        isGrid
+          ? // Lighter resting shadow; grows on hover (button is `group`).
+            "h-[160px] w-[104px] rounded-[2px] rounded-l-[4px] transition-[box-shadow,filter] duration-200 shadow-[0_6px_10px_-5px_rgba(0,0,0,0.75),-2px_0_3px_-2px_rgba(0,0,0,0.45)] group-hover:shadow-[0_18px_26px_-8px_rgba(0,0,0,0.62),-3px_0_5px_-2px_rgba(0,0,0,0.42)]"
+          : "h-[52px] w-[36px] rounded-[2px] rounded-l-[3px] transition-[filter] duration-200",
+        // Dark mode dims the cover; hovering the book (the `group` button/row)
+        // restores it to full brightness.
+        isDark && "brightness-[0.85] group-hover:brightness-100"
+      )}
+      style={
+        isGrid ? undefined : { boxShadow: "0 3px 6px -2px rgba(0,0,0,0.6)" }
+      }
+    >
+      <BookCover
+        title={entry.name}
+        fileName={entry.fileName}
+        info={info}
+        loading={loading}
+        progressInset={isGrid && percent > 0}
+      />
+      {/* Spine, hinge, and cover lighting (moves with the book). */}
+      <BookSpineOverlay variant={variant} />
+      {/* Reading progress badge — grid only; the list row shows it as text. */}
+      {isGrid && percent > 0 && (
+        <span className="pointer-events-none absolute bottom-0 left-0 right-0 bg-black/55 px-1 py-[2px] text-center text-[9px] font-os-ui text-white">
+          {percent >= 100
+            ? t("apps.books.shelf.finished")
+            : t("apps.books.shelf.percentRead", { percent })}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+export function ShelfBook({
+  entry,
+  progress,
+  onOpen,
+  onContextMenu,
+  morphLayout,
+  layoutAnimated,
+  isDark,
+}: ShelfBookProps) {
+  const { info, loading } = useBookCover(entry.path, entry.modifiedAt);
+  const percent = progress ? Math.round(progress.percentage * 100) : 0;
+  // Long-press (mouse or touch) opens the context menu; the hook's
+  // consumeClickIfLongPressFired guards the click-to-open that follows.
+  const longPress = usePointerLongPress((e) => {
+    onContextMenu?.(entry, e.clientX, e.clientY);
+  });
+
+  return (
+    <motion.button
+      type="button"
+      onClick={(e) => {
+        if (longPress.consumeClickIfLongPressFired()) return;
+        onOpen(entry, e.currentTarget.getBoundingClientRect());
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu?.(entry, e.clientX, e.clientY);
+      }}
+      onMouseDown={longPress.onMouseDown}
+      onMouseMove={longPress.onMouseMove}
+      onMouseUp={longPress.onMouseUp}
+      onMouseLeave={longPress.onMouseLeave}
+      onTouchStart={longPress.onTouchStart}
+      onTouchMove={longPress.onTouchMove}
+      onTouchEnd={longPress.onTouchEnd}
+      onTouchCancel={longPress.onTouchCancel}
+      whileHover={{ y: -8 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{
+        default: { type: "spring", stiffness: 400, damping: 30 },
+      }}
+      // No overflow-hidden here: the morphing book lives inside, and clipping it
+      // to the button would chop the morph as it travels to/from the list.
+      // `group` so the cover's shadow can grow on hover.
+      className="group relative block h-[160px] w-[104px] shrink-0 touch-pan-y focus:outline-none"
+      title={info?.title || entry.name}
+    >
+      <BookMorphCover
+        entry={entry}
+        info={info}
+        loading={loading}
+        percent={percent}
+        variant="grid"
+        morphLayout={morphLayout}
+        layoutAnimated={layoutAnimated}
+        isDark={isDark}
+      />
+    </motion.button>
+  );
+}

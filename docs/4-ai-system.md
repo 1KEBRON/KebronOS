@@ -1,0 +1,274 @@
+# AI System
+
+Multi-provider AI with streaming responses, tool-loop orchestration, and a two-tier memory pipeline.
+
+## Providers
+
+| Provider | SDK | Models |
+|----------|-----|--------|
+| OpenAI | `@ai-sdk/openai` | `gpt-6` (API: `gpt-6-astra`), `gpt-5.5` |
+| Anthropic | `@ai-sdk/anthropic` | `sonnet-4.6`, `opus-5.5` (API: `claude-opus-5-5`, Ryo + debug only) |
+| Google | `@ai-sdk/google` | `gemini-3-flash`, `gemini-3.1-pro-preview` |
+
+Default model: `gpt-6`
+
+Specialized models used by specific flows:
+- `gemini-3-flash-preview` (proactive greeting, applet text mode, chat-room auto replies, memory extraction, and daily-notes processing)
+- `gemini-3.1-flash-image-preview` (applet image generation)
+
+```mermaid
+graph TD
+    A[User Message] --> B[Chat API]
+    B --> C{Provider Selection}
+    C -->|OpenAI| D[gpt-6 / gpt-5.5]
+    C -->|Anthropic| E[claude-sonnet-4-6 / claude-opus-5-5]
+    C -->|Google| F[gemini-3-flash / gemini-3.1-pro-preview]
+    D --> G[AI SDK Stream]
+    E --> G
+    F --> G
+    G --> H[Tool Loop + Response Handler]
+    H --> I[UI Update]
+```
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `launchApp` | Open applications (supports Internet Explorer URL + year time-travel launch) |
+| `closeApp` | Close applications |
+| `mediaControl` | Unified media control with `target` ("music" default, "karaoke", "videos", "tv"): toggle/play/pause/playKnown/addAndPlay/next/previous transport (+ video/fullscreen/lyrics translation options) and TV channel management (list/tune/createChannel/deleteChannel/addVideo/removeVideo). |
+| `generateHtml` | Create HTML applets with title and emoji icon |
+| `aquarium` | Render interactive emoji aquarium in chat |
+| `list` | List VFS items: `/Applets`, `/Documents` (includes document names), `/Applications`, `/Music`, `/Applets Store` |
+| `mapsSearchPlaces` | Server-side Apple MapKit place search; chat shows an inline card — tapping a result opens **Maps** in ryOS with that place selected; external link opens Apple Maps. For "near me" queries, call `getPreciseLocation` first and pass coordinates as `near`; otherwise the server biases to IP geolocation |
+| `getWeather` | Server-side Open-Meteo current weather + 5-day forecast (same live data as the weather widget and weather wallpaper); resolves location from place name, coordinates (e.g. from `getPreciseLocation`), or IP geolocation fallback |
+| `getPreciseLocation` | Request precise device location via in-chat Allow / Don't Allow permission card (client, approval-gated); returns coordinates and locality for `getWeather` or `mapsSearchPlaces` (`near`); web chat only |
+| `open` | Open files/apps/media from virtual file system |
+| `read` | Read file contents (applets, documents, Applets Store items) |
+| `write` | Create/modify markdown documents (overwrite/append/prepend modes) |
+| `edit` | Edit existing files with precise text replacement |
+| `searchSongs` | Search YouTube for songs (with API-key rotation and retry) |
+| `settings` | Change language, theme, volume, speech, check-for-updates |
+| `stickiesControl` | List/create/update/delete/clear sticky notes (client on web via `stickiesHandler.ts`; server on Telegram via `app-state-executors.ts`) |
+| `infiniteMacControl` | Control Infinite Mac emulator (launch system, screen read, mouse/keyboard actions, pause state) |
+| `calendarControl` | Create, update, delete, and list calendar events; create, toggle, delete, and list todos (client on web via `calendarHandler.ts`; server on Telegram) |
+| `contactsControl` | Search, create, update, and delete contacts with Telegram field support (client on web via `contactsHandler.ts`; server on Telegram) |
+| `documentsControl` | Telegram/server-side tool for cloud-synced markdown documents; web chat uses client VFS `read`/`write`/`edit` tools |
+| `memoryWrite` | Unified memory writer (`long_term` or `daily`) |
+| `memoryRead` | Unified memory reader (`long_term` by key or `daily` by date) |
+| `memoryDelete` | Delete long-term memory by key |
+| `songLibraryControl` | Telegram/server-side song library search and cached metadata access |
+| `web_search` | OpenAI provider web search (GPT-5.5 only, authenticated users, with geolocation context) |
+| `google_search` | Google provider web search (Gemini 3 Flash only, authenticated users) |
+| `webFetch` | Server-side URL fetch with HTML-to-text extraction for Ryo (sanitized) |
+| `runJs` | Run pure JavaScript (ES2023) in a server-side QuickJS WASM sandbox; returns captured console output and the completion value (no network, timers, or DOM) |
+| `cursorCloudAgent` | Async Cursor Cloud repo-agent runs against `ryokun6/ryos` (owner account + `CURSOR_API_KEY`): live stream card, PR link, follow-up turns |
+| `listCursorCloudAgentRuns` | List recent Cursor Cloud agent runs with dashboard URLs (owner account + `CURSOR_API_KEY`) |
+
+## API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| [`/api/chat`](/docs/chat-api) | Main chat with streaming, tool-calling, and context-aware prompt assembly |
+| [`/api/ai/extract-memories`](/docs/chat-api) | Single-pass extraction of daily notes + long-term memories from chat history |
+| [`/api/ai/process-daily-notes`](/docs/chat-api) | Background processing of past daily notes into long-term memories |
+| [`/api/ai/ryo-reply`](/docs/chat-api) | Auto-reply generation for chat rooms |
+| `/api/ai/cursor-run-status` | Poll Cursor Cloud agent run events for live cards |
+| `/api/ai/cursor-run-followup` | Send follow-up prompts to an existing Cursor Cloud agent run |
+| [`/api/applet-ai`](/docs/ai-generation-apis) | Applet AI assistant (text + image mode, multimodal input) |
+| [`/api/ie-generate`](/docs/ai-generation-apis) | Internet Explorer time-travel page generation |
+| `/api/mapkit-token` | MapKit JS token used by Maps and `mapsSearchPlaces` |
+| `/api/tv/create-channel` | Server-side TV channel creation flow used by TV tooling |
+| [`/api/speech`](/docs/media-api) | Text-to-speech synthesis |
+| [`/api/audio-transcribe`](/docs/media-api) | Audio transcription |
+| [`/api/webhooks/telegram`](/docs/chat-api) | Telegram bot webhook for DM chat (image support, web search, AI tool execution) |
+| [`/api/cron/telegram-heartbeat`](/docs/chat-api) | AI-powered proactive heartbeat messages via Telegram (cron-triggered) |
+| `/api/telegram/link/create` | Generate Telegram account linking code |
+| `/api/telegram/link/status` | Check Telegram link status |
+| `/api/telegram/link/disconnect` | Disconnect linked Telegram account |
+
+## Architecture
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Chat UI
+    participant API as /api/chat
+    participant M as AI Model
+    participant T as Tool Runtime
+    participant S as ryOS State
+
+    U->>C: Send message
+    C->>API: POST messages + systemState
+    API->>M: ToolLoopAgent.stream (static+dynamic prompts, tools)
+    M-->>API: Tool call(s)
+    API->>T: Execute server tools / emit client tools
+    T->>S: Read or mutate state
+    S-->>T: Result
+    T-->>M: Tool result
+    M-->>API: Final tokens
+    API-->>C: UI message stream
+    C-->>U: Display response
+```
+
+Web chat and Telegram both assemble tools via `prepareRyoConversationModelInput()` in `api/_utils/ryo-conversation.ts`, then run them through `createRyoToolLoopAgent()` (`api/_utils/ryo-agent.ts`), which wraps the AI SDK `ToolLoopAgent` with a per-channel step limit (chat: 10 steps).
+
+## Tool Handlers
+
+Backend tool registry lives in `api/chat/tools/`:
+
+- `api/chat/tools/types.ts` - Tool constants and TypeScript contracts
+- `api/chat/tools/schemas.ts` - Zod input schemas and action-specific validation
+- `api/chat/tools/executors.ts` - Server-side executors (`generateHtml`, `searchSongs`, memory, documents, `webFetch`, `runJs`, song library)
+- `api/chat/tools/weather-executor.ts` - Server-side `getWeather` executor (Open-Meteo + Nominatim)
+- `api/chat/tools/js-sandbox.ts` - QuickJS WASM sandbox used by `runJs`
+- `api/chat/tools/app-state-executors.ts` - Server-side calendar, stickies, and contacts executors used by Telegram/app-state tool paths
+- `api/chat/tools/index.ts` - `createChatTools()` registry with profile-based filtering (`all`, `memory`, `telegram`)
+
+Tool profiles control which tools are available per channel:
+- `all` (web chat): Client app/VFS/media tools plus server tools registered for the web channel; search and cursor tools are merged dynamically when model/user/env gates pass
+- `telegram`: Server-side subset — `webFetch`, `runJs`, `getWeather`, `mapsSearchPlaces`, memory, documents, calendar, stickies, contacts, and `songLibraryControl` via Redis/sync state; no `getPreciseLocation` (requires browser geolocation + approval UI); cursor tools are owner-only when configured
+- `memory`: Memory tools only
+
+Client execution is split across two layers:
+
+- `src/apps/chats/tools/dispatchToolCall.ts` — shared client tool dispatch (Chats app + desktop assistant); server-executed tools are skipped client-side
+- `src/apps/chats/hooks/useAiChat.ts` — wires `onToolCall` to `dispatchToolCall`
+- `src/apps/chats/tools/` — registered handlers for media/settings/app-state tools:
+
+- `appHandlers.ts` - Launch/close app execution
+- `mediaHandler.ts` - Unified `mediaControl` execution (music/karaoke/videos/tv transport)
+- `mediaTvChannels.ts` - TV channel lineup and tuning execution (target `tv` channel actions)
+- `calendarHandler.ts` - Calendar event management execution
+- `contactsHandler.ts` - Contact management execution
+- `settingsHandler.ts` - System settings updates
+- `stickiesHandler.ts` - Sticky note operations
+- `infiniteMacHandler.ts` - Infinite Mac control bridge
+- `preciseLocationHandler.ts` - Browser geolocation execution after user approval
+- `toolApprovals.ts` - Approval-gated tool plumbing (Allow / Don't Allow cards, auto-send coordination)
+
+Shared conversation preparation lives in `api/_utils/ryo-conversation.ts`:
+
+- `prepareRyoConversationModelInput()` - Unified entry point for both web chat and Telegram channels
+- Assembles static system prompt, dynamic context (memories, daily notes, system state), and tools
+- Handles model selection, message enrichment, and OpenAI web search injection
+- Cursor Cloud agent completion notifications sent to Telegram (`formatCursorRunCompletionTelegramMessage` in `api/chat/tools/cursor-repo-agent.ts`) run the summary and title through `simplifyTelegramCitationDisplay` in `api/_utils/telegram-format.ts`, append labeled plain URLs (`Agent:` dashboard, `PR:` when known), and keep DMs markdown-free; web chat / polling still use the raw summary.
+
+### Tool schema highlights
+
+- `launchApp` now enforces that `internet-explorer` launches must provide both `url` and `year` together (or neither), with year-range validation.
+- `mediaControl` is the media tool: a `target` field ("music" default, "karaoke", "videos", "tv") gates the action vocabulary and flags (e.g. TV channel actions require `target: "tv"`, `enableVideo` is music-only). Action-specific argument rules include requiring `id` for `addAndPlay` and rejecting track identifiers for playback-state actions.
+- `memoryWrite` / `memoryRead` are unified schemas using a `type` field:
+  - `long_term` (default): key-based memory operations
+  - `daily`: journal-style per-day operations
+- `infiniteMacControl` supports multimodal screen inspection by returning screen captures that can be converted into model-readable image content.
+- `getPreciseLocation` is approval-gated (`needsApproval`): the chat UI shows an Allow / Don't Allow card; the client handler runs only after approval. If declined, fall back to IP-based broad location for `getWeather` / `mapsSearchPlaces`.
+- `getWeather` resolves location in order: explicit coordinates → place-name search → IP geolocation.
+- `runJs` runs ES2023 in a QuickJS WASM sandbox with timeout and memory limits; each invocation is stateless (no network, timers, or DOM).
+
+## System Prompts
+
+Core prompt constants are defined in `api/_utils/_aiPrompts.ts`:
+
+- `CORE_PRIORITY_INSTRUCTIONS` - Priority and memory-override rules
+- `RYO_PERSONA_INSTRUCTIONS` - Ryo identity and background
+- `ANSWER_STYLE_INSTRUCTIONS` - Style and language behavior
+- `CODE_GENERATION_INSTRUCTIONS` - Applet generation constraints
+- `CHAT_INSTRUCTIONS` - Chats behavior and memory usage guidance
+- `TELEGRAM_CHAT_INSTRUCTIONS` - Telegram DM-specific behavior (plain text only, calendar/stickies/contacts/documents tool guidance)
+- `TOOL_USAGE_INSTRUCTIONS` - VFS and tool workflow rules
+- `MEMORY_INSTRUCTIONS` - Two-tier memory strategy and tool usage policy
+- `IE_HTML_GENERATION_INSTRUCTIONS` - Internet Explorer HTML generation rules
+
+Channel-specific prompt composition (via `ryo-conversation.ts`):
+- **Web chat** (`/api/chat`): `CORE_PRIORITY` + `ANSWER_STYLE` + `RYO_PERSONA` + `CHAT` + `TOOL_USAGE` + `MEMORY` + `CODE_GENERATION`, then appends dynamic user/system state.
+- **Telegram** (`/api/webhooks/telegram`): `CORE_PRIORITY` + `ANSWER_STYLE` + `RYO_PERSONA` + `TELEGRAM_CHAT` + `MEMORY`, then appends dynamic user context.
+- `/api/applet-ai` uses a dedicated compact applet system prompt for embedded UI contexts.
+- `/api/ie-generate` splits prompts into static + dynamic sections for year/URL-aware generation.
+
+## Memory System
+
+ryOS uses a two-tier Redis-backed memory model:
+
+### Tier 1: Daily Notes (journal memory)
+
+- Append-only entries grouped by date (`YYYY-MM-DD`) in user timezone.
+- Each entry stores:
+  - Unix timestamp (`timestamp`)
+  - UTC ISO timestamp (`isoTimestamp`)
+  - Local date/time (`localDate`, `localTime`)
+  - Timezone (`timeZone`)
+  - Entry content
+- Daily notes auto-expire after 30 days (TTL).
+- Recent notes from the last 3 days are injected into chat prompt context.
+
+### Tier 2: Long-Term Memories
+
+- Two-layer structure:
+  - Index: key + summary + `updatedAt` (always visible to the model)
+  - Detail: full content + `createdAt` + `updatedAt`
+- Capped at 50 memories per user.
+- Canonical key guidance (e.g. `name`, `preferences`, `projects`, `instructions`) is used by extraction pipelines.
+
+### Stale-memory cleanup
+
+- Long-term hygiene includes automatic cleanup of stale temporary memories.
+- Temporary context-like memories (e.g. short-lived travel/meeting context) are removed when old enough (default retention: 7 days) and heuristics identify them as transient.
+- Cleanup runs as part of the daily-notes processing cycle before new extraction.
+
+## Daily Notes Processing Pipeline
+
+```mermaid
+flowchart TD
+    A[Conversation / tool writes] --> B[/api/ai/extract-memories]
+    B --> C[Append daily notes + optional long-term updates]
+    C --> D[Unprocessed daily notes accumulate]
+    D --> E[/api/chat proactive greeting trigger]
+    E --> F[/api/ai/process-daily-notes]
+    F --> G[Cleanup stale temporary memories]
+    G --> H[Process past days only, oldest first]
+    H --> I[Extract + consolidate long-term memories]
+    I --> J[Mark daily note processed]
+```
+
+Pipeline behavior:
+1. `extract-memories` performs single-pass extraction from chat history (daily notes + candidate long-term facts).
+2. Daily notes continue collecting while a day is active.
+3. `process-daily-notes` processes unprocessed past days (excludes today), consolidates overlaps, and marks each processed day.
+4. Chat endpoint can trigger `process-daily-notes` in the background during proactive greeting flow.
+5. Telegram heartbeat cron also triggers `process-daily-notes` and extracts memories from new Telegram chat messages since the last heartbeat.
+
+## apiHandler Pattern
+
+AI endpoints use a shared `api/_utils/api-handler.ts` wrapper for consistency:
+
+- CORS and allowed-origin checks
+- Method gating + automatic `OPTIONS` handling
+- Optional JSON body parsing
+- Shared per-request context injection (`req`, `res`, `redis`, `logger`, `origin`, `user`, `body`)
+- Unified auth modes (`none`, `optional`, `required`) with optional expired-token allowance
+- Unified top-level error handling and status logging
+
+Common endpoint configurations in this AI stack:
+
+- `/api/chat`: `auth: "optional"`, `allowExpiredAuth: true`, `parseJsonBody: true`, `contentType: null`
+- `/api/applet-ai`: `auth: "optional"`, `parseJsonBody: true`, `contentType: null`
+- `/api/ie-generate`: `auth: "none"`, `parseJsonBody: true`, `contentType: null`
+- `/api/ai/extract-memories`: `auth: "required"`, `parseJsonBody: true`
+- `/api/ai/process-daily-notes`: `auth: "required"`, `parseJsonBody: true`
+- `/api/ai/ryo-reply`: `auth: "required"`, `parseJsonBody: true`
+- `/api/webhooks/telegram`: Custom handler (webhook secret validation, Telegram-specific auth via linked accounts)
+- `/api/cron/telegram-heartbeat`: Custom handler (cron secret via `Authorization: Bearer` header)
+
+## Additional AI Capabilities
+
+- **Proactive greetings**: `/api/chat` supports a proactive greeting mode for logged-in users with memories. Uses `gemini-3-flash-preview` to generate a short, context-aware greeting referencing recent activity or memories. Triggers background daily-note processing on each greeting.
+- **Telegram bot DM chat**: `/api/webhooks/telegram` enables private Telegram DM conversations with Ryo. Supports image attachments (downloaded and injected as multimodal content), web search, and server-side tool execution (memory, calendar, stickies, contacts, documents). Users link accounts via `/api/telegram/link/*` endpoints. Includes per-user burst and account-window rate limiting.
+- **Telegram heartbeat insights**: `/api/cron/telegram-heartbeat` runs on a 30-minute cron schedule. Analyzes today's daily notes, recent Telegram conversation, and heartbeat history to decide whether to proactively message the user. Processes daily notes and extracts memories from new chat messages before each decision. Uses gating logic to avoid redundant or stale nudges.
+- **Web search**: Authenticated users get a search tool based on the selected model: `web_search` (OpenAI) for `gpt-6` / `gpt-5.5` with geolocation context, or `google_search` (Google) for `gemini-3-flash`. Anonymous users do not get search tools.
+- **Restricted models**: `opus-5.5` is selectable only for the signed-in `ryo` account while Control Panels debug mode is on. `/api/chat` and `/api/ie-generate` reject it with `403 model_not_allowed` unless both checks pass (auth username `ryo` + `debugMode` / `dbg=1`).
+- **Chat-room auto replies**: `/api/ai/ryo-reply` generates room messages as `ryo` with dedicated rate limits.
+- **Applet multimodal AI**: `/api/applet-ai` supports text chat, image attachments in message history, and binary image generation responses.
+- **Infinite Mac visual loop**: `infiniteMacControl` can return screenshots for model-visible state inspection.
+- **Internet Explorer caching**: `/api/ie-generate` stores cleaned generated HTML snapshots in Redis for recent-history retrieval.
+

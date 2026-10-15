@@ -1,0 +1,95 @@
+import {
+  formatRelativeTime as formatRelativeTimeShared,
+  type RelativeTimeKeys,
+} from "@/utils/formatRelativeTime";
+
+export type SyncAuditStatus = {
+  lastUploadedAt: string | null;
+  lastFetchedAt?: string | null;
+  lastAppliedRemoteAt: string | null;
+  isUploading?: boolean;
+  isDownloading?: boolean;
+  uploadProgress?: number | null;
+  downloadProgress?: number | null;
+};
+
+const AUTO_SYNC_TIME_KEYS: RelativeTimeKeys = {
+  justNow: "apps.control-panels.autoSync.justNow",
+  minutesAgo: "apps.control-panels.autoSync.minutesAgo",
+  hoursAgo: "apps.control-panels.autoSync.hoursAgo",
+  daysAgo: "apps.control-panels.autoSync.daysAgo",
+};
+
+export function formatRelativeTime(
+  timestamp: string | null,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string | null {
+  return formatRelativeTimeShared(timestamp, t, AUTO_SYNC_TIME_KEYS);
+}
+
+function getFetchedSyncTime(status: SyncAuditStatus): string | null {
+  return status.lastFetchedAt || status.lastAppliedRemoteAt;
+}
+
+export function formatSyncStatus(
+  status: SyncAuditStatus,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  const uploadedRelative = formatRelativeTime(status.lastUploadedAt, t);
+  const fetchedRelative = formatRelativeTime(getFetchedSyncTime(status), t);
+  const parts: string[] = [];
+
+  if (status.isUploading) {
+    parts.push(formatUploadingStatus(status.uploadProgress, t));
+  } else {
+    parts.push(
+      uploadedRelative
+        ? t("apps.control-panels.autoSync.lastUploaded", {
+            date: uploadedRelative,
+          })
+        : t("apps.control-panels.autoSync.neverUploaded")
+    );
+  }
+
+  if (status.isDownloading) {
+    parts.push(formatFetchingStatus(status.downloadProgress, t));
+  } else {
+    parts.push(
+      fetchedRelative
+        ? t("apps.control-panels.autoSync.lastFetched", {
+            date: fetchedRelative,
+          })
+        : t("apps.control-panels.autoSync.neverFetched")
+    );
+  }
+
+  return parts.join(" · ");
+}
+
+export function formatUploadingStatus(
+  uploadProgress: number | null | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  const label = t("apps.control-panels.autoSync.uploading");
+  if (typeof uploadProgress !== "number" || !Number.isFinite(uploadProgress)) {
+    return label;
+  }
+  return `${label} ${Math.round(Math.max(0, Math.min(100, uploadProgress)))}%`;
+}
+
+export function formatFetchingStatus(
+  downloadProgress: number | null | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string {
+  const label = t("apps.control-panels.autoSync.fetching");
+  if (typeof downloadProgress !== "number" || !Number.isFinite(downloadProgress)) {
+    return label;
+  }
+  return `${label} ${Math.round(Math.max(0, Math.min(100, downloadProgress)))}%`;
+}
+
+export function getUsernameInitials(username: string): string {
+  const base = username.replace(/^@+/, "").trim();
+  if (!base) return "?";
+  return base.slice(0, 2).toUpperCase();
+}
