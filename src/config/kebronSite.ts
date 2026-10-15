@@ -19,7 +19,7 @@ export const README_PATH = "/Documents/README.md";
 
 /** The standard website (website mode) and this site's public source (AGPL-3.0 source offer). */
 export const KEBRON_WEBSITE_URL = "https://kebron.org";
-export const KEBRON_SOURCE_URL = "https://github.com/1KEBRON/kebronOS";
+export const KEBRON_SOURCE_URL = "https://github.com/1KEBRON/KebronOS";
 
 export const isKebronVisibleApp = (appId: string) => KEBRON_VISIBLE_APPS.has(appId);
 
