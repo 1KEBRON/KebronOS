@@ -1052,11 +1052,11 @@
   }
 }
 
-/* web-ocean exposes and tone-maps its own sunset; the dark-mode wallpaper veil (aqua.css) only muddies it.
- * The attribute is set by DesktopOceanWallpaperLayer once the WebGPU sea is on screen. */
+/* The live ocean exposes and tone-maps its own dawn; the dark-mode wallpaper veil (aqua.css) only muddies it.
+ * The attribute is set by DesktopOceanWallpaperLayer once either sea is on screen. */
 :root[data-os-theme="macosx"][data-os-color-scheme="dark"] .desktop-background::after {
   transition: opacity 1.4s ease;
 }
-:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .desktop-background:has(> [data-ocean-engine="webgpu"])::after {
+:root[data-os-theme="macosx"][data-os-color-scheme="dark"] .desktop-background:has(> [data-ocean-engine])::after {
   opacity: 0;
 }

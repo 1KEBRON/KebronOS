@@ -3,6 +3,8 @@
 // Modified for the sail prototype: the surface ring follows the boat (uSeaOrigin) so positions are world
 // coordinates and the sea is endless, a boat wake feeds the foam history (boatWake), and the distance haze
 // takes the blurred sky colour a few degrees above the horizon instead of a grey horizon band.
+// With a low sun the sun-glint lobe widens so the glitter path reaches the viewer (as in web-ocean), and backlit
+// crests glow less, since the camera faces the sun.
 import { PREFILTER_GLSL } from "./vendor/nagi/prefiltered-environment.js";
 import { REFRACTION_GLSL } from "./vendor/nagi/refraction.js";
 
@@ -254,8 +256,8 @@ void main(){
  vec3 L=sunDir(),H=normalize(V+L);float NoH=max(dot(N,H),0.),NoL=max(dot(N,L),0.);
  float variance=max(dot(dFdx(N),dFdx(N)),dot(dFdy(N),dFdy(N)));
  float slopeVariance=unresolved+max(vGeomVariance,0.);float rough=clamp(.018+.8*spectralVariance+.8*(sqrt(1.+slopeVariance)-1.)+.8*sqrt(variance),.018,.8);
- float a2=pow(max(rough,.12),4.);float denom=NoH*NoH*(a2-1.)+1.;float D=a2/(PI*denom*denom);
- float k=pow(max(rough,.12)+1.,2.)*.125;float G=NoV/(NoV*(1.-k)+k)*NoL/(NoL*(1.-k)+k);
+ float lobe=max(rough,mix(.12,.24,1.-smoothstep(.03,.2,L.y)));float a2=pow(lobe,4.);float denom=NoH*NoH*(a2-1.)+1.;float D=a2/(PI*denom*denom);
+ float k=pow(lobe+1.,2.)*.125;float G=NoV/(NoV*(1.-k)+k)*NoL/(NoL*(1.-k)+k);
  float sunF=.0180094+.9819906*pow(1.-max(dot(V,H),0.),5.);
  float spec=D*G*sunF/(4.*NoV+.04);
  vec3 deep=vec3(.0159963,.0612461,.0998987);
@@ -269,7 +271,7 @@ void main(){
  vec3 water=bottom*extinction*refractionValid+deep*mediumLight*(1.-extinction*refractionValid);
  vec3 transmissionTint=vec3(.0159963,.1356333,.0908417);
  float backLight=pow(max(dot(V,-normalize(L+N*.4)),0.),2.);float crestTransport=crest*(.12+.6*backLight);
- water+=transmissionTint*crestTransport*(diffuseSky*.4+sunlight()*solarVisibility*2.2);
+ water+=transmissionTint*crestTransport*(diffuseSky*.4+sunlight()*solarVisibility*mix(2.2,.6,1.-smoothstep(.03,.2,L.y)));
 
  vec3 reflected;if(uEnvironmentReady>.5){reflected=environmentReflection(R,min(uSkyReflectionBlur+rough,1.));}else{
  float below=max(-R.y,0.);float bounceF=.0180094+.9819906*pow(1.-min(below,1.),5.);reflected=sky(normalize(vec3(R.x,max(abs(R.y),.002),R.z)),false)*bounceF*(.75+.25*exp(-below*40.))+deep*(1.-bounceF);}

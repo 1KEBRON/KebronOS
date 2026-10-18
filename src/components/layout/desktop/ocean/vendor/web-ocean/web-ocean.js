@@ -358,7 +358,7 @@ export async function createWebOcean(options) {
     W = w; H = h;
     canvas.width = W; canvas.height = H;
     for (const t of [colorMS, depthMS, hdrTex, bloomTex]) t && t.destroy();
-    hdrTex = device.createTexture({ size: [W, H], format: HDR, usage: TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING });
+    hdrTex = device.createTexture({ size: [W, H], format: HDR, usage: TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING | TU.COPY_SRC });
     depthMS = device.createTexture({ size: [W, H], format: 'depth32float', sampleCount: MSAA, usage: TU.RENDER_ATTACHMENT });
     if (MSAA > 1) {
       colorMS = device.createTexture({ size: [W, H], format: HDR, sampleCount: MSAA, usage: TU.RENDER_ATTACHMENT });
@@ -714,6 +714,25 @@ export async function createWebOcean(options) {
     get bufferSize() { return [W, H]; },
     render,
     resize,
+    /** Linear HDR radiance of the last frame before exposure and tone mapping (RGBA float32, rows top-down). */
+    async readHDR() {
+      const bpr = Math.ceil((W * 8) / 256) * 256;
+      const buf = device.createBuffer({ size: bpr * H, usage: GU.MAP_READ | GU.COPY_DST });
+      const enc = device.createCommandEncoder();
+      enc.copyTextureToBuffer({ texture: hdrTex }, { buffer: buf, bytesPerRow: bpr }, [W, H]);
+      device.queue.submit([enc.finish()]);
+      await buf.mapAsync(GPUMapMode.READ);
+      const half = new Uint16Array(buf.getMappedRange());
+      const out = new Float32Array(W * H * 4);
+      const f16 = (h) => {
+        const e = (h >> 10) & 31, m = h & 1023, s = h & 32768 ? -1 : 1;
+        return e === 0 ? s * m * 2 ** -24 : e === 31 ? (m ? NaN : s * Infinity) : s * (1 + m / 1024) * 2 ** (e - 15);
+      };
+      for (let y = 0; y < H; y++) for (let i = 0; i < W * 4; i++) out[y * W * 4 + i] = f16(half[(y * bpr) / 2 + i]);
+      buf.unmap();
+      buf.destroy();
+      return { width: W, height: H, data: out };
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

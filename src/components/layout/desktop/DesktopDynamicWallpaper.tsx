@@ -89,7 +89,7 @@ function OceanStillFallback() {
   return (
     <div
       className="absolute inset-0 w-full h-full z-[-10]"
-      style={{ background: "#22394a url(/ocean/ocean.webp) center 34% / cover no-repeat" }}
+      style={{ background: "#22394a center 34% / cover no-repeat", backgroundImage: "var(--ocean-still-image)" }}
     />
   );
 }

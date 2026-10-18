@@ -3,3 +3,8 @@ Local modification: photo-sky.js loads the sky images from /ocean/ instead of ./
 Local modification: photo-sky.js tints the horizon haze with the blurred sky light a few degrees above the horizon (was a flat grey band).
 Local modification: photo-sky.js loadPhotoSky() accepts a `urls` option, so phones can load 2048×1024 copies of the sky images (sky-base-2048.jpg, sky-gain-2048.jpg; resized with sips, JPEG q88). Defaults unchanged.
 Asset note: public/ocean/sky-radiance.bin.gz is a gzip of the unchanged sky-radiance.bin (sea.js inflates it with DecompressionStream); foam-pattern.webp is a lossless WebP of foam-pattern.png (R and G channels bit-identical; B was already empty).
+Local modification (2026-10-18): the sky photo is no longer Kloofendal 48d. It is web-ocean's dawn sky (Noniv, MIT, see
+../web-ocean), baked by scripts/bake-dawn-sky.ts into the same SDR + gain format (public/ocean/sky-dawn-*.jpg; the
+Kloofendal files were removed, sky-radiance.bin is unchanged). For it, photo-sky.js and atmosphere.js take the photo's
+sun as 2.6° up (SKY_SUN_DIRECTION, SKY_SUN_BASELINE and the elevation warp constant), and no longer tint the photo
+orange or blend in a grey horizon haze at low sun, since the baked sky is already a sunrise.

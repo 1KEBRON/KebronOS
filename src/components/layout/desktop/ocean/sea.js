@@ -14,8 +14,8 @@ import { shaderCommon, vertex, fragment, foamFragment } from "./sea-shaders.js";
 
 // "light" is for phones and tablets: coarser grid and foam, no MSAA, 2048 px sky photos (a quarter of the GPU memory).
 const PROFILES = {
-  balanced: { rate: 30, detail: 1, rings: 384, segments: 512, foam: 512, sky: ["/ocean/sky-base.jpg", "/ocean/sky-gain.jpg"] },
-  light: { rate: 20, detail: 0, rings: 256, segments: 384, foam: 256, sky: ["/ocean/sky-base-2048.jpg", "/ocean/sky-gain-2048.jpg"] },
+  balanced: { rate: 30, detail: 1, rings: 384, segments: 512, foam: 512, sky: ["/ocean/sky-dawn-base.jpg", "/ocean/sky-dawn-gain.jpg"] },
+  light: { rate: 20, detail: 0, rings: 256, segments: 384, foam: 256, sky: ["/ocean/sky-dawn-base-2048.jpg", "/ocean/sky-dawn-gain-2048.jpg"] },
 };
 
 // The sky radiance table ships gzipped (4 MB → 2 MB). Inflate it here unless the server already did.

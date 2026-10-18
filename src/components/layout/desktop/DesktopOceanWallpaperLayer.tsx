@@ -1,6 +1,6 @@
 // Live ocean wallpaper seen from a slowly drifting hover: Noniv's web-ocean (MIT, see ./ocean/vendor/web-ocean)
-// where the browser has WebGPU, NAGI's ocean (MIT, see ./ocean/vendor/nagi) on WebGL 2 everywhere else or when
-// web-ocean fails or is too slow on this device. Drag the empty desktop to look around; scroll or pinch to rise
+// on desktops whose browser has WebGPU, NAGI's ocean (MIT, see ./ocean/vendor/nagi) on WebGL 2 on phones,
+// tablets and everywhere else, or when web-ocean fails or is too slow on this device. Drag the empty desktop to look around; scroll or pinch to rise
 // and fall. The still photo underneath is shown while loading, without WebGL 2, after a lost GPU context, on
 // devices too slow for either, and whenever rendering fails.
 //
@@ -21,6 +21,8 @@ const MIN_HEIGHT = 2.5;
 const MAX_HEIGHT = 60;
 /** Set for the rest of the session when this device could not keep the live ocean above ~14 fps. */
 const SLOW_KEY = "kebron:ocean-too-slow";
+/** Heading that faces NAGI's sun (sea.js sunVector) in this layer's yaw convention. */
+const NAGI_SUN_YAW = Math.atan2(0.79863551, 0.60181502);
 /** Set for the rest of the session when web-ocean failed or ran below ~24 fps: NAGI's lighter ocean takes over. */
 const WEBGPU_SLOW_KEY = "kebron:web-ocean-too-slow";
 /** Mobile URL bars resize the viewport while scrolling; the canvas stretches until resizing settles. */
@@ -30,6 +32,11 @@ const INTERACTION_LINGER_MS = 1500;
 const MAX_CONTEXT_RESTORES = 2;
 /** Things on the desktop that keep their own pointer behaviour; everything else is bare sea. */
 const NOT_SEA = "[data-desktop-icon],[data-desktop-item-id],[data-window-instance-id],button,a,input,textarea,select,[contenteditable]";
+
+/** Touch-first or small screens: lighter rendering, and NAGI rather than web-ocean. */
+function isCompactScreen() {
+  return matchMedia("(pointer: coarse)").matches || innerWidth < 760;
+}
 
 function readSession(key: string) {
   try {
@@ -73,6 +80,9 @@ export function OceanWallpaperLayer() {
   const [engine, setEngine] = useState<OceanEngine>(() => {
     const param = new URLSearchParams(location.search).get("ocean");
     if (param === "webgl" || !webGPUAvailable()) return "webgl";
+    // Phones and tablets: web-ocean is built for desktop GPUs. On an iPhone it ran choppy, froze, and drew
+    // shard-like artifacts on the water, so touch devices and small screens keep NAGI's lighter ocean.
+    if (param !== "live" && isCompactScreen()) return "webgl";
     return param !== "live" && readSession(WEBGPU_SLOW_KEY) ? "webgl" : "webgpu";
   });
 
@@ -102,7 +112,7 @@ export function OceanWallpaperLayer() {
       return () => readout?.remove();
     }
 
-    const compact = matchMedia("(pointer: coarse)").matches || innerWidth < 760;
+    const compact = isCompactScreen();
     const bounds = pixelRatioBounds(devicePixelRatio, compact);
     const gpu = engine === "webgpu";
     // web-ocean hands over to NAGI well before the point where NAGI itself would give up on the device.
@@ -176,15 +186,19 @@ export function OceanWallpaperLayer() {
       let resizeTimer = 0;
 
       // ---- hover camera ----
-      // web-ocean is at its best close to the water, looking into the low sun; NAGI's photo sky suits a higher hover.
-      const startHeight = gpu ? 3.5 : 7;
+      // Both seas show the same dawn and are at their best close to the water, looking into the low sun.
+      const startHeight = 3.5;
       const pos = { x: 0, z: 0 };
+      const portrait = host.clientHeight > host.clientWidth;
       // Portrait screens look further down so the sea, not the sky, fills the space above windows.
-      const startPitch = host.clientHeight > host.clientWidth ? -0.34 : -0.12;
-      let yaw = 0;
+      const startPitch = portrait ? -0.34 : -0.12;
+      // web-ocean places its sun for the starting view (oceanBackends.ts). NAGI's sun is fixed in the world, so turn
+      // to face it, and on wide screens a little past it so it sits right of centre, clear of the README.
+      const startYaw = gpu ? 0 : NAGI_SUN_YAW + (portrait ? 0 : 0.31);
+      let yaw = startYaw;
       let pitch = startPitch;
       let height = startHeight;
-      let targetYaw = 0;
+      let targetYaw = startYaw;
       let targetPitch = startPitch;
       let targetHeight = startHeight;
       const view = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0 };
@@ -257,9 +271,7 @@ export function OceanWallpaperLayer() {
         pitch += (targetPitch - pitch) * k;
         height += (targetHeight - height) * k;
         if (!paused) {
-          // Drift slowly forward so the sea feels endless. On NAGI the heading wanders too; web-ocean keeps
-          // facing its low sun unless the visitor turns away.
-          if (!gpu) targetYaw += dt * 0.006;
+          // Drift slowly forward so the sea feels endless, still facing the sun unless the visitor turns away.
           pos.x += -Math.sin(yaw) * dt * 1.6;
           pos.z += -Math.cos(yaw) * dt * 1.6;
         }
@@ -286,7 +298,7 @@ export function OceanWallpaperLayer() {
         if (ready && !shown) {
           shown = true;
           canvas.style.opacity = "1";
-          // Lets the theme lift its dark-mode wallpaper veil off web-ocean (see aqua-kebron.css).
+          // Lets the theme lift its dark-mode wallpaper veil off the live sea (see aqua-kebron.css).
           host.dataset.oceanEngine = sea.engine;
           // Once the canvas has faded in, stop compositing the photo underneath it.
           stillTimer = window.setTimeout(() => {

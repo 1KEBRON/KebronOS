@@ -10,13 +10,12 @@ vec3 atmosphereSun(){return vec3(-.79863551*cos(uAtmosSun),sin(uAtmosSun),-.6018
 vec4 atmosphereRadiance(vec3 direction){
  vec3 rd=normalize(direction);float below=max(-rd.y,0.);vec3 q=normalize(vec3(rd.x,max(abs(rd.y),.0001),rd.z));
  const float rotation=3.093747;float c=cos(rotation),s=sin(rotation);q.xz=mat2(c,s,-s,c)*q.xz;
- q=normalize(vec3(q.x,q.y*tan(.835763)/max(tan(uAtmosSun),.025),q.z));
+ q=normalize(vec3(q.x,q.y*tan(.0453786)/max(tan(uAtmosSun),.025),q.z));
  vec2 uv=vec2(atan(q.z,q.x)/(2.*ATMOS_PI)+.5,asin(clamp(q.y,-1.,1.))/ATMOS_PI+.5);
  vec3 color=(uPhotoSkyReady>.5?sampleSkyImageFast(q,true):textureLod(uSkyPhoto,uv,0.).rgb)*.7;
- float sunset=1.-smoothstep(.12,.58,uAtmosSun);color*=mix(vec3(1),vec3(1.28,.75,.48),sunset);
+ float sunset=1.-smoothstep(.12,.58,uAtmosSun);
  float storm=clamp(uAtmosMood-1.,0.,1.);float luminance=dot(color,vec3(.2126,.7152,.0722));color=mix(color,vec3(.72,.79,.84)*(.15+luminance*.35),storm*.92);
  vec3 haze=mix(vec3(.258,.275,.287),vec3(.33,.206,.138),sunset);haze=mix(haze,vec3(.18,.205,.22),storm);
- color=mix(haze,color,smoothstep(.0,mix(.025,.065,sunset),max(rd.y,0.)));
  if(below>0.){float F=.0180094+.9819906*pow(1.-min(below,1.),5.);color=color*F+vec3(.0159963,.0612461,.0998987)*(1.-F);}
  return vec4(max(color,vec3(0)),1.-storm*.97);
 }

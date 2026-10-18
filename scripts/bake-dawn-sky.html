@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  Bakes web-ocean's dawn sky (WebGPU) into HDR cube faces for NAGI's photo-sky slot, so the WebGL ocean on
+  phones gets the same sunrise. Open /scripts/bake-dawn-sky.html on the Vite dev server in a WebGPU browser;
+  scripts/bake-dawn-sky.ts drives it headlessly and writes public/ocean/sky-dawn-*.
+  The sun sits where NAGI's lighting puts it (azimuth of sea.js sunVector, 2.6° up, web-ocean's default).
+-->
+<html>
+  <body style="margin: 0; background: #000">
+    <div id="host" style="position: fixed; left: 0; top: 0; width: 1024px; height: 1024px"></div>
+    <script type="module">
+      import { createWebOcean } from "/src/components/layout/desktop/ocean/vendor/web-ocean/web-ocean.js";
+
+      const SUN_ELEV = 2.6;
+      // sea.js sunVector: (-0.79863551 cos e, sin e, -0.60181502 cos e). web-ocean: (sin a cos e, sin e, -cos a cos e).
+      const SUN_AZIM = (Math.atan2(-0.79863551, 0.60181502) * 180) / Math.PI;
+      // The four horizontal faces and the zenith; NAGI never looks below the horizon (it mirrors).
+      const FACES = [
+        { name: "yaw0", yaw: 0, pitch: 0 },
+        { name: "yaw90", yaw: 90, pitch: 0 },
+        { name: "yaw180", yaw: 180, pitch: 0 },
+        { name: "yaw270", yaw: 270, pitch: 0 },
+        { name: "up", yaw: 0, pitch: 90 },
+      ];
+      const faces = [];
+
+      window.bake = async () => {
+        const ocean = await createWebOcean({
+          container: document.getElementById("host"),
+          pixelRatio: 1,
+          params: { sunElev: SUN_ELEV, sunAzim: SUN_AZIM },
+        });
+        // High enough that no crest pokes above the horizon in the faces.
+        Object.assign(ocean.camera, { x: 0, y: 30, z: 0, fovY: Math.PI / 2 });
+        // Let the sea, foam and environment settle before freezing time.
+        for (let i = 0; i < 90; i++) ocean.render(1 / 60);
+        for (const face of FACES) {
+          ocean.camera.yaw = (face.yaw * Math.PI) / 180;
+          ocean.camera.pitch = (face.pitch * Math.PI) / 180;
+          // A few still frames so the per-frame environment cube catches up with the new view.
+          for (let i = 0; i < 8; i++) ocean.render(0);
+          const hdr = await ocean.readHDR();
+          const rgb = new Float32Array(hdr.width * hdr.height * 3);
+          for (let p = 0; p < hdr.width * hdr.height; p++) {
+            rgb[p * 3] = hdr.data[p * 4];
+            rgb[p * 3 + 1] = hdr.data[p * 4 + 1];
+            rgb[p * 3 + 2] = hdr.data[p * 4 + 2];
+          }
+          faces.push({ ...face, size: hdr.width, rgb });
+        }
+        ocean.dispose();
+        return { sunElev: SUN_ELEV, sunAzim: SUN_AZIM, faces: faces.map(({ name, yaw, pitch, size }) => ({ name, yaw, pitch, size })) };
+      };
+
+      /** Base64 of a slice of one face's float32 RGB data, for the headless driver. */
+      window.faceChunk = (index, start, count) => {
+        const bytes = new Uint8Array(faces[index].rgb.buffer, start * 4, count * 4);
+        let s = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        return btoa(s);
+      };
+    </script>
+  </body>
+</html>

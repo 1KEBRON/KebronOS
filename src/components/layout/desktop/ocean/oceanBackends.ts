@@ -72,7 +72,8 @@ export function createWebGLBackend(
     container: options.container,
     quality: options.compact ? "light" : "balanced",
     pixelRatio: options.pixelRatio,
-    sunDegrees: 30,
+    // The sky photo is web-ocean's dawn, baked by scripts/bake-dawn-sky.ts with the sun 2.6° up.
+    sunDegrees: 2.6,
   });
   const canvas = sea.renderer.domElement;
   const look = new Vector3();

@@ -5,8 +5,8 @@ uniform sampler2D uSkyImageGain;
 const vec2 SKY_IMAGE_SIZE = vec2(4096.0, 2048.0);
 const float SKY_PI = 3.14159265358979323846;
 const float SKY_GAIN_WEIGHT = 0.42399845327747504;
-const vec3 SKY_SUN_DIRECTION = vec3(0.5542598486859208, 0.7418088572248551, 0.3775124361890805);
-const vec3 SKY_SUN_BASELINE = vec3(9.655837059020996, 10.09691047668457, 12.554890632629395);
+const vec3 SKY_SUN_DIRECTION = vec3(0.8256539843580213, 0.04536298812925378, 0.5623501555274166);
+const vec3 SKY_SUN_BASELINE = vec3(6.662819556648796, 2.1171843302913564, 0.29862395351063314);
 float skyCodeToLinear(float code255) {
     if (code255 / 255.0 < 0.04045) {
         return (code255 / 255.0) * 0.0773993808;
@@ -79,12 +79,12 @@ vec3 photographicSky(vec3 direction){
  vec3 rd=normalize(direction),q=normalize(vec3(rd.x,max(abs(rd.y),.0001),rd.z));
  float sun=mix(uSun,uSkySun,uEnvironmentReady),mood=mix(uMood,uSkyMood,uEnvironmentReady);
  const float rotation=3.093747;float c=cos(rotation),s=sin(rotation);q.xz=mat2(c,s,-s,c)*q.xz;
- q=normalize(vec3(q.x,q.y*tan(.835763)/max(tan(sun),.025),q.z));
+ q=normalize(vec3(q.x,q.y*tan(.0453786)/max(tan(sun),.025),q.z));
  vec3 color=sampleSkyImageFast(q,true)*.7;
- float sunset=1.-smoothstep(.12,.58,sun);color*=mix(vec3(1),vec3(1.28,.75,.48),sunset);
+ float sunset=1.-smoothstep(.12,.58,sun);
  float storm=clamp(mood-1.,0.,1.),luminance=dot(color,vec3(.2126,.7152,.0722));color=mix(color,vec3(.72,.79,.84)*(.15+luminance*.35),storm*.92);
  vec3 haze=mix(vec3(.258,.275,.287),vec3(.33,.206,.138),sunset);haze=mix(haze,vec3(.18,.205,.22),storm);
- haze=mix(haze,environmentSample(normalize(vec3(rd.x,.09,rd.z)),5.).rgb,.85*uEnvironmentReady*(1.-storm));color=mix(haze,color,smoothstep(.0,mix(.025,.065,sunset),max(rd.y,0.)));
+ haze=mix(haze,environmentSample(normalize(vec3(rd.x,.09,rd.z)),5.).rgb,.85*uEnvironmentReady*(1.-storm));
  color+=sunlight()*4.5*smoothstep(.999955,.999985,dot(rd,sunDir()))*(1.-storm*.97);
  return color;
 }
@@ -100,7 +100,7 @@ export async function loadPhotoSky(
   {
     timeoutMs = 6000,
     signal = null,
-    urls = ["/ocean/sky-base.jpg", "/ocean/sky-gain.jpg"],
+    urls = ["/ocean/sky-dawn-base.jpg", "/ocean/sky-dawn-gain.jpg"],
   } = {},
 ) {
   const loader = new THREE.TextureLoader(),

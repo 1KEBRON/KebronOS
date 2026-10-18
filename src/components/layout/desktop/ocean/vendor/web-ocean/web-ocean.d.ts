@@ -33,6 +33,8 @@ export type WebOcean = {
   render(dt: number): void;
   /** Match the drawing buffer to the container (and optionally a new pixel ratio); returns whether it changed. */
   resize(pixelRatio?: number): boolean;
+  /** Linear HDR radiance of the last frame before exposure and tone mapping (RGBA float32, rows top-down). */
+  readHDR(): Promise<{ width: number; height: number; data: Float32Array }>;
   dispose(): void;
 };
 
