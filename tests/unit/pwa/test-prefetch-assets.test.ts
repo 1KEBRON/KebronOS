@@ -18,7 +18,7 @@ const manifest: IconManifest = {
 };
 
 describe("idle shell asset warming", () => {
-  test("resolves active-theme icons with cached default fallbacks", () => {
+  test("resolves active-theme icons, falling back only for missing variants", () => {
     const urls = collectActiveThemeIconUrls({
       theme: "macosx",
       manifest,
@@ -32,7 +32,6 @@ describe("idle shell asset warming", () => {
     });
     expect(urls).toEqual([
       "/icons/macosx/finder.png",
-      "/icons/default/finder.png",
       "/icons/default/settings.png",
       "/icons/default/file.png",
     ]);

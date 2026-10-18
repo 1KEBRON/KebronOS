@@ -1,3 +1,4 @@
+import { ThemedIcon } from "@/components/shared/ThemedIcon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import "@fontsource-variable/geist/wght.css";
@@ -164,8 +165,8 @@ export function PreviewAppComponent({
           onClick={() => void handleImport()}
           className="flex h-full w-full flex-col items-center justify-center gap-3 text-os-text-secondary hover:text-os-text-primary"
         >
-          <img
-            src={appMetadata.icon}
+          <ThemedIcon
+            name={appMetadata.icon}
             alt=""
             className="size-24 object-contain drop-shadow-md"
           />

@@ -7,6 +7,7 @@ import {
   useIconPath,
 } from "@/utils/icons";
 import { useThemeStore } from "@/stores/useThemeStore";
+import { desktopIconAsset } from "@/utils/desktopIconAssets";
 import { cn } from "@/lib/utils";
 
 export interface ThemedIconProps
@@ -209,7 +210,7 @@ const ThemedIconInner: React.FC<ThemedIconProps> = ({
 
   return (
     <img
-      src={src}
+      src={recoveredSrc ? src : desktopIconAsset(src)}
       data-initial-src={resolved}
       alt={alt || name}
       className={composedClassName}

@@ -379,8 +379,7 @@ function collectShellIconUrls(
 
 /**
  * Warm the active theme without rerunning update toasts or sound prefetching.
- * Default icon fallbacks and every theme's small chrome assets are included so
- * a first-time offline theme switch remains usable.
+ * Only missing themed icons resolve to default art; other themes warm when selected.
  */
 export async function warmActiveThemeShellAssets(
   theme: OsThemeId = useThemeStore.getState().current
@@ -585,8 +584,7 @@ async function runPrefetchWithToast(
     return;
   }
   
-  // Warm the current theme plus default icon fallbacks. Default icons keep a
-  // first-time offline theme switch usable until themed icons can be fetched.
+  // Warm the current theme. Missing variants resolve to the default icon.
   const theme = useThemeStore.getState().current;
   const iconUrls = collectShellIconUrls(theme, manifest);
   const soundUrls = getCoreSoundUrls();

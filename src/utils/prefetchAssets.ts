@@ -1,3 +1,4 @@
+import { desktopIconAsset } from "./desktopIconAssets";
 import {
   pickIconPath,
   type IconManifest,
@@ -68,14 +69,8 @@ export function collectActiveThemeIconUrls({
         manifest,
       })
     );
-    urls.add(
-      pickIconPath(logicalName, {
-        theme: "default",
-        manifest,
-      })
-    );
   }
-  return [...urls];
+  return [...urls].map(desktopIconAsset);
 }
 
 export function getThemeStaticAssetUrls(theme: string): string[] {
