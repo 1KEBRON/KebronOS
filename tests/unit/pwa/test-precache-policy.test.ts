@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { collectOfflinePrecacheChunkClosure } from "../../../vite/precachePolicy";
 
 describe("Workbox precache policy", () => {
-  test("keeps the shell, apps, locales, and their static dependencies", () => {
+  test("keeps the shell and its static dependencies without installing optional apps or locales", () => {
     const closure = collectOfflinePrecacheChunkClosure([
       {
         fileName: "assets/index.js",
@@ -52,12 +52,8 @@ describe("Workbox precache policy", () => {
     ]);
 
     expect([...closure].sort()).toEqual([
-      "assets/CalculatorApp.js",
       "assets/index.js",
-      "assets/math-vendor.js",
       "assets/react.js",
-      "assets/translation-ja.js",
-      "assets/ui-core.js",
     ]);
   });
 });

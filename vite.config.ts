@@ -1,4 +1,4 @@
-import { defineConfig, type ViteDevServer } from "vite";
+import { defineConfig, type ViteDevServer, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -61,13 +61,28 @@ self.addEventListener("activate", (event) => {
 // ---------------------------------------------------------------------------
 // Offline app Workbox precache
 //
-// We precache the shell, every app and every locale catalog with their static
-// dependencies. Features reached only through nested dynamic imports remain
+// We precache the ocean entry and desktop shell with their static
+// dependencies. Features reached through dynamic imports remain
 // available on demand through the runtime CacheFirst rules.
 // The exclusion set is populated at build time by inspecting emitted chunks
 // and consumed by the Workbox `manifestTransforms` hook below.
 // ---------------------------------------------------------------------------
 const precacheExclusions = new Set<string>();
+
+function offlineShellPlugin(): Plugin {
+  return {
+    name: "offline-shell",
+    generateBundle: {
+      order: "post",
+      handler(_options, bundle) {
+        const html = bundle["index.html"];
+        if (html?.type === "asset") {
+          this.emitFile({ type: "asset", fileName: "offline.html", source: html.source });
+        }
+      },
+    },
+  };
+}
 
 function collectPrecacheExclusionsPlugin() {
   return {
@@ -463,6 +478,7 @@ export default defineConfig({
     // Skip PWA plugin entirely in dev mode to save ~50MB memory (Workbox config is heavy)
     ...(isDev ? [] : [
       collectPrecacheExclusionsPlugin(),
+      offlineShellPlugin(),
       VitePWA({
       registerType: "autoUpdate",
       injectRegister: false,
@@ -473,7 +489,6 @@ export default defineConfig({
       includeAssets: [
         "favicon.ico",
         "apple-touch-icon.png",
-        "icons/*.png",
       ],
       workbox: {
         // Do not let Workbox auto-register a precached navigation fallback.
@@ -481,8 +496,7 @@ export default defineConfig({
         // serve an old precached index.html before our NetworkFirst navigation
         // route below gets a chance to fetch the latest shell.
         navigateFallback: null,
-        // Prevent precacheAndRoute from mapping "/" directly to cached
-        // index.html; navigations should flow through the NetworkFirst route.
+        // Only offline.html is precached; / and /index.html always use NetworkFirst.
         directoryIndex: null,
         // Cache strategy for different asset types
         runtimeCaching: [
@@ -524,13 +538,12 @@ export default defineConfig({
             options: {
               cacheName: "html-pages",
               precacheFallback: {
-                fallbackURL: "/index.html",
+                fallbackURL: "/offline.html",
               },
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24, // 1 day
               },
-              networkTimeoutSeconds: 3,
             },
           },
           {
@@ -734,13 +747,11 @@ export default defineConfig({
             },
           },
         ],
-        // Precache the shell, app chunks, locale catalogs, and their static
-        // dependencies. Nested optional imports still load on demand through
-        // the runtime CacheFirst /assets/*.js rule.
+        // Precache only the shell closure. Optional apps and engines load on demand.
         globPatterns: [
-          "index.html",
+          "offline.html",
           "assets/*.js",
-          "**/*.css",
+          "assets/**/*.css",
           "fonts/fonts.css",
           "icons/manifest.json",
         ],
@@ -792,6 +803,7 @@ export default defineConfig({
     target: 'es2022',
     rolldownOptions: {
       output: {
+        assetFileNames: "assets/immutable/[name]-[hash][extname]",
         codeSplitting: {
           groups: vendorCodeSplittingGroups(),
         },

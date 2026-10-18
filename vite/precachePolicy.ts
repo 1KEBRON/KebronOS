@@ -8,18 +8,15 @@ export type PrecacheGraphChunk = {
 function isOfflinePrecacheRoot(chunk: PrecacheGraphChunk): boolean {
   const facadeModuleId = chunk.facadeModuleId ?? "";
   return (
-    /[/\\]src[/\\]main\.tsx$/.test(facadeModuleId) ||
-    /[/\\]src[/\\]apps[/\\]/.test(facadeModuleId) ||
-    /[/\\]src[/\\]lib[/\\]locales[/\\][^/\\]+[/\\]translation\.json$/.test(
-      facadeModuleId
-    )
+    /[/\\]src[/\\](?:main\.tsx|boot\.ts)$/.test(facadeModuleId) ||
+    chunk.isEntry === true
   );
 }
 
 /**
- * Include the shell, every app and every locale catalog plus their static
- * imports. Optional features that apps import dynamically remain runtime
- * cached on first use.
+ * Include the ocean entry and desktop shell with their static imports.
+ * Apps, engines, and locale catalogs are cached when visited instead of
+ * downloading every feature during service worker installation.
  */
 export function collectOfflinePrecacheChunkClosure(
   chunks: readonly PrecacheGraphChunk[]
