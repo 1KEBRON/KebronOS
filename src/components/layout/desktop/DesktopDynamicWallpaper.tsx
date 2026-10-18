@@ -9,6 +9,7 @@ import {
   isWeatherWallpaper,
 } from "@/utils/dynamicWallpaper";
 import { useWallpaper } from "@/hooks/useWallpaper";
+import { DesktopOceanHost } from "./DesktopOceanHost";
 import { safeLazy } from "@/utils/safeLazy";
 
 /** Recompute the day/night gradient roughly once a minute. */
@@ -36,13 +37,6 @@ const LyricsWallpaperLayer = safeLazy(
       default: m.LyricsWallpaperLayer,
     })),
   { name: "LyricsWallpaperLayer" }
-);
-const OceanWallpaperLayer = safeLazy(
-  () =>
-    import("./DesktopOceanWallpaperLayer").then((m) => ({
-      default: m.OceanWallpaperLayer,
-    })),
-  { name: "OceanWallpaperLayer" }
 );
 const CoverWallpaperLayer = safeLazy(
   () =>
@@ -84,16 +78,6 @@ function WeatherGradientFallback() {
   );
 }
 
-/** The still ocean photo, shown while the live ocean's chunk loads. */
-function OceanStillFallback() {
-  return (
-    <div
-      className="absolute inset-0 w-full h-full z-[-10]"
-      style={{ background: "#22394a center 34% / cover no-repeat", backgroundImage: "var(--ocean-still-image)" }}
-    />
-  );
-}
-
 /** Dark backdrop shown while the lyrics / cover layer's chunk loads. */
 function DarkWallpaperFallback() {
   return (
@@ -111,11 +95,7 @@ export function DesktopDynamicWallpaper() {
   const { currentWallpaper } = useWallpaper();
 
   if (isOceanWallpaper(currentWallpaper)) {
-    return (
-      <Suspense fallback={<OceanStillFallback />}>
-        <OceanWallpaperLayer />
-      </Suspense>
-    );
+    return <DesktopOceanHost />;
   }
   if (isDayNightGradientWallpaper(currentWallpaper)) {
     return <DayNightGradientLayer />;

@@ -1,3 +1,5 @@
+import { useAppStore } from "./stores/useAppStore";
+import { wallpaperReady } from "./boot";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
@@ -219,6 +221,10 @@ const bootstrap = async () => {
     development: import.meta.env.DEV === true,
     mode: import.meta.env.MODE,
   });
+  // The first visit opens README in Preview. Fetch its code during ocean startup.
+  if (useAppStore.getState().isFirstBoot) {
+    void import("./apps/preview/components/PreviewAppComponent");
+  }
   // Theme attributes for first paint (before React)
   useThemeStore.getState().hydrate();
   bootstrapLog.debug("Hydrated theme store for first paint");
@@ -253,6 +259,7 @@ const bootstrap = async () => {
     }
   }
 
+  await wallpaperReady;
   renderApp();
 
   // Non-critical network work after first paint so it does not compete with

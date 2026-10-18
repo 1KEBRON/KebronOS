@@ -1,3 +1,4 @@
+export { Vector3 } from "three";
 import type { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 // Runtime objects come from the "three-nagi" alias (three@0.180.0, the version NAGI targets); the shapes match.
 

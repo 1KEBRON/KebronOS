@@ -34,16 +34,16 @@ export function createAtmosphere(
   noiseBytes,
 ) {
   if (!renderer.extensions.has("EXT_color_buffer_float")) return null;
-  if (!noiseBytes || noiseBytes.length !== 1024 * 512 * 4 * 2)
+  if (uniforms.uPhotoSkyReady.value < 0.5 && (!noiseBytes || noiseBytes.length !== 1024 * 512 * 4 * 2))
     throw new Error("Sky radiance data is incomplete");
   const noise = new THREE.DataTexture(
-    new Uint16Array(
+    noiseBytes ? new Uint16Array(
       noiseBytes.buffer,
       noiseBytes.byteOffset,
       noiseBytes.byteLength / 2,
-    ),
-    1024,
-    512,
+    ) : new Uint16Array(4),
+    noiseBytes ? 1024 : 1,
+    noiseBytes ? 512 : 1,
     THREE.RGBAFormat,
     THREE.HalfFloatType,
   );

@@ -14,10 +14,8 @@ export function openReadmeOnFirstVisit() {
     .then((r) => r.json())
     .then((data: { files?: Array<{ path: string; content?: string }> }) => {
       const readme = data.files?.find((f) => f.path === README_PATH);
-      // Give the desktop a moment to settle so the window opens over the sea, not over a blank screen.
-      setTimeout(() => {
-        requestAppLaunch({ appId: "preview", initialData: { path: README_PATH, content: readme?.content } });
-      }, 900);
+      // Bootstrap has already presented the ocean before mounting the desktop.
+      requestAppLaunch({ appId: "preview", initialData: { path: README_PATH, content: readme?.content } });
     })
     .catch(() => requestAppLaunch({ appId: "preview", initialData: { path: README_PATH } }));
 }

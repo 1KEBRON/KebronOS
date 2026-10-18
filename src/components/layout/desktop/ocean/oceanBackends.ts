@@ -1,9 +1,6 @@
 // The two live oceans behind one interface, so the wallpaper layer drives either with the same camera and frame
 // loop: web-ocean (WebGPU: FFT sea, sunset sky with clouds and sun glitter) where the browser has WebGPU, and
 // NAGI's three.js ocean (WebGL 2, photo sky) everywhere else.
-import { Vector3 } from "three";
-import { createSea } from "./sea.js";
-import { createWebOcean } from "./vendor/web-ocean/web-ocean.js";
 
 export type OceanEngine = "webgpu" | "webgl";
 
@@ -30,6 +27,7 @@ type Lost = { onLost: () => void; onRestored: () => void };
 export async function createWebGPUBackend(
   options: { container: HTMLElement; pixelRatio: number; compact: boolean } & Lost
 ): Promise<OceanBackend> {
+  const { createWebOcean } = await import("./vendor/web-ocean/web-ocean.js");
   const ocean = await createWebOcean({
     container: options.container,
     pixelRatio: options.pixelRatio,
@@ -65,9 +63,10 @@ export async function createWebGPUBackend(
   };
 }
 
-export function createWebGLBackend(
+export async function createWebGLBackend(
   options: { container: HTMLElement; pixelRatio: number; compact: boolean } & Lost
-): { backend: OceanBackend; ready: Promise<unknown> } {
+): Promise<{ backend: OceanBackend; ready: Promise<unknown> }> {
+  const { createSea, Vector3 } = await import("./sea.js");
   const sea = createSea({
     container: options.container,
     quality: options.compact ? "light" : "balanced",

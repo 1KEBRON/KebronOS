@@ -2,6 +2,7 @@
 // Differences from the original: no built-in UI, an externally driven camera, a surface ring that follows the
 // viewer, a caller-owned "under-water" scene for refraction/shoreline foam, and a boat wake in the foam history.
 import * as THREE from "three-nagi";
+export { Vector3 } from "three-nagi";
 import { createSpectralOcean } from "./vendor/nagi/spectral-ocean.js";
 import { createCapillaryOcean } from "./vendor/nagi/capillary-ocean.js";
 import { createCpuCapillaryOcean } from "./vendor/nagi/cpu-capillary-ocean.js";
@@ -351,11 +352,12 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
     const controller = assetsController;
     const timeout = setTimeout(() => controller.abort(), 12000);
     assets.push(
-      fetchRadiance(controller.signal)
-        .then(async (buffer) => {
+      (async () => {
           photoSky = await loadPhotoSky(THREE, uniforms, { signal: controller.signal, urls: profile.sky }).catch((e) =>
             console.warn("[sea] photo sky unavailable", e),
           );
+          // The photo supplies every atmosphere sample. Download the HDR table only if it fails.
+          const buffer = photoSky ? null : await fetchRadiance(controller.signal);
           if (disposed) {
             photoSky?.dispose();
             return; // the renderer was released while assets loaded (e.g. a React remount)
@@ -367,12 +369,12 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
               renderer,
               uniforms,
               { sun: uniforms.uSun.value, mood: uniforms.uMood.value, time: 0 },
-              new Uint8Array(buffer),
+              buffer ? new Uint8Array(buffer) : null,
             );
           } finally {
             guarded = false;
           }
-        })
+        })()
         .catch((error) => {
           if (disposed) return;
           atmosphere = null;
@@ -385,7 +387,7 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
   assets.push(
     new Promise((resolve) => {
       new THREE.TextureLoader().load(
-        "/ocean/foam-pattern.webp",
+        "/ocean/foam-pattern-v2.webp",
         (texture) => {
           if (disposed) {
             texture.dispose();

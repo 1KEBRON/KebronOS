@@ -11,7 +11,6 @@
 // Add ?fps to the URL for a small readout; ?ocean=static forces the photo, ?ocean=webgl forces NAGI,
 // ?ocean=live never gives up.
 import { useEffect, useRef, useState } from "react";
-import { webGPUAvailable } from "./ocean/vendor/web-ocean/web-ocean.js";
 import { createWebGLBackend, createWebGPUBackend, type OceanBackend, type OceanEngine } from "./ocean/oceanBackends";
 import { getOceanSound, peekOceanSound } from "./ocean/oceanSoundInstance";
 import { RenderScaleController, pixelRatioBounds, targetFps } from "./ocean/adaptiveQuality";
@@ -70,7 +69,7 @@ function createReadout() {
   return el;
 }
 
-export function OceanWallpaperLayer() {
+export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stillRef = useRef<HTMLDivElement>(null);
   const soundOn = useOceanStore((s) => s.soundOn);
@@ -79,7 +78,7 @@ export function OceanWallpaperLayer() {
   const restores = useRef(0);
   const [engine, setEngine] = useState<OceanEngine>(() => {
     const param = new URLSearchParams(location.search).get("ocean");
-    if (param === "webgl" || !webGPUAvailable()) return "webgl";
+    if (param === "webgl" || !("gpu" in navigator)) return "webgl";
     // Phones and tablets: web-ocean is built for desktop GPUs. On an iPhone it ran choppy, froze, and drew
     // shard-like artifacts on the water, so touch devices and small screens keep NAGI's lighter ocean.
     if (param !== "live" && isCompactScreen()) return "webgl";
@@ -109,6 +108,7 @@ export function OceanWallpaperLayer() {
     // ?ocean=static allows local review and GPU troubleshooting without initializing WebGL.
     if (oceanParam === "static" || (oceanParam !== "live" && readSession(SLOW_KEY))) {
       say(oceanParam === "static" ? "still image (?ocean=static)" : "still image (too slow this session; ?ocean=live)");
+      onReady?.();
       return () => readout?.remove();
     }
 
@@ -146,13 +146,18 @@ export function OceanWallpaperLayer() {
         }
       );
     } else {
-      try {
-        const { backend, ready } = createWebGLBackend({ container: host, pixelRatio: scale.ratio, compact, ...lostHandlers });
-        stopRunning = run(backend, ready);
-      } catch (error) {
-        console.info("[ocean] still image fallback:", (error as Error).message);
-        say(`still image (${(error as Error).message})`);
-      }
+      createWebGLBackend({ container: host, pixelRatio: scale.ratio, compact, ...lostHandlers }).then(
+        ({ backend, ready }) => {
+          if (cancelled) backend.dispose();
+          else stopRunning = run(backend, ready);
+        },
+        (error: Error) => {
+          if (cancelled) return;
+          console.info("[ocean] still image fallback:", error.message);
+          say(`still image (${error.message})`);
+          onReady?.();
+        }
+      );
     }
 
     return () => {
@@ -164,7 +169,7 @@ export function OceanWallpaperLayer() {
     function run(sea: OceanBackend, seaReady: Promise<unknown>) {
       const canvas = sea.canvas;
       canvas.style.opacity = "0";
-      canvas.style.transition = "opacity 1.4s ease";
+      canvas.style.transition = "opacity 0.2s ease";
 
       // ---- scheduling state ----
       const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
@@ -288,6 +293,7 @@ export function OceanWallpaperLayer() {
           console.warn("[ocean] render failed; still image fallback", error);
           say("still image (render failed)");
           showStill();
+          onReady?.();
           return;
         }
         stats.cpuMs += performance.now() - cpuStart;
@@ -300,6 +306,8 @@ export function OceanWallpaperLayer() {
           canvas.style.opacity = "1";
           // Lets the theme lift its dark-mode wallpaper veil off the live sea (see aqua-kebron.css).
           host.dataset.oceanEngine = sea.engine;
+          // Let the browser present the ocean before the desktop commits.
+          requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()));
           // Once the canvas has faded in, stop compositing the photo underneath it.
           stillTimer = window.setTimeout(() => {
             if (still && canvas.style.opacity === "1") still.style.visibility = "hidden";
@@ -359,7 +367,11 @@ export function OceanWallpaperLayer() {
         }
         schedule();
       };
-      const onSea = (e: Event) => !(e.target as Element | null)?.closest?.(NOT_SEA);
+      const onSea = (e: Event) => {
+        const target = e.target as Element | null;
+        return !target?.closest?.(NOT_SEA) &&
+          (!document.querySelector(".desktop-background") || !!target?.closest?.(".desktop-background"));
+      };
       const onDown = (e: PointerEvent) => {
         if ((e.button !== 0 && e.pointerType === "mouse") || !onSea(e)) return;
         if (!pointers.size) {
@@ -381,12 +393,13 @@ export function OceanWallpaperLayer() {
         lastInteraction = performance.now();
         schedule();
       };
-      // The desktop's icon grid spans the whole screen above the sea, so listen on the desktop itself (windows,
-      // the menu bar and the dock live outside it) and skip anything that has its own gestures.
-      const surface = host.parentElement ?? host;
-      const previousTouchAction = surface.style.touchAction;
+      // Listen above both the boot root and the desktop that adopts it. onSea excludes
+      // windows, the menu bar, the dock, and anything with its own gestures.
+      const surface = document.body;
+      const touchSurface = host.closest<HTMLElement>(".desktop-background") ?? host;
+      const previousTouchAction = touchSurface.style.touchAction;
       // No browser panning or pinch-zoom on the bare desktop, so touch drags reach the camera without pointercancel.
-      surface.style.touchAction = "none";
+      touchSurface.style.touchAction = "none";
       surface.addEventListener("pointerdown", onDown, { passive: true });
       surface.addEventListener("wheel", onWheel, { passive: false });
 
@@ -484,7 +497,7 @@ export function OceanWallpaperLayer() {
         document.removeEventListener("visibilitychange", onVisibility);
         surface.removeEventListener("pointerdown", onDown);
         surface.removeEventListener("wheel", onWheel);
-        surface.style.touchAction = previousTouchAction;
+        touchSurface.style.touchAction = previousTouchAction;
         removeEventListener("pointermove", onMove);
         removeEventListener("pointerup", onUp);
         removeEventListener("pointercancel", onUp);
@@ -496,14 +509,14 @@ export function OceanWallpaperLayer() {
       schedule();
       return release;
     }
-  }, [epoch, engine]);
+  }, [epoch, engine, onReady]);
 
   return (
     <>
       <div
         ref={stillRef}
         className="absolute inset-0 w-full h-full z-[-10] ocean-still"
-        style={{ background: "#1d3643 center 34% / cover no-repeat", backgroundImage: "var(--ocean-still-image)" }}
+        style={{ position: "absolute", inset: 0, background: "#1d3643 center 34% / cover no-repeat", backgroundImage: "var(--ocean-still-image)" }}
         aria-hidden="true"
       />
       <div
@@ -511,7 +524,7 @@ export function OceanWallpaperLayer() {
         className="absolute inset-0 w-full h-full z-[-10] ocean-wallpaper"
         data-wallpaper-interactive=""
         aria-hidden="true"
-        style={{ touchAction: "none" }}
+        style={{ position: "absolute", inset: 0, touchAction: "none" }}
       />
     </>
   );
