@@ -578,8 +578,11 @@ async function runPrefetchWithToast(
     console.warn('[Prefetch] Failed to load icon manifest:', error);
     return null;
   });
+  // A first visit warms caches silently: a stranger's first sight of the desktop should not be a progress toast.
+  // Updates keep the progress and reboot toasts.
+  const visible = showVersionToast;
   if (!manifest) {
-    toast.error(i18n.t("common.toast.failedToLoadAssetManifest"));
+    if (visible) toast.error(i18n.t("common.toast.failedToLoadAssetManifest"));
     log.debug("Could not fetch manifest");
     return;
   }
@@ -593,7 +596,7 @@ async function runPrefetchWithToast(
   const totalItems = iconUrls.length + soundUrls.length + assetUrls.length;
   
   if (totalItems === 0) {
-    toast.info(i18n.t("common.toast.noAssetsToCache"));
+    if (visible) toast.info(i18n.t("common.toast.noAssetsToCache"));
     log.debug("No assets to prefetch");
     return;
   }
@@ -606,19 +609,22 @@ async function runPrefetchWithToast(
   let overallCompleted = 0;
   
   // Create a toast with progress
-  const toastId = toast.loading(
-    createToastContent({ 
-      phase: 'icons', 
-      completed: 0, 
-      total: totalItems 
-    }),
-    {
-      duration: Infinity,
-      id: 'prefetch-progress',
-    }
-  );
+  const toastId = visible
+    ? toast.loading(
+        createToastContent({
+          phase: 'icons',
+          completed: 0,
+          total: totalItems
+        }),
+        {
+          duration: Infinity,
+          id: 'prefetch-progress',
+        }
+      )
+    : undefined;
   
   const updateToast = (phase: string, phaseCompleted: number, phaseTotal: number) => {
+    if (toastId === undefined) return;
     const percentage = Math.round((overallCompleted / totalItems) * 100);
     toast.loading(
       createToastContent({
@@ -682,11 +688,11 @@ async function runPrefetchWithToast(
     });
 
     // Dismiss the progress toast and finalize (store version + reboot toast)
-    toast.dismiss(toastId);
+    if (toastId !== undefined) toast.dismiss(toastId);
     finalizePrefetch(showVersionToast, server);
   } catch (error) {
     console.error('[Prefetch] Error during prefetch:', error);
-    toast.error(i18n.t("common.toast.failedToCacheAssets"), { id: toastId });
+    if (toastId !== undefined) toast.error(i18n.t("common.toast.failedToCacheAssets"), { id: toastId });
   }
 }
 
