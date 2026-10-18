@@ -396,10 +396,6 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
       // Listen above both the boot root and the desktop that adopts it. onSea excludes
       // windows, the menu bar, the dock, and anything with its own gestures.
       const surface = document.body;
-      const touchSurface = host.closest<HTMLElement>(".desktop-background") ?? host;
-      const previousTouchAction = touchSurface.style.touchAction;
-      // No browser panning or pinch-zoom on the bare desktop, so touch drags reach the camera without pointercancel.
-      touchSurface.style.touchAction = "none";
       surface.addEventListener("pointerdown", onDown, { passive: true });
       surface.addEventListener("wheel", onWheel, { passive: false });
 
@@ -497,7 +493,6 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         document.removeEventListener("visibilitychange", onVisibility);
         surface.removeEventListener("pointerdown", onDown);
         surface.removeEventListener("wheel", onWheel);
-        touchSurface.style.touchAction = previousTouchAction;
         removeEventListener("pointermove", onMove);
         removeEventListener("pointerup", onUp);
         removeEventListener("pointercancel", onUp);
