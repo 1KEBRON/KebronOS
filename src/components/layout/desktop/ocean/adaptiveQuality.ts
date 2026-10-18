@@ -36,12 +36,14 @@ export type RenderScaleOptions = PixelRatioBounds & {
   windowMs?: number;
   /** Disable the "give up and show the still image" decision. */
   neverGiveUp?: boolean;
+  /** Give up when frames stay slower than this at the lowest pixel ratio (default 14 fps). */
+  giveUpFps?: number;
 };
 
 /**
  * Feed it the interval between rendered frames and the interval it should have been; it lowers the pixel ratio
  * when frames are late and raises it again after sustained headroom. Raising is slow and backs off when a raise
- * is soon undone, so it does not oscillate. After five evaluation windows at the floor below ~14 fps it gives up.
+ * is soon undone, so it does not oscillate. After five evaluation windows at the floor below ~14 fps (or `giveUpFps`) it gives up.
  */
 export class RenderScaleController {
   ratio: number;
@@ -50,6 +52,7 @@ export class RenderScaleController {
   readonly max: number;
   private windowMs: number;
   private neverGiveUp: boolean;
+  private giveUpFps: number;
   private count = 0;
   private slow = 0;
   private total = 0;
@@ -59,12 +62,13 @@ export class RenderScaleController {
   private windowsSinceUp = Infinity;
   private hopelessWindows = 0;
 
-  constructor({ min, start, max, windowMs = 1000, neverGiveUp = false }: RenderScaleOptions) {
+  constructor({ min, start, max, windowMs = 1000, neverGiveUp = false, giveUpFps = 14 }: RenderScaleOptions) {
     this.min = min;
     this.max = max;
     this.ratio = start;
     this.windowMs = windowMs;
     this.neverGiveUp = neverGiveUp;
+    this.giveUpFps = giveUpFps;
   }
 
   /** Forget the current window (after a resize, a pause, a hidden tab or a frame-rate change). */
@@ -93,7 +97,7 @@ export class RenderScaleController {
     this.windowsSinceUp++;
     this.reset(0);
 
-    if (this.ratio <= this.min + 1e-6 && average > 1000 / 14) {
+    if (this.ratio <= this.min + 1e-6 && average > 1000 / this.giveUpFps) {
       if (++this.hopelessWindows >= 5 && !this.neverGiveUp) this.gaveUp = true;
     } else this.hopelessWindows = 0;
 

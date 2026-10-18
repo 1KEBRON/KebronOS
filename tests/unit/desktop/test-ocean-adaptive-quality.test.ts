@@ -115,6 +115,15 @@ describe("RenderScaleController", () => {
     expect(c.sample(120, 33.3)).toBe(false);
   });
 
+  test("a higher giveUpFps gives up on frame rates the default tolerates", () => {
+    const strict = new RenderScaleController({ ...bounds, giveUpFps: 24 });
+    const lenient = new RenderScaleController(bounds);
+    run(strict, 50, 33.3, 30);
+    run(lenient, 50, 33.3, 30);
+    expect(strict.gaveUp).toBe(true);
+    expect(lenient.gaveUp).toBe(false);
+  });
+
   test("does not give up when merely below target at the floor", () => {
     const c = new RenderScaleController(bounds);
     run(c, 40, 16.7, 30);

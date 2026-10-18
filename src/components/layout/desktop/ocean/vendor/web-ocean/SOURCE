@@ -1,0 +1,5 @@
+https://github.com/Noniv/web-ocean a07c7fd522ef0a897601c114f927a49d93d95520 Sat Oct 17 02:39:54 2026 +0200
+wgsl/*.js are copied unchanged from js/wgsl/.
+web-ocean.js is js/main.js turned into createWebOcean(): the renderer and shaders are unchanged; the keyboard and
+pointer-lock camera, settings panel, HUD, screenshot and dev-server logging code were removed, the caller now drives
+the camera, pixel ratio and frame loop, MSAA can be switched off (msaa: 1) for phones, and timestamp queries are not requested.
