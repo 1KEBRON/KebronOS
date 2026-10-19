@@ -107,6 +107,7 @@ export const preloadSounds = async (sounds: string[]) => {
 
 export function useSound(soundPath: string, volume: number = 0.3) {
   const gainNodeRef = useRef<GainNode | null>(null);
+  const mountedRef = useRef(true);
   // Track active sources for this specific hook instance so we can stop them
   const instanceSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   // Cold sounds can receive many play requests while their shared buffer is
@@ -116,25 +117,18 @@ export function useSound(soundPath: string, volume: number = 0.3) {
   const uiVolume = useAudioSettingsStore((s) => s.uiVolume);
   const masterVolume = useAudioSettingsStore((s) => s.masterVolume);
 
-  // Create gain node only once on mount
+  // Allocate the gain node in createAndPlaySource, only when a sound is used.
+  // A new window can mount dozens of sound hooks without playing any of them.
   useEffect(() => {
+    mountedRef.current = true;
     const instanceSources = instanceSourcesRef.current;
-    // Create gain node for volume control
-    gainNodeRef.current = getAudioContext().createGain();
-    gainNodeRef.current.gain.value = volume * uiVolume * masterVolume;
-
-    // Connect to destination
-    gainNodeRef.current.connect(getAudioContext().destination);
-
     return () => {
-      if (gainNodeRef.current) {
-        gainNodeRef.current.disconnect();
-      }
-      // Stop all instance sources on cleanup
+      mountedRef.current = false;
+      gainNodeRef.current?.disconnect();
+      gainNodeRef.current = null;
       stopAndReleaseOwnedSoundSources(instanceSources);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only create gain node once on mount
+  }, []);
 
   // Separate effect to update gain value when volumes change (with ramping)
   useEffect(() => {
@@ -160,6 +154,7 @@ export function useSound(soundPath: string, volume: number = 0.3) {
       await resumeAudioContext();
 
       const audioBuffer = await preloadSound(soundPath);
+      if (!mountedRef.current) return null;
       // If the gain node belongs to a stale AudioContext (closed), recreate it
       if (
         !gainNodeRef.current ||

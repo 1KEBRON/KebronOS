@@ -85,6 +85,19 @@ beforeEach(() => {
 });
 
 describe("useAppStore foreground state", () => {
+  test("launch focuses immediately and late imports preserve the user's latest focus", () => {
+    const first = useAppStore.getState().createAppInstance("preview");
+    const second = useAppStore.getState().createAppInstance("finder");
+    expect(useAppStore.getState().foregroundInstanceId).toBe(second);
+    expect(useAppStore.getState().instances[second].isLoading).toBe(true);
+    const order = useAppStore.getState().instanceOrder;
+    useAppStore.getState().markInstanceAsLoaded(second);
+    useAppStore.getState().markInstanceAsLoaded(first);
+    expect(useAppStore.getState().foregroundInstanceId).toBe(second);
+    expect(useAppStore.getState().instanceOrder).toBe(order);
+    expect(useAppStore.getState().instances[first].isLoading).toBe(false);
+  });
+
   test("focus changes preserve instance object identity", () => {
     const store = useAppStore.getState();
     const firstId = store.createAppInstance("textedit");

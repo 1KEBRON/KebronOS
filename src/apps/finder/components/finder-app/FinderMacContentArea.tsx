@@ -1,6 +1,7 @@
+import { lazy, Suspense } from "react";
 import type { CSSProperties } from "react";
 import { AppSidebarPanel } from "@/components/layout/AppSidebarPanel";
-import { AirDropView } from "../AirDropView";
+const AirDropView = lazy(() => import("../AirDropView").then(m => ({ default: m.AirDropView })));
 import { FinderSidebarItem } from "./FinderSidebarItem";
 import { FinderFileListContent, type FinderFileListContentProps } from "./FinderFileListContent";
 import type { TFunction } from "i18next";
@@ -86,10 +87,10 @@ export function FinderMacContentArea({
         <FinderPanel bordered className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
           {isAirDropView ? (
             <div className="finder-airdrop-surface flex-1 bg-gradient-to-b from-[#e8ecf0] to-[#d1d5db]">
-              <AirDropView
+              <Suspense fallback={null}><AirDropView
                 onSendFile={handleAirDropSendFile}
                 onRequestLogin={promptVerifyToken}
-              />
+              /></Suspense>
             </div>
           ) : (
             <FinderFileListContent

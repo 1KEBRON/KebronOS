@@ -27,6 +27,12 @@ describe("boot bundle inspector", () => {
     ]);
   });
 
+  test("counts download-only script preloads in the same boot budget", () => {
+    expect(collectBootScripts(`<link rel="preload" as="script" href="/shell.js">
+      <link rel="modulepreload" href="/shell.js">
+      <link rel="preload" as="style" href="/theme.css">`)).toEqual(["/shell.js"]);
+  });
+
   test("flags lazy vendor chunks by chunk name", () => {
     expect(
       findLazyVendorChunks([

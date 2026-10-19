@@ -261,7 +261,7 @@ export function useAppManager({ apps }: AppManagerProps) {
       appManagerLog.debug("Prefetching likely app chunks", {
         recentApps: recent.map((r) => r.appId),
       });
-      prefetchLikelyAppChunks(recent.map((r) => r.appId));
+      prefetchLikelyAppChunks(["finder", ...recent.map((r) => r.appId), "preview", "ipod"]);
     };
 
     const win = globalThis as typeof globalThis & {
@@ -270,7 +270,7 @@ export function useAppManager({ apps }: AppManagerProps) {
     };
 
     if (typeof win.requestIdleCallback === "function") {
-      const idleHandle = win.requestIdleCallback(run, { timeout: 4500 });
+      const idleHandle = win.requestIdleCallback(run, { timeout: 1000 });
       return () => {
         if (typeof win.cancelIdleCallback === "function") {
           win.cancelIdleCallback(idleHandle);
@@ -278,7 +278,7 @@ export function useAppManager({ apps }: AppManagerProps) {
       };
     }
 
-    const timeoutHandle = globalThis.setTimeout(run, 2500);
+    const timeoutHandle = globalThis.setTimeout(run, 0);
     return () => globalThis.clearTimeout(timeoutHandle);
   }, []);
 

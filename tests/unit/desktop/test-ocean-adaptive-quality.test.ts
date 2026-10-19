@@ -74,6 +74,18 @@ describe("RenderScaleController", () => {
     expect(c.gaveUp).toBe(false);
   });
 
+  test("sustained missed vsync lowers active quality before interaction becomes choppy", () => {
+    const active = new RenderScaleController({ ...bounds, max: 1 });
+    const backdrop = new RenderScaleController({ ...bounds, max: 1 });
+    for (let i = 0; i < 120; i++) {
+      const late = i % 8 === 0;
+      active.sample(late ? 1000 / 30 : 1000 / 60, 1000 / 60);
+      backdrop.sample(late ? 1000 / 15 : 1000 / 30, 1000 / 30);
+    }
+    expect(active.ratio).toBeLessThan(1);
+    expect(backdrop.ratio).toBe(1);
+  });
+
   test("isolated hitches and huge gaps do not lower the ratio", () => {
     const c = new RenderScaleController(bounds);
     for (let i = 0; i < 300; i++) c.sample(i % 30 === 0 ? 40 : 16.7, 16.7);

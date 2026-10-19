@@ -2,6 +2,16 @@ import { describe, expect, test } from "bun:test";
 import { collectOfflinePrecacheChunkClosure } from "../../../vite/precachePolicy";
 
 describe("Workbox precache policy", () => {
+  test("keeps a grouped desktop whose entry facade was folded into its chunk", () => {
+    const closure = collectOfflinePrecacheChunkClosure([
+      { fileName: "assets/boot.js", imports: [], isEntry: true },
+      { fileName: "assets/desktop-shell.js", imports: ["assets/react.js"], moduleIds: ["/workspace/src/main.tsx", "/workspace/src/App.tsx"] },
+      { fileName: "assets/react.js", imports: [] },
+      { fileName: "assets/ocean-engine.js", imports: [] },
+    ]);
+    expect([...closure].sort()).toEqual(["assets/boot.js", "assets/desktop-shell.js", "assets/react.js"]);
+  });
+
   test("keeps the shell and its static dependencies without installing optional apps or locales", () => {
     const closure = collectOfflinePrecacheChunkClosure([
       {

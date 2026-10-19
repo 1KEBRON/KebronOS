@@ -108,30 +108,30 @@ export function FinderAppMenu() {
       </MenubarMenu>
 
       {/* Help Dialog */}
-      <HelpDialog
+      {isHelpDialogOpen && <HelpDialog
         isOpen={isHelpDialogOpen}
         onOpenChange={setIsHelpDialogOpen}
         appId="finder"
         helpItems={translatedHelpItems}
-      />
+      />}
 
       {/* About Dialog */}
-      <AboutDialog
+      {isAboutDialogOpen && <AboutDialog
         isOpen={isAboutDialogOpen}
         onOpenChange={setIsAboutDialogOpen}
         metadata={finderMetadata}
         appId="finder"
-      />
+      />}
 
       {/* Share Dialog */}
-      <ShareItemDialog
+      {isShareDialogOpen && <ShareItemDialog
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
         itemType="App"
         itemIdentifier="finder"
         title={translatedFinderName}
         generateShareUrl={generateAppShareUrl}
-      />
+      />}
     </>
   );
 }

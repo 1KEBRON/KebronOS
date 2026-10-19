@@ -564,58 +564,6 @@
     "finder": {
       "name": "Finder",
       "description": "Browse and manage files",
-      "folders": {
-        "applications": "Applications",
-        "documents": "Documents",
-        "desktop": "Desktop",
-        "downloads": "Downloads",
-        "images": "Images",
-        "books": "Books",
-        "music": "Music",
-        "videos": "Videos",
-        "sites": "Sites",
-        "applets": "Applets",
-        "system": "System",
-        "trash": "Trash"
-      },
-      "contextMenu": {
-        "sortBy": "Sort By",
-        "name": "Name",
-        "date": "Date",
-        "size": "Size",
-        "kind": "Kind",
-        "emptyTrash": "Empty Trash…",
-        "newFolder": "New Folder…",
-        "open": "Open",
-        "openWith": "Open With",
-        "addToDesktop": "Add to Desktop",
-        "rename": "Rename…",
-        "duplicate": "Duplicate",
-        "moveToTrash": "Move to Trash",
-        "putBack": "Put Back",
-        "shareViaAirDrop": "Share via AirDrop",
-        "searchingForAirDropUsers": "Searching for nearby users…",
-        "noAirDropUsersAvailable": "No nearby users",
-        "openAirDrop": "Open AirDrop"
-      },
-      "window": {
-        "macintoshHd": "Macintosh HD",
-        "finder": "Finder"
-      },
-      "airdrop": {
-        "title": "AirDrop",
-        "loginRequired": "Sign in to Chats to use AirDrop and share files with nearby users.",
-        "looking": "Looking for nearby users…",
-        "noUsers": "No one else is around. Ask someone to open AirDrop.",
-        "hint": "Drag files onto a user to share, or use the context menu on any file.",
-        "fileReceived": "Received \"{{fileName}}\" from @{{sender}}",
-        "saveFailed": "Failed to save received file",
-        "fileNotFound": "File not found",
-        "noContent": "Couldn't read file content",
-        "incomingFile": "@{{sender}} wants to send you \"{{fileName}}\"",
-        "accept": "Accept",
-        "decline": "Decline"
-      },
       "menu": {
         "newFinderWindow": "New Finder Window",
         "newFolder": "New Folder…",
@@ -641,19 +589,35 @@
         "finderHelp": "Finder Help",
         "aboutFinder": "About Finder"
       },
-      "dialogs": {
-        "emptyTrash": {
-          "title": "Empty Trash",
-          "description": "Are you sure you want to empty the Trash? This action can't be undone."
+      "help": {
+        "browseNavigate": {
+          "title": "Browse & Navigate",
+          "description": "Back, Forward, address bar, and Go menu jump anywhere in your file system"
         },
-        "renameItem": {
-          "title": "Rename Item",
-          "description": "Enter a new name for \"{{name}}\""
+        "fileManagement": {
+          "title": "File Management",
+          "description": "Create folders, rename, drag, and duplicate to organize your files"
         },
-        "newFolder": {
-          "title": "New Folder",
-          "description": "Enter a name for the new folder:"
+        "quickAccess": {
+          "title": "Quick Access",
+          "description": "Sidebar pins jump to Documents, Applications, Images, and Trash"
+        },
+        "airdropSharing": {
+          "title": "AirDrop Sharing",
+          "description": "Control-click any file to AirDrop it to nearby ryOS users instantly"
+        },
+        "dropToImport": {
+          "title": "Drop to Import",
+          "description": "Drop .app, .gz, or .html files anywhere to install them into Applets"
+        },
+        "trashUndo": {
+          "title": "Trash & Undo",
+          "description": "Move files to Trash, then Edit ▸ Undo to instantly bring them back"
         }
+      },
+      "window": {
+        "macintoshHd": "Macintosh HD",
+        "finder": "Finder"
       },
       "fileTypes": {
         "directory": "Directory",
@@ -674,6 +638,105 @@
         "document": "Document",
         "htmlApplet": "HTML Applet",
         "unknown": "Unknown"
+      },
+      "contextMenu": {
+        "sortBy": "Sort By",
+        "name": "Name",
+        "date": "Date",
+        "size": "Size",
+        "kind": "Kind",
+        "emptyTrash": "Empty Trash…",
+        "newFolder": "New Folder…",
+        "open": "Open",
+        "openWith": "Open With",
+        "addToDesktop": "Add to Desktop",
+        "rename": "Rename…",
+        "duplicate": "Duplicate",
+        "moveToTrash": "Move to Trash",
+        "putBack": "Put Back",
+        "shareViaAirDrop": "Share via AirDrop",
+        "searchingForAirDropUsers": "Searching for nearby users…",
+        "noAirDropUsersAvailable": "No nearby users",
+        "openAirDrop": "Open AirDrop"
+      },
+      "dialogs": {
+        "emptyTrash": {
+          "title": "Empty Trash",
+          "description": "Are you sure you want to empty the Trash? This action can't be undone."
+        },
+        "renameItem": {
+          "title": "Rename Item",
+          "description": "Enter a new name for \"{{name}}\""
+        },
+        "newFolder": {
+          "title": "New Folder",
+          "description": "Enter a name for the new folder:"
+        }
+      },
+      "statusBar": {
+        "item": "item",
+        "items": "items",
+        "available": "available"
+      },
+      "placeholders": {
+        "enterPath": "Enter path",
+        "search": "Search"
+      },
+      "messages": {
+        "loading": "Loading…",
+        "appletImported": "Applet imported!",
+        "appletImportedDesc": "{{name}} saved to /Applets{{iconText}}",
+        "appletImportedIconText": " with {{icon}} icon",
+        "importFailed": "Import failed",
+        "importFailedDesc": "Couldn't import the file.",
+        "importFailedAppletDesc": "Couldn't import the applet file.",
+        "invalidFileType": "Invalid file type",
+        "invalidFileTypeDesc": "Only .app, .gz, and .html files can be imported to Applets",
+        "reservedFolderName": "\"{{name}}\" is a reserved name. Choose another name.",
+        "invalidFolderName": "That name can't be used. Try a different name.",
+        "folderExists": "An item named \"{{name}}\" already exists."
+      },
+      "tableHeaders": {
+        "name": "Name",
+        "type": "Type",
+        "size": "Size",
+        "modified": "Modified"
+      },
+      "airdrop": {
+        "title": "AirDrop",
+        "loginRequired": "Sign in to Chats to use AirDrop and share files with nearby users.",
+        "looking": "Looking for nearby users…",
+        "noUsers": "No one else is around. Ask someone to open AirDrop.",
+        "hint": "Drag files onto a user to share, or use the context menu on any file.",
+        "fileReceived": "Received \"{{fileName}}\" from @{{sender}}",
+        "saveFailed": "Failed to save received file",
+        "fileNotFound": "File not found",
+        "noContent": "Couldn't read file content",
+        "incomingFile": "@{{sender}} wants to send you \"{{fileName}}\"",
+        "accept": "Accept",
+        "decline": "Decline"
+      },
+      "defaultNames": {
+        "untitledFolder": "untitled folder",
+        "copy": "copy"
+      },
+      "folders": {
+        "applications": "Applications",
+        "documents": "Documents",
+        "desktop": "Desktop",
+        "downloads": "Downloads",
+        "images": "Images",
+        "books": "Books",
+        "music": "Music",
+        "videos": "Videos",
+        "sites": "Sites",
+        "applets": "Applets",
+        "system": "System",
+        "trash": "Trash"
+      },
+      "view": {
+        "list": "List",
+        "map": "Map"
       }
     },
     "soundboard": {

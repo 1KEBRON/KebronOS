@@ -1,3 +1,19 @@
+export function textureLoader(THREE) {
+  if (typeof document !== "undefined") return new THREE.TextureLoader();
+  const loader = new THREE.ImageBitmapLoader();
+  loader.setOptions({ imageOrientation: "flipY", premultiplyAlpha: "none", colorSpaceConversion: "none" });
+  const texture = (bitmap) => {
+    const t = new THREE.Texture(bitmap);
+    t.needsUpdate = true;
+    t.addEventListener("dispose", () => bitmap.close());
+    return t;
+  };
+  return {
+    loadAsync: (url) => loader.loadAsync(url).then(texture),
+    load: (url, onLoad, onProgress, onError) => loader.load(url, bitmap => onLoad(texture(bitmap)), onProgress, onError),
+  };
+}
+
 export const SKY_DECODE_GLSL = `
 uniform sampler2D uSkyImageSDR;
 uniform sampler2D uSkyImageGain;
@@ -103,7 +119,7 @@ export async function loadPhotoSky(
     urls = ["/ocean/sky-dawn-base.jpg", "/ocean/sky-dawn-gain.jpg"],
   } = {},
 ) {
-  const loader = new THREE.TextureLoader(),
+  const loader = textureLoader(THREE),
     loaded = [];
   let cancelled = false,
     timer,

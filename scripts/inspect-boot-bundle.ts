@@ -1,6 +1,6 @@
 /**
  * Post-build guard for the first-load JavaScript: the entry script plus every
- * chunk `dist/index.html` modulepreloads. Fails when a lazy vendor chunk
+ * chunk `dist/index.html` preloads. Fails when a lazy vendor chunk
  * (tiptap, audio, three, …) lands on the boot path or the boot scripts exceed
  * the gzip budget.
  *
@@ -31,7 +31,8 @@ export function collectBootScripts(html: string): string[] {
       attribute(tag, "type") === "module";
     const isPreload =
       tag.toLowerCase().startsWith("<link") &&
-      attribute(tag, "rel") === "modulepreload";
+      (attribute(tag, "rel") === "modulepreload" ||
+        (attribute(tag, "rel") === "preload" && attribute(tag, "as") === "script"));
     const url = isEntry
       ? attribute(tag, "src")
       : isPreload

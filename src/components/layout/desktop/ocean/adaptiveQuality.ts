@@ -101,7 +101,9 @@ export class RenderScaleController {
       if (++this.hopelessWindows >= 5 && !this.neverGiveUp) this.gaveUp = true;
     } else this.hopelessWindows = 0;
 
-    if (slowShare > 0.25) {
+    // At 60 fps, tolerating a quarter of frames missing vsync makes interaction visibly uneven.
+    const slowLimit = targetMs < 1000 / IDLE_FPS ? 0.05 : 0.25;
+    if (slowShare > slowLimit) {
       this.goodWindows = 0;
       // A raise that is undone within a few seconds makes the next raise wait twice as long.
       if (this.windowsSinceUp <= 3) this.upHold = Math.min(this.upHold * 2, 48);

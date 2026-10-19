@@ -1,7 +1,7 @@
-import type { CSSProperties } from "react";
+import { lazy, Suspense, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { FileList, type FileItem, type FileListProps } from "../FileList";
-import { FinderMapView } from "../map/FinderMapView";
+const FinderMapView = lazy(() => import("../map/FinderMapView").then(m => ({ default: m.FinderMapView })));
 import type { TFunction } from "i18next";
 
 export interface FinderFileListContentProps {
@@ -64,13 +64,13 @@ export function FinderFileListContent({
   if (viewType === "map") {
     return (
       <div className={cn(listClassName, "relative min-h-0 overflow-hidden")} style={listStyle}>
-        <FinderMapView
+        <Suspense fallback={null}><FinderMapView
           key={folderPath}
           files={sortedFiles}
           folderPath={folderPath}
           isForeground={isForeground}
           onFileOpen={(file) => fileListProps.onFileOpen(file)}
-        />
+        /></Suspense>
       </div>
     );
   }

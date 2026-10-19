@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
 /**
  * Minimize-to-dock targeting: `computeDockIconOffset` must measure the dock
  * icon from the live DOM (icons appear after launch and shift as the dock
@@ -22,7 +24,7 @@ afterAll(() => {
   }
 });
 
-const { computeDockIconOffset } = await import(
+const { computeDockIconOffset, useWindowFrameDockOffsets } = await import(
   "../../../src/components/layout/window-frame/hooks/useWindowFrameDockOffsets"
 );
 const { getExitAnimation } = await import(
@@ -200,4 +202,27 @@ describe("getExitAnimation", () => {
     offset = { x: 24, y: 300 };
     expect(resolve()).toMatchObject({ x: 24, y: 300 });
   });
+});
+
+test("ordinary window renders skip dock measurement; restore measures the live target", () => {
+  const target = addTarget("data-dock-icon", "finder", {
+    left: 100, top: 700, width: 48, height: 48,
+  });
+  const read = target.getBoundingClientRect;
+  let measurements = 0;
+  target.getBoundingClientRect = () => { measurements++; return read(); };
+  function Probe({ measure }: { measure: boolean }) {
+    useWindowFrameDockOffsets({
+      appId: "finder", ...geometry, measureDockOffset: measure,
+    });
+    return null;
+  }
+  try {
+    renderToString(createElement(Probe, { measure: false }));
+    expect(measurements).toBe(0);
+    renderToString(createElement(Probe, { measure: true }));
+    expect(measurements).toBe(1);
+  } finally {
+    target.remove();
+  }
 });

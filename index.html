@@ -22,31 +22,8 @@
     <!-- First paint: a ~200-byte blurred preview of the ocean, then a still frame of the sea it will show (web-ocean's dawn on desktops, NAGI's dawn on phones and tablets), then the live sea fades in (DesktopOceanWallpaperLayer). No black screen while the app boots. -->
     <link rel="preload" as="image" href="/ocean/ocean-phone.webp" media="(max-width: 759px), (pointer: coarse)" fetchpriority="high" />
     <link rel="preload" as="image" href="/ocean/ocean.webp" media="(min-width: 760px) and (not (pointer: coarse))" fetchpriority="high" />
-    <script>
-      // Start NAGI's textures before the module graph arrives. Match TextureLoader's CORS mode.
-      (function () {
-        try {
-          var param = new URLSearchParams(location.search).get("ocean");
-          var saved = JSON.parse(localStorage.getItem("ryos:display-settings") || "null");
-          if (saved?.state?.currentWallpaper && saved.state.currentWallpaper !== "dynamic://ocean") return;
-          if (param === "static" || (param !== "live" && sessionStorage.getItem("kebron:ocean-too-slow"))) return;
-          var compact = matchMedia("(pointer: coarse)").matches || innerWidth < 760;
-          var webgl = param === "webgl" || !("gpu" in navigator) ||
-            (param !== "live" && (compact || sessionStorage.getItem("kebron:web-ocean-too-slow")));
-          if (!webgl) return;
-          var suffix = compact ? "-2048" : "";
-          ["/ocean/foam-pattern-v2.webp", "/ocean/sky-dawn-base" + suffix + ".jpg", "/ocean/sky-dawn-gain" + suffix + ".jpg"].forEach(function (href) {
-            var link = document.createElement("link");
-            link.rel = "preload";
-            link.as = "image";
-            link.crossOrigin = "anonymous";
-            link.fetchPriority = "high";
-            link.href = href;
-            document.head.appendChild(link);
-          });
-        } catch (e) {}
-      })();
-    </script>
+    <link rel="preload" as="script" href="/theme-bootstrap-config.js" fetchpriority="high" />
+    <link rel="preload" as="script" href="/app-config.js" fetchpriority="high" />
     <style>
       :root { --ocean-still-image: url(/ocean/ocean.webp), url(data:image/webp;base64,UklGRnoAAABXRUJQVlA4IG4AAAAwBACdASogABIAPu1mqk2ppaQiMAgBMB2JZQCuHCa5dl9asnj/0wKMJAAAn2CEJL7s1yP2tDNqw1YvKHO/lF/+nF6FIhvGcg3SDuyauZXVqhVDG8HH4Wj20pFJYYeXoz58cQZqYdUFVpdbESsAAA==); }
       @media (max-width: 759px), (pointer: coarse) {

@@ -172,6 +172,12 @@ export async function ensureCurrentLanguageResources(): Promise<void> {
   await ensureLanguageResources(getCurrentLanguage());
 }
 
+/** Finder's complete English strings ship with the shell; other apps/locales load on demand. */
+export async function ensureAppLanguageResources(appId: string): Promise<void> {
+  if (appId === "finder" && getCurrentLanguage() === DEFAULT_LANGUAGE) return;
+  await ensureCurrentLanguageResources();
+}
+
 export async function initializeI18n(): Promise<void> {
   if (initializePromise) {
     return initializePromise;

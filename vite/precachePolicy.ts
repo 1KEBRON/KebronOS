@@ -3,12 +3,14 @@ export type PrecacheGraphChunk = {
   imports: readonly string[];
   isEntry?: boolean;
   facadeModuleId?: string | null;
+  moduleIds?: readonly string[];
 };
 
 function isOfflinePrecacheRoot(chunk: PrecacheGraphChunk): boolean {
   const facadeModuleId = chunk.facadeModuleId ?? "";
   return (
     /[/\\]src[/\\](?:main\.tsx|boot\.ts)$/.test(facadeModuleId) ||
+    chunk.moduleIds?.some((id) => /[/\\]src[/\\]main\.tsx$/.test(id)) ||
     chunk.isEntry === true
   );
 }

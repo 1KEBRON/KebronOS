@@ -77,7 +77,49 @@ function offlineShellPlugin(): Plugin {
       handler(_options, bundle) {
         const html = bundle["index.html"];
         if (html?.type === "asset") {
-          this.emitFile({ type: "asset", fileName: "offline.html", source: html.source });
+          // Download the static graph immediately; start parallel module
+          // compilation only after the inline dawn has a paint opportunity.
+          const chunks = Object.values(bundle).filter((item) => item.type === "chunk");
+          const closure = collectOfflinePrecacheChunkClosure(chunks);
+          // Finder is the desktop's primary entry point. Fetch its graph and
+          // dependencies while the shell downloads, without executing it.
+          const byName = new Map(chunks.map(chunk => [chunk.fileName, chunk]));
+          const warm = (name: string) => {
+            if (closure.has(name)) return;
+            closure.add(name);
+            for (const dependency of byName.get(name)?.imports ?? []) warm(dependency);
+          };
+          for (const chunk of chunks) {
+            if (Object.keys(chunk.modules).some(id =>
+              /[/\\]finder[/\\]components[/\\]finder-app[/\\]FinderAppComponent\.tsx$/.test(id))) warm(chunk.fileName);
+          }
+
+          let source = typeof html.source === "string"
+            ? html.source : new TextDecoder().decode(html.source);
+          // This small, build-owned configuration is read by the inline theme
+          // bootstrap. Embed it so a parser-blocking request cannot delay dawn.
+          // app-config.js remains external: the server supplies runtime settings.
+          const themeBootstrap = readFileSync(path.resolve(__dirname, "public/theme-bootstrap-config.js"), "utf8");
+          source = source.replace(/<link[^>]+href="\/theme-bootstrap-config\.js"[^>]*>/, "")
+            .replace('<script src="/theme-bootstrap-config.js"></script>', `<script>${themeBootstrap.replace(/<\/script/gi, "<\\/script")}</script>`);
+          const links: string[] = [];
+          const css = new Set<string>();
+          for (const chunk of chunks) {
+            if (!closure.has(chunk.fileName)) continue;
+            if (!source.includes(`href="/${chunk.fileName}"`) && !source.includes(`src="/${chunk.fileName}"`)) {
+              links.push(`<link rel="preload" as="script" data-shell-script crossorigin href="/${chunk.fileName}">`);
+            }
+            const metadata = (chunk as typeof chunk & {
+              viteMetadata?: { importedCss?: Set<string> };
+            }).viteMetadata;
+            for (const file of metadata?.importedCss ?? []) css.add(file);
+          }
+          // Preload, rather than apply, CSS so it cannot hold the still's paint.
+          for (const file of css) links.push(`<link rel="preload" as="style" crossorigin href="/${file}">`);
+          const warmAfterPaint = `<script>requestAnimationFrame(()=>requestAnimationFrame(()=>{for(const link of document.querySelectorAll('link[data-shell-script]')){link.rel='modulepreload';link.removeAttribute('as')}}));</script>`;
+          source = source.replace("</head>", `${links.join("\n")}\n${warmAfterPaint}\n</head>`);
+          html.source = source;
+          this.emitFile({ type: "asset", fileName: "offline.html", source });
         }
       },
     },
@@ -92,6 +134,7 @@ function collectPrecacheExclusionsPlugin() {
       type EmittedChunk = {
         type?: string;
         facadeModuleId?: string | null;
+        moduleIds?: string[];
         imports?: string[];
         isEntry?: boolean;
         viteMetadata?: {
@@ -114,6 +157,7 @@ function collectPrecacheExclusionsPlugin() {
           imports: chunk.imports ?? [],
           isEntry: chunk.isEntry,
           facadeModuleId: chunk.facadeModuleId,
+          moduleIds: chunk.moduleIds,
         }))
       );
       const offlineCss = new Set(
@@ -805,7 +849,14 @@ export default defineConfig({
       output: {
         assetFileNames: "assets/immutable/[name]-[hash][extname]",
         codeSplitting: {
-          groups: vendorCodeSplittingGroups(),
+          groups: [
+            ...vendorCodeSplittingGroups(),
+            // Keep the UI's own static dependency graph together instead of
+            // making a throttled connection fetch dozens of tiny shared chunks.
+            // Vendor groups capture first, preserving the lazy engine/app split.
+            { name: "desktop-shell", test: (id: string) => /[/\\]src[/\\]main\.tsx$/.test(id), priority: 1 },
+            { name: "finder", test: (id: string) => /[/\\]finder[/\\]components[/\\]finder-app[/\\]FinderAppComponent\.tsx$/.test(id), priority: 0 },
+          ],
         },
       },
     },

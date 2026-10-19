@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useInterval } from "@/hooks/useInterval";
+import { useEffect, useState } from "react";
 import { useEventListener } from "@/hooks/useEventListener";
 import { useThemeFlags } from "@/hooks/useThemeFlags";
 import { useTranslation } from "react-i18next";
@@ -36,8 +35,22 @@ export function Clock({ enableExposeToggle = false, enableCalendarOpen = false }
     }
   };
 
-  // Update time every second using useInterval
-  useInterval(() => setTime(new Date()), 1000);
+  // The clock displays minutes. Wake at the next minute boundary, and sleep while hidden.
+  useEffect(() => {
+    let timer = 0;
+    const update = () => {
+      clearTimeout(timer);
+      if (document.hidden) return;
+      setTime(new Date());
+      timer = window.setTimeout(update, 60_000 - (Date.now() % 60_000));
+    };
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, []);
 
   // Handle viewport resize using useEventListener
   useEventListener("resize", () => setViewportWidth(window.innerWidth));

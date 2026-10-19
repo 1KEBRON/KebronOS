@@ -1,3 +1,4 @@
+import { loadDefaultFilesystemText } from "@/utils/defaultFilesystem";
 import { getStoreForFile, getBlobNamespaceForContentStore, type FileContentStore } from "@/utils/indexedDBOperations";
 import { createFileMutationEffects, broadcastFileCatalogChange } from "@/sync/fileMutationJournal";
 import { useChatsStore } from "@/stores/useChatsStore";
@@ -170,11 +171,7 @@ async function loadDefaultFiles(): Promise<FileSystemData> {
   // Start new fetch
   fileSystemDataPromise = (async () => {
     try {
-      const res = await abortableFetch("/data/filesystem.json", {
-        timeout: 15000,
-        retry: { maxAttempts: 2, initialDelayMs: 500 },
-      });
-      const data = await res.json();
+      const data = JSON.parse(await loadDefaultFilesystemText());
       cachedFileSystemData = data as FileSystemData;
       return cachedFileSystemData;
     } catch (err) {
@@ -206,6 +203,7 @@ async function loadDefaultApplets(): Promise<{
   appletsDataPromise = (async () => {
     try {
       const res = await abortableFetch("/data/applets.json", {
+        credentials: "same-origin", // Match the HTML fetch preload.
         timeout: 15000,
         retry: { maxAttempts: 2, initialDelayMs: 500 },
       });

@@ -1,3 +1,4 @@
+import { startTransition, useState } from "react";
 import {
   CaretLeft,
   CaretRight,
@@ -162,11 +163,24 @@ export function FinderMacToolbar({
         </DropdownMenu>
       </div>
       <div className="flex-1" />
-      <SearchInput
-        value={searchQuery}
+      <FinderSearchInput
+        initialValue={searchQuery}
         onChange={setSearchQuery}
         className="w-[150px] max-sm:w-[88px]"
       />
     </div>
   );
+}
+
+// Keep keystrokes local; filtering and the rest of the Finder tree can yield.
+function FinderSearchInput({ initialValue, onChange, className }: {
+  initialValue: string;
+  onChange: (query: string) => void;
+  className: string;
+}) {
+  const [value, setValue] = useState(initialValue);
+  return <SearchInput value={value} className={className} onChange={(query) => {
+    setValue(query);
+    startTransition(() => onChange(query));
+  }} />;
 }

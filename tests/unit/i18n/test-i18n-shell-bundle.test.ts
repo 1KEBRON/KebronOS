@@ -23,6 +23,7 @@ describe("English shell translation bundle", () => {
     const fullTranslation = readCatalog("translation.json");
     const shellTranslation = readCatalog("shell.json");
     expect(shellTranslation.common).toBeDefined();
+    expect(shellTranslation.apps.finder).toEqual(fullTranslation.apps.finder);
     expect(shellTranslation.apps.finder.folders).toBeDefined();
     expect(shellTranslation.apps.finder.menu).toBeDefined();
     expect(shellTranslation.apps.finder.dialogs).toBeDefined();
@@ -47,12 +48,12 @@ describe("English shell translation bundle", () => {
     expect(shellBytes).toBeLessThan(fullBytes * 0.5);
   });
 
-  test("hydrates full locale copy before a lazy app renders", () => {
+  test("hydrates required app copy alongside the lazy import", () => {
     const lazyLoader = readFileSync(
       path.join(ROOT, "src/config/lazyAppComponent.tsx"),
       "utf8"
     );
-    expect(lazyLoader).toContain("ensureCurrentLanguageResources()");
+    expect(lazyLoader).toContain("ensureAppLanguageResources(cacheKey)");
     expect(lazyLoader).toContain("Promise.all");
   });
 });

@@ -1,3 +1,5 @@
+import { useAppStore } from "@/stores/useAppStore";
+import { loadDefaultFilesystemText } from "./defaultFilesystem";
 import { requestAppLaunch } from "@/utils/appEventBus";
 import { README_PATH } from "@/config/kebronSite";
 
@@ -10,12 +12,18 @@ let opened = false;
 export function openReadmeOnFirstVisit() {
   if (opened) return; // React StrictMode runs first-boot effects twice in development
   opened = true;
-  void fetch("/data/filesystem.json")
-    .then((r) => r.json())
+  const open = (content?: string) => {
+    // A deliberate early app launch takes priority over the welcome document.
+    if (useAppStore.getState().foregroundInstanceId) return;
+    requestAppLaunch({ appId: "preview", initialData: { path: README_PATH, content } });
+  };
+  void loadDefaultFilesystemText()
+    .then((text) => JSON.parse(text))
     .then((data: { files?: Array<{ path: string; content?: string }> }) => {
       const readme = data.files?.find((f) => f.path === README_PATH);
-      // Bootstrap has already presented the ocean before mounting the desktop.
-      requestAppLaunch({ appId: "preview", initialData: { path: README_PATH, content: readme?.content } });
+      // Allow the first desktop interaction before the welcome window mounts.
+      // This is independent of live-wallpaper readiness.
+      setTimeout(() => open(readme?.content), 500);
     })
-    .catch(() => requestAppLaunch({ appId: "preview", initialData: { path: README_PATH } }));
+    .catch(() => setTimeout(() => open(), 500));
 }

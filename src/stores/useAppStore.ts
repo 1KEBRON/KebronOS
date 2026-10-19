@@ -294,8 +294,8 @@ const createUseAppStore = () =>
 
       createAppInstance: (appId, initialData, title, launchOrigin) => {
         let createdId = "";
-        // All app components are chunk-loaded so the shell can paint first.
-        const isLazy = true;
+        // Focus follows the user's launch immediately; loading only drives
+        // the dock indicator and must not steal focus when an import finishes.
         set((state) => {
           const nextNum = state.nextInstanceId + 1;
           createdId = nextNum.toString();
@@ -340,7 +340,7 @@ const createUseAppStore = () =>
               instanceId: createdId,
               appId,
               isOpen: true,
-              isLoading: isLazy,
+              isLoading: true,
               initialData,
               title,
               position,
@@ -357,7 +357,7 @@ const createUseAppStore = () =>
           return {
             instances,
             instanceOrder,
-            foregroundInstanceId: isLazy ? state.foregroundInstanceId : createdId,
+            foregroundInstanceId: createdId,
             nextInstanceId: nextNum,
           };
         });
@@ -366,7 +366,7 @@ const createUseAppStore = () =>
             appId,
             instanceId: createdId,
             openWindowCount: get().instanceOrder.length,
-            isLazy,
+            isLoading: true,
             hasLaunchOrigin: !!launchOrigin,
             hasTitle: !!title,
             initialData: describeInitialData(initialData),
@@ -400,7 +400,7 @@ const createUseAppStore = () =>
               detail: {
                 instanceId: createdId,
                 isOpen: true,
-                isForeground: false,
+                isForeground: true,
               },
             })
           );
@@ -423,17 +423,12 @@ const createUseAppStore = () =>
             [instanceId]: { ...inst, isLoading: false },
           };
 
-          const order = [
-            ...state.instanceOrder.filter((id) => id !== instanceId),
-            instanceId,
-          ];
-
           window.dispatchEvent(
             new CustomEvent("instanceStateChange", {
               detail: {
                 instanceId,
                 isOpen: true,
-                isForeground: true,
+                isForeground: state.foregroundInstanceId === instanceId,
               },
             })
           );
@@ -441,14 +436,10 @@ const createUseAppStore = () =>
             appId: inst.appId,
             instanceId,
             openWindowCount: Object.keys(instances).length,
-            foregroundInstanceId: instanceId,
+            foregroundInstanceId: state.foregroundInstanceId,
           });
 
-          return {
-            instances,
-            instanceOrder: order,
-            foregroundInstanceId: instanceId,
-          };
+          return { instances };
         });
       },
 

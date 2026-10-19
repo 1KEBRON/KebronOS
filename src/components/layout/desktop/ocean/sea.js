@@ -9,7 +9,7 @@ import { createCpuCapillaryOcean } from "./vendor/nagi/cpu-capillary-ocean.js";
 import { createAtmosphere } from "./vendor/nagi/atmosphere.js";
 import { installPrefilterUniforms } from "./vendor/nagi/prefiltered-environment.js";
 import { createOceanMotion } from "./vendor/nagi/ocean-motion.js";
-import { PHOTO_SKY_GLSL, installPhotoSkyUniforms, loadPhotoSky } from "./vendor/nagi/photo-sky.js";
+import { PHOTO_SKY_GLSL, installPhotoSkyUniforms, loadPhotoSky, textureLoader } from "./vendor/nagi/photo-sky.js";
 import { installRefractionUniforms, createRefractionPass } from "./vendor/nagi/refraction.js";
 import { shaderCommon, vertex, fragment, foamFragment } from "./sea-shaders.js";
 
@@ -30,11 +30,11 @@ async function fetchRadiance(signal) {
   return new Response(stream).arrayBuffer();
 }
 
-function sunVector(elevation) {
-  return new THREE.Vector3(-0.79863551 * Math.cos(elevation), Math.sin(elevation), -0.60181502 * Math.cos(elevation));
+function sunVector(elevation, target) {
+  return target.set(-0.79863551 * Math.cos(elevation), Math.sin(elevation), -0.60181502 * Math.cos(elevation));
 }
 
-export function createSea({ container, quality = "balanced", pixelRatio = 1, sunDegrees = 34, wave = 0.85, wind = 0.7 }) {
+export function createSea({ container, canvas, quality = "balanced", pixelRatio = 1, sunDegrees = 34, wave = 0.85, wind = 0.7 }) {
   const profile = PROFILES[quality];
   const motion = createOceanMotion();
   const uniforms = {
@@ -90,8 +90,8 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
   let disposed = false;
   let guarded = false;
   // "default", not "high-performance": a wallpaper should not wake a laptop's discrete GPU.
-  const renderer = new THREE.WebGLRenderer({ antialias: quality !== "light", powerPreference: "default" });
-  renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality !== "light", powerPreference: "default" });
+  if (renderer.domElement.style) renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
   if (!renderer.capabilities.isWebGL2) {
     renderer.dispose();
     renderer.forceContextLoss();
@@ -106,7 +106,7 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
-  container.appendChild(renderer.domElement);
+  container.appendChild?.(renderer.domElement);
   renderer.debug.onShaderError = (gl, program, vs, fs) => {
     const error = new Error(`${gl.getProgramInfoLog(program)} ${gl.getShaderInfoLog(vs)} ${gl.getShaderInfoLog(fs)}`);
     if (guarded) throw error;
@@ -386,7 +386,7 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
   }
   assets.push(
     new Promise((resolve) => {
-      new THREE.TextureLoader().load(
+      textureLoader(THREE).load(
         "/ocean/foam-pattern-v2.webp",
         (texture) => {
           if (disposed) {
@@ -450,7 +450,7 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
       }
     }
     const e = uniforms.uEnvironmentReady.value > 0.5 ? uniforms.uSkySun.value : uniforms.uSun.value;
-    uniforms.uSunDirection.value.copy(sunVector(e));
+    sunVector(e, uniforms.uSunDirection.value);
   }
 
   function render() {
@@ -496,7 +496,7 @@ export function createSea({ container, quality = "balanced", pixelRatio = 1, sun
     });
     renderer.dispose();
     renderer.forceContextLoss();
-    renderer.domElement.remove();
+    renderer.domElement.remove?.();
   }
 
   return {

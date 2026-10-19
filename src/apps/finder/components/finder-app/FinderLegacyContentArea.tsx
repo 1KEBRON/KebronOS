@@ -1,4 +1,5 @@
-import { AirDropView } from "../AirDropView";
+import { lazy, Suspense } from "react";
+const AirDropView = lazy(() => import("../AirDropView").then(m => ({ default: m.AirDropView })));
 import { FinderFileListContent, type FinderFileListContentProps } from "./FinderFileListContent";
 import type { TFunction } from "i18next";
 import { formatStorageSize } from "@/stores/useFinderStore";
@@ -31,10 +32,10 @@ export function FinderLegacyContentArea({
     <>
       {isAirDropView ? (
         <div className="flex-1 bg-gradient-to-b from-neutral-100 to-neutral-200">
-          <AirDropView
+          <Suspense fallback={null}><AirDropView
             onSendFile={handleAirDropSendFile}
             onRequestLogin={promptVerifyToken}
-          />
+          /></Suspense>
         </div>
       ) : (
         <FinderFileListContent

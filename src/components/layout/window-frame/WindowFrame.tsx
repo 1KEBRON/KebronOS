@@ -244,6 +244,7 @@ export function WindowFrame({
       instanceId,
       windowPosition,
       windowSize,
+      measureDockOffset: shouldAnimateRestore || (keepMountedWhenMinimized && isMinimized),
     });
 
   const exposeTransform = useWindowFrameExposeTransform({

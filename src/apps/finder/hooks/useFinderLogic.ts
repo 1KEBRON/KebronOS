@@ -1,3 +1,4 @@
+import { createVisibilityGatedInterval } from "@/utils/backgroundTask";
 import {
   useState,
   useRef,
@@ -44,7 +45,7 @@ import {
   compareFinderItemsByDisplayName,
   compareFinderSortText,
 } from "@/utils/finderDisplay";
-import { helpItems } from "../index";
+import { helpItems } from "../metadata";
 import { useFilesStore, useFilesStoreShallow } from "@/stores/useFilesStore";
 import { useFileMetadataInPath } from "@/services/vfs/FileMetadataService";
 import { useDockStore } from "@/stores/useDockStore";
@@ -492,11 +493,11 @@ export function useFinderLogic({
     };
 
     void refresh();
-    const interval = setInterval(() => void refresh(), 15000); // Update every 15 seconds
+    const disposeInterval = createVisibilityGatedInterval(() => void refresh(), 15000); // Update every 15 seconds
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      disposeInterval();
     };
   }, []);
 

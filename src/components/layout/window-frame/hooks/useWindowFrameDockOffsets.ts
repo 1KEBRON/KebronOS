@@ -6,6 +6,7 @@ type DockOffsetsParams = {
   instanceId?: string;
   windowPosition: { x: number; y: number };
   windowSize: { width: number; height: number };
+  measureDockOffset: boolean;
 };
 
 export type WindowGeometry = Pick<
@@ -68,13 +69,13 @@ export function useWindowFrameDockOffsets({
   instanceId,
   windowPosition,
   windowSize,
+  measureDockOffset,
 }: DockOffsetsParams) {
-  // Fresh measurement each render so `initial` (restore-from-dock) and
-  // `animate` (keep-mounted minimize) target the icon's current position.
-  const dockIconOffset = computeDockIconOffset(appId, instanceId, {
-    windowPosition,
-    windowSize,
-  });
+  // Only restore / keep-mounted minimize consume this offset. Ordinary opens
+  // and typing must not force a layout to measure an unused dock position.
+  const dockIconOffset = measureDockOffset
+    ? computeDockIconOffset(appId, instanceId, { windowPosition, windowSize })
+    : { x: 0, y: 0 };
 
   // Lazy getter for the exit animation, which Motion resolves when the
   // window is actually removed — after this component's last render.

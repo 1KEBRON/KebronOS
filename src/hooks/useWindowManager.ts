@@ -7,7 +7,7 @@ import {
   ResizeStart,
 } from "../types/types";
 import { appIds, AppId } from "@/config/appIds";
-import { useAppStore } from "@/stores/useAppStore";
+import { useAppStore, useAppStoreShallow } from "@/stores/useAppStore";
 import { useSound, Sounds } from "./useSound";
 import { getWindowConfig, getMobileWindowSize } from "@/config/appRegistry";
 import { useWindowInsets } from "./useWindowInsets";
@@ -26,9 +26,10 @@ export const useWindowManager = ({
   disableSnap = false,
 }: UseWindowManagerProps) => {
   // Fetch the persisted window state from the global app store
-  const instanceStateFromStore = useAppStore((state) =>
-    instanceId ? state.instances[instanceId] : null
-  );
+  const instanceStateFromStore = useAppStoreShallow((state) => {
+    const instance = instanceId ? state.instances[instanceId] : undefined;
+    return instance ? { position: instance.position, size: instance.size } : null;
+  });
   const config = getWindowConfig(appId);
 
   // Use shared window insets hook for theme-dependent constraints
@@ -59,20 +60,16 @@ export const useWindowManager = ({
   // Use instance state if available, otherwise fall back to app state
   const stateSource = instanceStateFromStore;
 
-  const initialState = {
-    position: stateSource?.position ?? computeDefaultWindowState().position,
-    size: stateSource?.size ?? computeDefaultWindowState().size,
-  };
-
-  const adjustedPosition = { ...initialState.position };
-
-  // Ensure window is visible within viewport
-  if (adjustedPosition.x + initialState.size.width > window.innerWidth) {
-    adjustedPosition.x = Math.max(
-      0,
-      window.innerWidth - initialState.size.width
-    );
-  }
+  const [initialState] = useState(() => {
+    const size = stateSource?.size ?? computeDefaultWindowState().size;
+    const position = { ...(stateSource?.position ?? computeDefaultWindowState().position) };
+    // Initial clamping belongs to initialization, not every title/search update.
+    if (position.x + size.width > window.innerWidth) {
+      position.x = Math.max(0, window.innerWidth - size.width);
+    }
+    return { position, size };
+  });
+  const adjustedPosition = initialState.position;
 
   const [windowPosition, setWindowPosition] =
     useState<WindowPosition>(adjustedPosition);

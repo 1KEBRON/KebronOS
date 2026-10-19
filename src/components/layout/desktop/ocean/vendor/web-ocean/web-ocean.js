@@ -1,5 +1,5 @@
 // web-ocean (MIT, see ./LICENSE and ./SOURCE): Noniv's WebGPU ocean, reshaped from its js/main.js into a
-// library. The renderer is unchanged; what was removed is the page around it (keyboard and pointer-lock camera,
+// library. The page around it was removed (keyboard and pointer-lock camera,
 // settings panel, HUD, screenshots, dev-server logging). The caller owns the camera and the frame loop.
 import { N, CASCADES, SKY_W, SKY_H, ENV_SIZE, ENV_MIPS } from './wgsl/common.js';
 import { SIM_INIT, SIM_EVOLVE, FFT_ROWS, FFT_COLS, SIM_MIPS, FOAM_TEX, RGBA8_MIPS, FOAM_UPDATE, ARRAY16_MIPS, FOAM_RES } from './wgsl/sim.js';
@@ -64,9 +64,11 @@ export async function createWebOcean(options) {
 
   const GU = GPUBufferUsage;
   const TU = GPUTextureUsage;
-  const canvas = document.createElement('canvas');
-  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
-  container.appendChild(canvas);
+  const canvas = options.canvas ?? document.createElement('canvas');
+  if (!options.canvas) {
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
+    container.appendChild(canvas);
+  }
   const ctx = canvas.getContext('webgpu');
   const swapFormat = navigator.gpu.getPreferredCanvasFormat();
   ctx.configure({ device, format: swapFormat, alphaMode: 'opaque' });
@@ -75,7 +77,8 @@ export async function createWebOcean(options) {
     return await build();
   } catch (error) {
     disposed = true;
-    canvas.remove();
+    ctx.unconfigure();
+    canvas.remove?.();
     device.destroy();
     throw error;
   }
@@ -234,7 +237,7 @@ export async function createWebOcean(options) {
   const bgEnv = bg(envPipe, [{ buffer: frameUBO }, transView, skyView, sampClamp, lvl(envTex, 0)], 'env');
   const bgSunVis = bg(sunVisPipe, [{ buffer: frameUBO }, transView, skyView, sampClamp, { buffer: sunVisBuf }], 'sunvis');
   const bgCubeMips = [];
-  for (let m = 1; m < ENV_MIPS; m++) bgCubeMips.push(bg(cubeMipPipe, [lvl(envTex, m - 1), lvl(envTex, m)], 'cubemip' + m));
+  for (let m = 1; m < ENV_MIPS; m++) bgCubeMips.push(bg(cubeMipPipe, [lvl(envTex, m - 1), lvl(envTex, m), { buffer: frameUBO }], 'cubemip' + m));
 
   // --------------------------------------------------------------------------------------
   // Render pipelines
@@ -405,6 +408,7 @@ export async function createWebOcean(options) {
   const proj = new Float32Array(16), view = new Float32Array(16), viewProj = new Float32Array(16);
   const LOOP = 600.0;  // s, spectrum time loop (frequencies quantised to it)
   let needSpectrum = true, needLUT = true, envFull = 2;
+  let skySunY = NaN, skyHaze = NaN, skyAltitude = NaN;
 
   function writeSimStatic() {
     for (let c = 0; c < C; c++) {
@@ -630,25 +634,33 @@ export async function createWebOcean(options) {
       needLUT = false;
     }
     encodeSim(cp);
-    cp.setPipeline(probePipe);
-    cp.setBindGroup(0, bgProbe);
-    cp.dispatchWorkgroups(1);
-    cp.setPipeline(skyViewPipe);
-    cp.setBindGroup(0, bgSkyView);
-    cp.dispatchWorkgroups(Math.ceil(SKY_W / 8), Math.ceil(SKY_H / 8));
+    const doProbe = !probePending && (frameIndex & 7) === 0;
+    if (doProbe) {
+      cp.setPipeline(probePipe);
+      cp.setBindGroup(0, bgProbe);
+      cp.dispatchWorkgroups(1);
+    }
+    // Atmosphere has no time dependence; compare the exact values sent to the GPU.
+    if (skySunY !== frameF[33] || skyHaze !== frameF[72] || skyAltitude !== frameF[73]) {
+      cp.setPipeline(skyViewPipe);
+      cp.setBindGroup(0, bgSkyView);
+      cp.dispatchWorkgroups(Math.ceil(SKY_W / 8), Math.ceil(SKY_H / 8));
+      skySunY = frameF[33]; skyHaze = frameF[72]; skyAltitude = frameF[73];
+    }
     cp.setPipeline(sunVisPipe);
     cp.setBindGroup(0, bgSunVis);
     cp.dispatchWorkgroups(1);
     cp.setPipeline(envPipe);
     cp.setBindGroup(0, bgEnv);
     // one cube face per frame (all six on start-up / after parameter changes)
-    cp.dispatchWorkgroups(ENV_SIZE / 8, ENV_SIZE / 8, envFull > 0 ? 6 : 1);
+    const envFaces = envFull > 0 ? 6 : 1;
+    cp.dispatchWorkgroups(ENV_SIZE / 8, ENV_SIZE / 8, envFaces);
     if (envFull > 0) envFull--;
     cp.setPipeline(cubeMipPipe);
     for (let m = 1; m < ENV_MIPS; m++) {
       const s = Math.max(1, ENV_SIZE >> m);
       cp.setBindGroup(0, bgCubeMips[m - 1]);
-      cp.dispatchWorkgroups(Math.ceil(s / 8), Math.ceil(s / 8), 6);
+      cp.dispatchWorkgroups(Math.ceil(s / 8), Math.ceil(s / 8), envFaces);
     }
     cp.end();
 
@@ -690,10 +702,8 @@ export async function createWebOcean(options) {
     pc.draw(3);
     pc.end();
 
-    let doProbe = false;
-    if (!probePending && (frameIndex & 7) === 0) {
+    if (doProbe) {
       enc.copyBufferToBuffer(probeOut, 0, probeRead, 0, 16);
-      doProbe = true;
     }
     submitList[0] = enc.finish();
     device.queue.submit(submitList);
@@ -736,7 +746,8 @@ export async function createWebOcean(options) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      canvas.remove();
+      ctx.unconfigure();
+      canvas.remove?.();
       device.destroy();
     },
   };

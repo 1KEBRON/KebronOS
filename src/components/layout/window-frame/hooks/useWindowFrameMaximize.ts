@@ -41,7 +41,6 @@ export function useWindowFrameMaximize({
   setWindowPosition,
   updateInstanceWindowState,
 }: MaximizeParams) {
-  const [isFullHeight, setIsFullHeight] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const previousSizeRef = useRef({ width: 0, height: 0 });
   const lastToggleTimeRef = useRef<number>(0);
@@ -52,12 +51,6 @@ export function useWindowFrameMaximize({
   const { play: playWindowExpand } = useSound(Sounds.WINDOW_EXPAND);
   const { play: playWindowCollapse } = useSound(Sounds.WINDOW_COLLAPSE);
   const vibrateMaximize = useVibration(50, 100);
-
-  useEffect(() => {
-    const { topInset, bottomInset } = computeWindowInsets();
-    const maxPossibleHeight = window.innerHeight - topInset - bottomInset;
-    setIsFullHeight(Math.abs(windowSize.height - maxPossibleHeight) < 5);
-  }, [windowSize.height, computeWindowInsets]);
 
   useEffect(() => {
     return () => {
@@ -75,9 +68,13 @@ export function useWindowFrameMaximize({
 
       if (isMaximized) return;
 
+      // Measure only when maximizing, not during every window's mount. This
+      // also uses the current safe area after an orientation/viewport change.
+      const { topInset, bottomInset } = computeWindowInsets();
+      const maxPossibleHeight = window.innerHeight - topInset - bottomInset;
+      const isFullHeight = Math.abs(windowSize.height - maxPossibleHeight) < 5;
       if (isFullHeight) {
         playWindowCollapse();
-        setIsFullHeight(false);
         const newSize = {
           ...windowSize,
           height: mergedConstraints.defaultSize.height,
@@ -88,9 +85,6 @@ export function useWindowFrameMaximize({
         }
       } else {
         playWindowExpand();
-        setIsFullHeight(true);
-        const { topInset, bottomInset } = computeWindowInsets();
-        const maxPossibleHeight = window.innerHeight - topInset - bottomInset;
         const maxHeight = mergedConstraints.maxHeight
           ? typeof mergedConstraints.maxHeight === "string"
             ? parseInt(mergedConstraints.maxHeight)
@@ -116,7 +110,6 @@ export function useWindowFrameMaximize({
       computeWindowInsets,
       instanceId,
       isClosingRef,
-      isFullHeight,
       isMaximized,
       mergedConstraints,
       playWindowCollapse,

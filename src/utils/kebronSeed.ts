@@ -1,3 +1,4 @@
+import { loadDefaultFilesystemText } from "./defaultFilesystem";
 // Keeps the site's seeded files (README, Projects notes, North Star, desktop aliases) in step with public/data/filesystem.json.
 //
 // ryOS seeds its virtual filesystem only once per browser, and only stores text for /Documents, /Images and
@@ -100,7 +101,7 @@ function alignDesktopAppIcons() {
 
 export async function syncKebronSeed() {
   try {
-    const text = await fetch("/data/filesystem.json", { cache: "no-cache" }).then((r) => r.text());
+    const text = await loadDefaultFilesystemText();
     await whenLibraryLoaded();
     applyDefaultsOnce();
     alignDesktopAppIcons();

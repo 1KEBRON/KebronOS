@@ -15,15 +15,7 @@ const SHELL_TOP_LEVEL_KEYS = [
 const APP_METADATA_KEYS = ["name", "description", "nameForMacosX"] as const;
 
 const SHELL_APP_SLICES: Record<string, readonly string[] | "*"> = {
-  finder: [
-    "folders",
-    "contextMenu",
-    "window",
-    "airdrop",
-    "menu",
-    "dialogs",
-    "fileTypes",
-  ],
+  finder: "*",
   dashboard: "*",
   chats: ["messages.greeting", "notification", "toolCalls"],
   "control-panels": [

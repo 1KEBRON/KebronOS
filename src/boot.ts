@@ -1,11 +1,11 @@
-import { hasOceanWallpaper, oceanReady, startOcean } from "./oceanBoot";
-
-const ocean = hasOceanWallpaper();
-if (ocean) startOcean();
-
-// Download the desktop while the selected ocean engine initializes. main.tsx waits
-// for its first presented frame; failed or unavailable graphics still allow boot.
-export const wallpaperReady = ocean
-  ? Promise.race([oceanReady, new Promise<void>((resolve) => setTimeout(resolve, 8000))])
-  : Promise.resolve();
-void import("./main");
+// Give the inline dawn background one rendering opportunity before Vite inserts
+// the UI's stylesheets. Neither import waits for graphics or ocean readiness.
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  void import("./main");
+  void import("./oceanBoot").then(({ hasOceanWallpaper, startOcean }) => {
+    // NAGI's photo textures must not compete with the phone UI's download.
+    // Its DesktopOceanHost starts the island after the desktop has mounted.
+    const compact = matchMedia("(pointer: coarse)").matches || innerWidth < 760;
+    if (hasOceanWallpaper() && !compact && "gpu" in navigator) startOcean();
+  }).catch((error) => console.warn("[ocean] still image fallback:", error));
+}));

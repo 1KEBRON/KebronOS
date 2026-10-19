@@ -730,7 +730,7 @@ function finalizePrefetch(
 
 // Max simultaneous prefetch requests. Bounded so the background warmup doesn't
 // saturate the connection or contend with foreground app/network traffic.
-const PREFETCH_CONCURRENCY = 8;
+const PREFETCH_CONCURRENCY = 2;
 
 /**
  * Run an async task over items with a bounded concurrency pool.
@@ -745,7 +745,19 @@ async function runWithConcurrency<T>(
   let cursor = 0;
   const workers = Array.from({ length: poolSize }, async () => {
     while (cursor < items.length) {
+      if (typeof document !== "undefined" && document.hidden) {
+        await new Promise<void>(resolve => {
+          const resume = () => {
+            if (document.hidden) return;
+            document.removeEventListener("visibilitychange", resume);
+            resolve();
+          };
+          document.addEventListener("visibilitychange", resume);
+        });
+      }
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
       const index = cursor++;
+      if (index >= items.length) return;
       await task(items[index]);
     }
   });
@@ -769,6 +781,7 @@ async function prefetchUrlsWithProgress(
     try {
       const response = await abortableFetch(url, {
         method: 'GET',
+        priority: 'low',
         // Use 'reload' when skipCache is true (e.g., after cache clear on updates)
         // to bypass browser HTTP cache and fetch fresh from network.
         // Otherwise use 'default' to let browser decide (respects cache headers).

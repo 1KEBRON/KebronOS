@@ -319,18 +319,18 @@ export function DefaultMenuItems() {
         </MenubarContent>
       </MenubarMenu>
 
-      <HelpDialog
+      {isHelpDialogOpen && <HelpDialog
         isOpen={isHelpDialogOpen}
         onOpenChange={setIsHelpDialogOpen}
         appId="finder"
         helpItems={translatedHelpItems}
-      />
-      <AboutDialog
+      />}
+      {isAboutDialogOpen && <AboutDialog
         isOpen={isAboutDialogOpen}
         onOpenChange={setIsAboutDialogOpen}
         metadata={finderMetadata}
         appId="finder"
-      />
+      />}
     </>
   );
 }

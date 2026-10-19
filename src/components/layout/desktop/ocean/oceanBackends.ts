@@ -1,3 +1,5 @@
+import { createOceanWorkerBackend } from "./oceanWorkerBackend";
+
 // The two live oceans behind one interface, so the wallpaper layer drives either with the same camera and frame
 // loop: web-ocean (WebGPU: FFT sea, sunset sky with clouds and sun glitter) where the browser has WebGPU, and
 // NAGI's three.js ocean (WebGL 2, photo sky) everywhere else.
@@ -16,17 +18,27 @@ export type OceanBackend = {
   time(): number;
   /** Lowest camera height that stays clear of the water right now. */
   floor(): number;
-  draw(dt: number, paused: boolean, camera: HoverCamera): void;
+  draw(dt: number, paused: boolean, camera: HoverCamera): void | boolean;
+  /** Consume the last completed worker-frame interval, if rendering off-thread. */
+  frameInterval?(): number | undefined;
   resize(pixelRatio?: number): boolean;
   bufferSize(): string;
   dispose(): void;
 };
 
-type Lost = { onLost: () => void; onRestored: () => void };
+type Lost = { signal?: AbortSignal; onLost: () => void; onRestored: () => void };
 
 export async function createWebGPUBackend(
   options: { container: HTMLElement; pixelRatio: number; compact: boolean } & Lost
 ): Promise<OceanBackend> {
+  if (typeof Worker !== "undefined" && typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function") {
+    try {
+      return await createOceanWorkerBackend("webgpu", options);
+    } catch (error) {
+      if (options.signal?.aborted) throw error;
+      console.info("[ocean] worker unavailable; using the WebGPU canvas fallback", error);
+    }
+  }
   const { createWebOcean } = await import("./vendor/web-ocean/web-ocean.js");
   const ocean = await createWebOcean({
     container: options.container,
@@ -66,6 +78,15 @@ export async function createWebGPUBackend(
 export async function createWebGLBackend(
   options: { container: HTMLElement; pixelRatio: number; compact: boolean } & Lost
 ): Promise<{ backend: OceanBackend; ready: Promise<unknown> }> {
+  if (typeof Worker !== "undefined" && typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function") {
+    try {
+      const backend = await createOceanWorkerBackend("webgl", options);
+      return { backend, ready: Promise.resolve() };
+    } catch (error) {
+      if (options.signal?.aborted) throw error;
+      console.info("[ocean] worker unavailable; using the WebGL canvas fallback", error);
+    }
+  }
   const { createSea, Vector3 } = await import("./sea.js");
   const sea = createSea({
     container: options.container,

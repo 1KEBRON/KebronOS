@@ -60,6 +60,8 @@ export function createOceanSound() {
 
   let scene = { height: 6, wave: 0.85, wind: 0.7 };
   let timer = 0;
+  let suspendTimer = 0;
+  let generation = 0;
   let on = false;
 
   // Each wave: a swell (rise in gain and brightness), a crest, then a long retreating wash.
@@ -110,16 +112,30 @@ export function createOceanSound() {
       return on;
     },
     async enable() {
-      await ctx.resume();
+      const request = ++generation;
+      clearTimeout(suspendTimer);
+      try {
+        await ctx.resume();
+      } catch (error) {
+        console.warn("[sea] sound unavailable", error);
+        return;
+      }
+      if (request !== generation) return;
       on = true;
       master.gain.setTargetAtTime(0.9, ctx.currentTime, 0.8);
       clearTimeout(timer);
       scheduleWave();
     },
     disable() {
+      const request = ++generation;
       on = false;
       clearTimeout(timer);
+      clearTimeout(suspendTimer);
       master.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+      // Let the existing fade finish before stopping the looping sources and filters.
+      suspendTimer = setTimeout(() => {
+        if (request === generation) void ctx.suspend().catch((error) => console.warn("[sea] sound suspension failed", error));
+      }, 3000);
     },
     setScene(next) {
       scene = { ...scene, ...next };

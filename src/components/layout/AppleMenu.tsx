@@ -337,13 +337,13 @@ export function AppleMenu() {
       </MenubarMenu>
 
       {/* Dialogs */}
-      <AboutFinderDialog
+      {aboutFinderOpen && <AboutFinderDialog
         isOpen={aboutFinderOpen}
         onOpenChange={setAboutFinderOpen}
-      />
+      />}
 
       {/* Sign Up Dialog */}
-      <LoginDialog
+      {isUsernameDialogOpen && <LoginDialog
         initialTab="signup"
         isOpen={isUsernameDialogOpen}
         onOpenChange={setIsUsernameDialogOpen}
@@ -365,10 +365,10 @@ export function AppleMenu() {
         onSignUpSubmit={submitUsernameDialog}
         isSignUpLoading={isSettingUsername}
         signUpError={usernameError}
-      />
+      />}
 
       {/* Log In Dialog */}
-      <LoginDialog
+      {isVerifyDialogOpen && <LoginDialog
         isOpen={isVerifyDialogOpen}
         onOpenChange={setVerifyDialogOpen}
         /* Login props */
@@ -392,14 +392,14 @@ export function AppleMenu() {
         }}
         isSignUpLoading={false}
         signUpError={null}
-      />
+      />}
 
       {/* Logout Confirmation Dialog */}
-      <LogoutDialog
+      {isLogoutConfirmDialogOpen && <LogoutDialog
         isOpen={isLogoutConfirmDialogOpen}
         onOpenChange={setIsLogoutConfirmDialogOpen}
         onConfirm={confirmLogout}
-      />
+      />}
     </>
   );
 }

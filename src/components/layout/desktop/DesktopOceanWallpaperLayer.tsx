@@ -6,8 +6,8 @@
 //
 // Frame budget: no animation frames at all while the tab is hidden, while paused (reduced motion or the
 // visitor's choice) once the camera has settled, or before the sky has loaded. Otherwise 60 fps while
-// someone is touching the sea or in ocean-only view, 30 fps as a backdrop and 15 fps behind windows that
-// cover the whole screen. The pixel ratio adapts to measured frame times (./ocean/adaptiveQuality.ts).
+// someone is touching the sea or on desktop, 30 fps as a phone backdrop, and stopped behind windows
+// that cover the whole screen. The pixel ratio adapts to measured frame times (./ocean/adaptiveQuality.ts).
 // Add ?fps to the URL for a small readout; ?ocean=static forces the photo, ?ocean=webgl forces NAGI,
 // ?ocean=live never gives up.
 import { useEffect, useRef, useState } from "react";
@@ -69,7 +69,7 @@ function createReadout() {
   return el;
 }
 
-export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
+export function OceanWallpaperLayer() {
   const hostRef = useRef<HTMLDivElement>(null);
   const stillRef = useRef<HTMLDivElement>(null);
   const soundOn = useOceanStore((s) => s.soundOn);
@@ -90,8 +90,16 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
     if (!soundOn && peekOceanSound() === undefined) return;
     const sound = getOceanSound();
     if (!sound) return;
-    if (soundOn) void sound.enable();
-    else sound.disable();
+    const update = () => {
+      if (soundOn && !document.hidden) void sound.enable();
+      else sound.disable();
+    };
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      document.removeEventListener("visibilitychange", update);
+      sound.disable();
+    };
   }, [soundOn]);
 
   useEffect(() => {
@@ -108,7 +116,6 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
     // ?ocean=static allows local review and GPU troubleshooting without initializing WebGL.
     if (oceanParam === "static" || (oceanParam !== "live" && readSession(SLOW_KEY))) {
       say(oceanParam === "static" ? "still image (?ocean=static)" : "still image (too slow this session; ?ocean=live)");
-      onReady?.();
       return () => readout?.remove();
     }
 
@@ -122,6 +129,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
     let onContextRestored = () => {};
     const lostHandlers = { onLost: () => onContextLost(), onRestored: () => onContextRestored() };
     let cancelled = false;
+    const initialization = new AbortController();
     let stopRunning: (() => void) | undefined;
 
     const fallBackToWebGL = (reason: string) => {
@@ -136,7 +144,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
 
     if (gpu) {
       say("loading web-ocean");
-      createWebGPUBackend({ container: host, pixelRatio: scale.ratio, compact, ...lostHandlers }).then(
+      createWebGPUBackend({ container: host, pixelRatio: scale.ratio, compact, signal: initialization.signal, ...lostHandlers }).then(
         (backend) => {
           if (cancelled) backend.dispose();
           else stopRunning = run(backend, Promise.resolve());
@@ -146,7 +154,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         }
       );
     } else {
-      createWebGLBackend({ container: host, pixelRatio: scale.ratio, compact, ...lostHandlers }).then(
+      createWebGLBackend({ container: host, pixelRatio: scale.ratio, compact, signal: initialization.signal, ...lostHandlers }).then(
         ({ backend, ready }) => {
           if (cancelled) backend.dispose();
           else stopRunning = run(backend, ready);
@@ -155,13 +163,13 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
           if (cancelled) return;
           console.info("[ocean] still image fallback:", error.message);
           say(`still image (${error.message})`);
-          onReady?.();
         }
       );
     }
 
     return () => {
       cancelled = true;
+      initialization.abort();
       stopRunning?.();
       readout?.remove();
     };
@@ -185,7 +193,6 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
       let raf = 0;
       let lastRender = 0;
       let lastFps = 0;
-      let lastCoverCheck = 0;
       let lastInteraction = 0;
       let stillTimer = 0;
       let resizeTimer = 0;
@@ -216,7 +223,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         Math.abs(targetHeight - height) > 0.01;
 
       const shouldRun = () =>
-        !released && !document.hidden && !lost && !failed && (needsFrame || settling() || (ready && !paused));
+        !released && !document.hidden && !lost && !failed && (needsFrame || (!covered && (settling() || (ready && !paused))));
 
       // ---- readout stats ----
       const stats = { frames: 0, intervalMs: 0, cpuMs: 0, since: performance.now() };
@@ -235,11 +242,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
           return;
         }
         const interacting = settling() || now - lastInteraction < INTERACTION_LINGER_MS;
-        if (now - lastCoverCheck > COVER_CHECK_MS) {
-          lastCoverCheck = now;
-          covered = !immersive && viewportCovered();
-        }
-        const fps = targetFps({ immersive, interacting, covered });
+        const fps = targetFps({ immersive: immersive || !compact, interacting, covered });
         const budget = 1000 / fps;
         // Throttle to the target rate; a few ms of slack keeps the cadence on vsync boundaries.
         if (lastRender && now - lastRender < budget - 4) {
@@ -248,9 +251,10 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         }
         const elapsed = lastRender ? now - lastRender : 0;
         const dt = elapsed ? Math.min(elapsed / 1000, 0.05) : 1 / 60;
+        const measuredElapsed = sea.frameInterval ? sea.frameInterval() : elapsed;
         if (fps !== lastFps) scale.reset();
-        else if (elapsed && ready) {
-          if (scale.sample(elapsed, budget)) sea.resize(scale.ratio);
+        else if (measuredElapsed && ready) {
+          if (scale.sample(measuredElapsed, budget)) sea.resize(scale.ratio);
           if (scale.gaveUp && gpu) {
             release();
             fallBackToWebGL("too slow");
@@ -287,17 +291,19 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         view.pitch = pitch;
         const cpuStart = performance.now();
         try {
-          sea.draw(dt, paused, view);
+          if (sea.draw(dt, paused, view) === false) {
+            raf = requestAnimationFrame(frame);
+            return;
+          }
         } catch (error) {
           failed = true;
           console.warn("[ocean] render failed; still image fallback", error);
           say("still image (render failed)");
-          showStill();
-          onReady?.();
+          release();
           return;
         }
         stats.cpuMs += performance.now() - cpuStart;
-        stats.intervalMs += elapsed;
+        stats.intervalMs += measuredElapsed ?? elapsed;
         stats.frames++;
         needsFrame = false;
         peekOceanSound()?.setScene({ height });
@@ -306,8 +312,6 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
           canvas.style.opacity = "1";
           // Lets the theme lift its dark-mode wallpaper veil off the live sea (see aqua-kebron.css).
           host.dataset.oceanEngine = sea.engine;
-          // Let the browser present the ocean before the desktop commits.
-          requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()));
           // Once the canvas has faded in, stop compositing the photo underneath it.
           stillTimer = window.setTimeout(() => {
             if (still && canvas.style.opacity === "1") still.style.visibility = "hidden";
@@ -417,7 +421,7 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         updatePaused();
         if (s.immersive !== immersive) {
           immersive = s.immersive;
-          lastCoverCheck = 0;
+          covered = !immersive && viewportCovered();
           schedule();
         }
       });
@@ -497,14 +501,25 @@ export function OceanWallpaperLayer({ onReady }: { onReady?: () => void }) {
         removeEventListener("pointerup", onUp);
         removeEventListener("pointercancel", onUp);
         clearInterval(readoutTimer);
+        clearInterval(coverageTimer);
         delete host.dataset.oceanEngine;
         sea.dispose();
       }
 
+      // Coverage must be sampled independently: a stopped renderer cannot detect
+      // that a window moved away. Hidden tabs skip even the hit tests.
+      const coverageTimer = window.setInterval(() => {
+        if (document.hidden) return;
+        const next = !immersive && viewportCovered();
+        if (next === covered) return;
+        covered = next;
+        if (covered) stop();
+        else wake();
+      }, COVER_CHECK_MS);
       schedule();
       return release;
     }
-  }, [epoch, engine, onReady]);
+  }, [epoch, engine]);
 
   return (
     <>

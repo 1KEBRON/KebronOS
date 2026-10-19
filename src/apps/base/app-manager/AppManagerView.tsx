@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useDeferredValue, useEffect } from "react";
 import type { ComponentType } from "react";
 import { MenuBar } from "@/components/layout/MenuBar";
 import { Desktop } from "@/components/layout/Desktop";
@@ -192,7 +192,7 @@ const ManagedAppInstance = memo(function ManagedAppInstance({
     translatedAppName !== appId ? translatedAppName : (app?.name ?? appId);
 
   const shouldMount = shouldMountInstance(instance, exposeMode);
-  const hideWindow = !shouldMount || instance.isLoading;
+  const hideWindow = !shouldMount;
   const effectiveIsForeground = exposeMode ? false : isForeground;
 
   return (
@@ -307,5 +307,8 @@ const ManagedAppRoot = memo(function ManagedAppRoot({
   AppComponent,
   ...props
 }: ManagedAppRootProps) {
-  return <AppComponent {...props} />;
+  // Store notifications are synchronous. Mount the app on a concurrent render
+  // so React can yield between components while the shell responds to input.
+  const ready = useDeferredValue(true, false);
+  return ready ? <AppComponent {...props} /> : null;
 });

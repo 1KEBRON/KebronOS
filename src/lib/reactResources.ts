@@ -53,7 +53,7 @@ export function primeReactResources(): void {
     safely(() =>
       preload(resource.href, {
         as: "fetch",
-        crossOrigin: "use-credentials",
+        crossOrigin: "anonymous",
         fetchPriority: resource.priority ?? "low",
       })
     )

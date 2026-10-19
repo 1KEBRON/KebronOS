@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { lazy, Suspense, startTransition, useEffect, useRef, useState, type ReactNode } from "react";
 import { AppWindowShell } from "@/components/shared/AppWindowShell";
 import { FinderMenuBar } from "../FinderMenuBar";
 import { AppProps } from "@/apps/base/types";
@@ -11,7 +11,7 @@ import { useMenuShortcuts } from "@/hooks/useMenuShortcuts";
 import { useAuth } from "@/hooks/useAuth";
 import { FinderHiddenFileInput } from "./FinderHiddenFileInput";
 import { FinderWindowBody } from "./FinderWindowBody";
-import { FinderAppDialogs } from "./FinderAppDialogs";
+const FinderAppDialogs = lazy(() => import("./FinderAppDialogs").then(m => ({ default: m.FinderAppDialogs })));
 import type { FinderFileListContentProps } from "./FinderFileListContent";
 import { useFolderHasMap } from "../../map/folderDocuments";
 import { NORTH_STAR_PATH } from "@/stores/useFinderStore";
@@ -154,7 +154,7 @@ export function FinderAppComponent({
   const viewType = storedViewType === "map" && !canShowMap ? "list" : storedViewType;
 
   const menuBar = (
-    <FinderMenuBar
+    <FinderMenuAfterPaint><FinderMenuBar
       onClose={onClose}
       onShowHelp={() => setIsHelpDialogOpen(true)}
       onShowAbout={() => setIsAboutDialogOpen(true)}
@@ -187,7 +187,7 @@ export function FinderAppComponent({
       showSidebar={showSidebar}
       onToggleSidebar={() => setShowSidebar((s) => !s)}
       onNavigateToAirDrop={navigateToAirDrop}
-    />
+    /></FinderMenuAfterPaint>
   );
 
   const fileListContentProps: FinderFileListContentProps = {
@@ -238,7 +238,9 @@ export function FinderAppComponent({
         onNavigatePrevious,
       }}
       trailing={
-        <FinderAppDialogs
+        (isHelpDialogOpen || isAboutDialogOpen || isEmptyTrashDialogOpen ||
+          isRenameDialogOpen || isNewFolderDialogOpen || auth.isUsernameDialogOpen ||
+          auth.isVerifyDialogOpen || contextMenuPos !== null) && <Suspense fallback={null}><FinderAppDialogs
           t={t}
           translatedHelpItems={translatedHelpItems}
           isHelpDialogOpen={isHelpDialogOpen}
@@ -283,7 +285,7 @@ export function FinderAppComponent({
           contextMenuFile={contextMenuFile}
           fileMenuItems={fileMenuItems}
           blankMenuItems={blankMenuItems}
-        />
+        /></Suspense>
       }
     >
       <FinderWindowBody
@@ -365,4 +367,21 @@ export function FinderAppComponent({
         />
     </AppWindowShell>
   );
+}
+
+// Mount menu portals after the window's first paint. Their commit and layout
+// work must not share the task that makes the file list and search usable.
+function FinderMenuAfterPaint({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => startTransition(() => setReady(true)), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, []);
+  return ready ? children : null;
 }

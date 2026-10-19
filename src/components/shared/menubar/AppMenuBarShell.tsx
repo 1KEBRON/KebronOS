@@ -54,12 +54,12 @@ export function AppMenuBarShell({
           onOpenShareDialog={() => setIsShareDialogOpen(true)}
         />
       </MenuBar>
-      <AppShareItemDialog
+      {isShareDialogOpen && <AppShareItemDialog
         appId={appId}
         appName={appName}
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
-      />
+      />}
     </>
   );
 }

@@ -34,8 +34,10 @@ export function DockSpacer({
   }, [baseSize, magnifyEnabled, targetSize]);
 
   const distanceCalc = useTransform(mouseX, (val) => {
+    // Disabled magnification and an absent pointer need no layout measurement.
+    if (!magnifyEnabled || !Number.isFinite(val)) return Infinity;
     const bounds = wrapperRef.current?.getBoundingClientRect();
-    if (!bounds || !Number.isFinite(val)) return Infinity;
+    if (!bounds) return Infinity;
     return val - (bounds.left + bounds.width / 2);
   });
 

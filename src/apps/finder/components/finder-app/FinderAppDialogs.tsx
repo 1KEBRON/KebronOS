@@ -5,7 +5,7 @@ import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
 import { InputDialog } from "@/components/dialogs/InputDialog";
 import { LoginDialog } from "@/components/dialogs/LoginDialog";
 import { RightClickMenu } from "@/components/ui/right-click-menu";
-import { appMetadata } from "../../index";
+import { appMetadata } from "../../metadata";
 import type { FileItem } from "../FileList";
 import type { MenuItem } from "@/components/ui/right-click-menu";
 import type { TFunction } from "i18next";
