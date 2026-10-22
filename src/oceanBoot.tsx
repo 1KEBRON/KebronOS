@@ -10,6 +10,13 @@ export function startOcean() {
   container.id = "ocean-root";
   container.style.cssText = "position:fixed;inset:0;z-index:0;pointer-events:none";
   document.body.prepend(container);
+  // Phones and tablets keep the portrait dawn still from first paint onward.
+  // Do not import a renderer or install ocean gestures on these devices.
+  if (matchMedia("(max-width: 759px), (pointer: coarse)").matches) {
+    container.style.background = "#1d3643 center 34% / cover no-repeat";
+    container.style.backgroundImage = "var(--ocean-still-image)";
+    return container;
+  }
   root = createRoot(container);
   const island = container;
   const islandRoot = root;
@@ -34,7 +41,7 @@ export function attachOcean(host: HTMLElement) {
   host.appendChild(island);
   const desktop = host.closest<HTMLElement>(".desktop-background");
   const previousTouchAction = desktop?.style.touchAction;
-  if (desktop) desktop.style.touchAction = "none";
+  if (desktop && root) desktop.style.touchAction = "none";
   return () => {
     if (desktop) desktop.style.touchAction = previousTouchAction ?? "";
     // React StrictMode reconnects immediately; a real wallpaper change releases the renderer.

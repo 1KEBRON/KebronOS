@@ -19,15 +19,15 @@
       content="Building software products."
     />
     <meta name="theme-color" content="#1d3643" />
-    <!-- First paint: a ~200-byte blurred preview of the ocean, then a still frame of the sea it will show (web-ocean's dawn on desktops, NAGI's dawn on phones and tablets), then the live sea fades in (DesktopOceanWallpaperLayer). No black screen while the app boots. -->
-    <link rel="preload" as="image" href="/ocean/ocean-phone.webp" media="(max-width: 759px), (pointer: coarse)" fetchpriority="high" />
+    <!-- First paint: a ~200-byte blurred preview of the ocean, then a still frame of the sea it will show (web-ocean's dawn on desktops, NAGI's dawn on phones and tablets), phones and tablets keep that still wallpaper; on desktop the live sea fades in (DesktopOceanWallpaperLayer). No black screen while the app boots. -->
+    <link rel="preload" as="image" href="/ocean/dawn-ocean-phone-v1.webp" media="(max-width: 759px), (pointer: coarse)" fetchpriority="high" />
     <link rel="preload" as="image" href="/ocean/ocean.webp" media="(min-width: 760px) and (not (pointer: coarse))" fetchpriority="high" />
     <link rel="preload" as="script" href="/theme-bootstrap-config.js" fetchpriority="high" />
     <link rel="preload" as="script" href="/app-config.js" fetchpriority="high" />
     <style>
       :root { --ocean-still-image: url(/ocean/ocean.webp), url(data:image/webp;base64,UklGRnoAAABXRUJQVlA4IG4AAAAwBACdASogABIAPu1mqk2ppaQiMAgBMB2JZQCuHCa5dl9asnj/0wKMJAAAn2CEJL7s1yP2tDNqw1YvKHO/lF/+nF6FIhvGcg3SDuyauZXVqhVDG8HH4Wj20pFJYYeXoz58cQZqYdUFVpdbESsAAA==); }
       @media (max-width: 759px), (pointer: coarse) {
-        :root { --ocean-still-image: url(/ocean/ocean-phone.webp), url(data:image/webp;base64,UklGRowAAABXRUJQVlA4IIAAAADwBACdASoSACAAPu1srVEppaQiqAqpMB2JYgCsABEX2cMlpe0aRpxHrykCzsf16QAA/sgljLsWwTdT6mq92nbU743bobBscnNV00aD+csz3ZoXi9NlAoh3i/qG17diPCd+itqKVjUquiVIcZ8fEJ8HAu9UssyqrY/EqJYIIm8wAA==); }
+        :root { --ocean-still-image: url(/ocean/dawn-ocean-phone-v1.webp), url(data:image/webp;base64,UklGRowAAABXRUJQVlA4IIAAAADwBACdASoSACAAPu1srVEppaQiqAqpMB2JYgCsABEX2cMlpe0aRpxHrykCzsf16QAA/sgljLsWwTdT6mq92nbU743bobBscnNV00aD+csz3ZoXi9NlAoh3i/qG17diPCd+itqKVjUquiVIcZ8fEJ8HAu9UssyqrY/EqJYIIm8wAA==); }
       }
       html.ocean-boot, html.ocean-boot body {
         background: #1d3643 center 34% / cover no-repeat fixed;
